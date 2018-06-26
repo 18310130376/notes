@@ -1,0 +1,2138 @@
+### docker安装
+
+Docker 要求 Ubuntu 系统的内核版本高于 3.10 .
+
+通过 uname -r 命令查看你当前的内核版本
+
+```
+runoob@runoob:~$ uname -r 或
+runoob@runoob:~$ uname -sr或
+runoob@runoob:~$ uname -a
+```
+
+查看操作系统是32位还是64位： 
+
+```
+yiibai@ubuntu:~$ sudo uname --m
+[sudo] password for yiibai:
+x86_64
+yiibai@ubuntu:~$
+```
+
+####  获取Docker 安装包
+
+由于apt官方库里的docker版本可能比较旧，所以先卸载可能存在的旧版本
+
+总命令如下：
+
+```java
+sudo apt-get update && apt-get install docker
+```
+
+细节：
+
+```
+sudo apt-get remove docker docker-engine docker-ce docker.io
+```
+
+更新apt包索引：
+
+```
+sudo apt-get update
+```
+
+安装以下包以使apt可以通过HTTPS使用存储库（repository）：
+
+```
+sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+```
+
+添加Docker官方的GPG密钥：
+
+```
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+```
+
+如果出错则：gpg: no valid OpenPGP data found.
+
+解决办法：上述命令中有管道符号，curl是个类似下载的命令，因此尝试将上述命令分开两步执行，
+
+1、curl -O https://packages.cloud.google.com/apt/doc/apt-key.gpg #该命令执行后会在当前目录下保存一个名称为nodesource.gpg.key的文件。
+2、使用apt-key命令加载获取到的文件  `apt-key add nodesource.gpg.key ` 系统回显OK，说明执行成功。
+
+使用下面的命令来设置stable存储库：
+
+```
+$ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+```
+
+再更新一下apt包索引：
+
+```
+$ sudo apt-get update
+```
+
+安装最新版本的Docker CE：
+
+```
+$ sudo apt-get install -y docker-ce
+```
+
+在生产系统上，可能会需要应该安装一个特定版本的Docker CE，而不是总是使用最新版本：
+列出可用的版本：
+
+```
+$ apt-cache madison docker-ce
+$ sudo apt-get install docker-ce=<VERSION>
+```
+
+验证docker
+
+```
+docker version 或 docker -v
+```
+
+查看docker服务是否启动：
+
+```
+$ systemctl status docker
+```
+
+若未启动，则启动docker服务：
+
+```
+sudo systemctl start docker
+```
+
+经典的hello world：
+
+```
+sudo docker run hello-world
+```
+
+有以上输出则证明docker已安装成功！
+
+docker: Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Post http://%2Fvar%2Frun%2Fdocker.sock/v1.30/containers/create: dial unix /var/run/docker.sock: connect: permission denied.
+See 'docker run --help'.
+
+docker守护进程启动的时候，会默认赋予名字为docker的用户组读写Unix socket的权限，因此只要创建docker用户组，并将当前用户加入到docker用户组中，那么当前用户就有权限访问Unix socket了，进而也就可以执行docker相关命令
+
+添加docker用户组
+
+```
+sudo groupadd docker
+```
+
+ 将登陆用户加入到docker用户组中
+
+```
+sudo gpasswd -a $USER docker
+sudo service docker restart
+exit
+```
+
+>gpasswd命令管理工作组
+>
+>-a:添加用户到组
+>
+>-d:从组删除用户
+>
+>-A:指定管理员
+>
+>-r:删除密码
+>
+>如:将userA添加到groupB用户组里（会保留以前添加的组）:
+>
+>gpasswd -a userA groupB
+>
+>注意：添加用户到某一个组可以使用usermod -G groupB userA，但是以前添加的组就会被清空。
+>
+>将userA设置为groupA的群组管理员
+>
+>gpasswd -A userA  groupA
+
+更新用户组
+
+```
+newgrp docker
+```
+
+测试docker命令是否可以使用sudo正常使用
+
+```
+docker ps
+```
+
+ 升级内核
+
+  ```
+$ wget http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.10.1/linux-headers-4.10.1-041001_4.10.1-041001.201702260735_all.deb
+$ wget http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.10.1/linux-headers-4.10.1-041001-generic_4.10.1-041001.201702260735_amd64.deb
+$ wget http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.10.1/linux-image-4.10.1-041001-generic_4.10.1-041001.201702260735_amd64.deb
+sudo dpkg -i *.deb
+  ```
+
+安装完成后reboot，重启并验证新的内核已经被使用了：
+
+```
+$ uname-sr
+```
+
+ 解决Unable to fetch some archives, maybe run apt-get update or try with --fix-missing
+
+第一种：
+
+```
+sudo vim /etc/resolv.conf 
+添加nameserver 8.8.8.8
+```
+
+第二种：
+
+/etc/apt/sources.list的内容换成
+
+```
+deb http://old-releases.ubuntu.com/ubuntu/ raring main universe restricted multiverse
+
+deb-src http://old-releases.ubuntu.com/ubuntu/ raring main universe restricted multiverse
+
+deb http://old-releases.ubuntu.com/ubuntu/ raring-security main universe restricted multiverse
+
+deb-src http://old-releases.ubuntu.com/ubuntu/ raring-security main universe restricted multiverse
+
+deb http://old-releases.ubuntu.com/ubuntu/ raring-updates main universe restricted multiverse
+
+deb-src http://old-releases.ubuntu.com/ubuntu/ raring-updates main universe restricted multiverse
+
+deb http://old-releases.ubuntu.com/ubuntu/ raring-backports main restricted universe multiverse
+
+deb-src http://old-releases.ubuntu.com/ubuntu/ raring-backports main restricted universe multiverse
+
+deb http://old-releases.ubuntu.com/ubuntu/ raring-proposed main restricted universe multiverse
+
+deb-src http://old-releases.ubuntu.com/ubuntu/ raring-proposed main restricted universe multiverse
+
+```
+
+然后sudo apt-get update一下就可以了
+
+#### windows docker安装
+
+docker-toolbox下载
+
+http://mirrors.aliyun.com/docker-toolbox/windows/docker-toolbox/ 或
+
+http://7xawqb.com2.z0.glb.qiniucdn.com/docker/toolbox/releases/download/v1.11.2/DockerToolbox-1.11.2.exe
+
+[https://github.com/boot2docker/windows-installer/releases(这个地址国内下载很慢)](https://github.com/boot2docker/windows-installer/releases)
+
+boot2docker不像docker toolbox那样会在桌面上生成两个快捷方式。只会在桌面上生成一个Boot2Docker Start 
+的快捷方式。 
+双击该快捷方式，boot2docker会在virtualbox中启动一个虚拟机，这些都不是我们需要关心的事情。
+
+第一次启动时设置：
+
+双击桌面的`Boot2Docker Start`快捷方式进行启动，使用`boot2docker ssh`进入到docker-machine中
+
+```
+boot2docker ssh
+```
+
+[用这个： https://get.daocloud.io/toolbox/](https://get.daocloud.io/toolbox/)
+
+下载完成后，双击安装文件 
+
+一路Next，接受所有默认安装 （记得选择Git for Windows，如果之前安装了GIT工具则可以不用选择）
+
+在安装过程中，会出现几个其他的安装过程，如Ocracle Corporation等系列软件，全部选择安装即可
+
+安装完成后Docker Quickstart Terminal找不到快捷方式：
+
+我们双击打开，如果打不开我们右键修改下git地址，这里配置正确的路径。
+
+boot2docker 默认用户的用户名是` docker`，密码是 `tcuser`
+
+安装远程连接工具连接docker:
+
+首先：连接docker时，必须要先启动Docker Quickstart Terminal
+
+其次：输入docker的IP和端口(22)，用户名/密码：docker / tcuser
+
+```
+docker run -it --rm -p 8888:8888 -v /c/Users/tingting/dropbox/code:/root/opt/workspace -v /c/Users/tingting/dropbox/data:/root/data tingtinglu/caffe_mxnet
+```
+
+冒号前为宿主机目录，必须为绝对路径 
+
+① /c/Users/tingting/dropbox/code: 本机的C:\Users\tingting\dropbox\code文件夹 
+
+② /c/Users/tingting/dropbox/data 本机的C:\Users\tingting\dropbox\data文件夹 
+
+冒号后为镜像内挂载的路径 
+
+① /root/opt/workspace docker中的文件夹/root/opt/workspace 
+
+② /root/data  docker中的文件夹/root/data 
+
+这里的本机文件夹为c盘，那么，能否为d盘呢？ 
+
+```
+docker run -it --rm -p 8888:8888 -v /d/Dropbox/code:/root /opt/workspace -v /d/Dropbox/data:/root/data tingtinglu/caffe_mxnet
+```
+
+发现并不可行！这是因为目前，windows下只支持c盘下的文件夹映射
+
+在CentOS7上安装：
+
+```
+yum install -y docker
+```
+
+ 改变Docker的工作目录：
+
+vim /etc/sysconfig/docker
+
+OPTIONS=--selinux-enabled -H fd:// -g="/data/docker"
+
+注：修改配置文件后重启docker服务才生效。-g="/data/docker"是将Docker的默认根路径从/var/lib/docker改成/data/docker, 比如所有的Docker images都会放到这个目录下。
+
+#### 配置docker服务
+
+为了避免每次使用docker命令都需要特殊身份，可以将当前用户加入到docker用户组(docker用户组在docker安装时自动创建的)
+
+```
+sudo usermod  -aG docker USER_NAME
+```
+
+修改后退出重新登录即可。docker服务重启：
+
+```
+chkconfig docker on
+sudo service docker restart
+sudo service docker start
+sudo systemctl start docker
+```
+
+每次重启docker服务后，可以通过查看docker版本信息确保服务已正常运行
+
+```
+docker version
+```
+
+开机启动docker服务
+
+```
+service dorcker enable
+systemctl enable docker
+```
+
+设置代理：
+
+这当然是肯定要做的事情了，因为我们公司内部的办公网和开发网都是需要设置代理才能正常访问某些网站的，所以来设置吧。
+
+```
+sudo vi /var/lib/boot2docker/profile
+```
+
+我的电脑是接入的开发网，因此这里设置的是开发网的代理地址，如果你的是公办网，请使用办公网的代理地址，可以使用vi进行编辑，因为在没有正确设置代理之前，你可能无法安装vim~~~~
+
+```
+docker@boot2docker:~$ cat /var/lib/boot2docker/profile
+export HTTP_PROXY=http://dev-proxy.xxx.com:8080
+export HTTPS_PROXY=https://dev-proxy.xxx.com:8080
+```
+
+重启（windows）
+
+```
+boot2docker stop
+boot2docker start
+```
+
+#### docker日志
+
+日志分两类，一类是 Docker 引擎日志；另一类是 容器日志。
+
+Docker 引擎日志 
+Docker 引擎日志 一般是交给了 Upstart(Ubuntu 14.04) 或者 systemd (CentOS 7, Ubuntu 16.04)。前者一般位于 /var/log/upstart/docker.log 下，后者一般通过 jounarlctl -u docker 来读取。不同系统的位置都不一样，SO上有人总结了一份列表，我修正了一下，可以参考：
+
+##### Docker 引擎日志
+
+```
+系统	日志位置
+Ubuntu(14.04)	/var/log/upstart/docker.log
+Ubuntu(16.04)	journalctl -u docker.service
+CentOS 7/RHEL 7/Fedora	journalctl -u docker.service
+CoreOS	journalctl -u docker.service
+OpenSuSE	journalctl -u docker.service
+OSX	~/Library/Containers/com.docker.docker/Data/com.docker.driver.amd64-linux/log/d‌ocker.log
+Debian GNU/Linux 7	/var/log/daemon.log
+Debian GNU/Linux 8	journalctl -u docker.service
+Boot2Docker	/var/log/docker.log
+```
+
+##### 容器日志
+
+容器的日志 则可以通过 docker logs 命令来访问，而且可以像 tail -f 一样，使用 docker logs -f 来实时查看。如果使用 Docker Compose，则可以通过 docker-compose logs <服务名> 来查看。
+
+如果深究其日志位置，每个容器的日志默认都会以 json-file 的格式存储于 /var/lib/docker/containers/<容器id>/<容器id>-json.log 下，不过并不建议去这里直接读取内容，因为 Docker 提供了更完善地日志收集方式 - Docker 日志收集驱动。
+
+关于日志收集，Docker 内置了很多日志驱动，可以通过类似于 fluentd, syslog 这类服务收集日志。无论是 Docker 引擎，还是容器，都可以使用日志驱动。比如，如果打算用 fluentd 收集某个容器日志，可以这样启动容器：
+
+```
+$ docker run -d \
+--log-driver=fluentd \
+--log-opt fluentd-address=10.2.3.4:24224 \
+--log-opt tag="docker.{{.Name}}" \
+nginx
+```
+
+其中 10.2.3.4:24224 是 fluentd 服务地址，实际环境中应该换成真实的地址。
+
+查看日志
+
+```
+docker logs leafage
+docker logs –tail 10 leafage
+```
+
+使用filebeat收集日志
+
+```json
+{
+"registry-mirrors": ["https://56px195b.mirror.aliyuncs.com"],
+"cluster-store":"consul://192.168.56.13:8500",
+"cluster-advertise": "192.168.56.11:2375",
+"log-driver": "fluentd",
+"log-opts": {
+"fluentd-address":"192.168.56.13:24224",
+"tag":"linux-node1.example.com"
+}}
+```
+
+### 镜像
+
+修改镜像源
+
+Docker 官方中国区：https://registry.docker-cn.com1
+网易： http://hub-mirror.c.163.com1
+ustc： https://docker.mirrors.ustc.edu.cn1
+
+修改方法
+
+1：直接设置 –registry-mirror 参数，仅对当前的命令有效 
+
+```
+docker run hello-world --registry-mirror=https://docker.mirrors.ustc.edu.cn
+```
+
+2：修改 /etc/default/docker，加入 DOCKER_OPTS=”镜像地址”，可以有多个 
+
+```
+DOCKER_OPTS="--registry-mirror=https://docker.mirrors.ustc.edu.cn"
+```
+
+3:支持 systemctl
+
+ 的系统，通过 sudo systemctl edit docker.service，会生成 etc/systemd/system/docker.service.d/override.conf 覆盖默认的参数，在该文件中加入如下内容：
+
+```
+[Service] 
+ExecStart= 
+ExecStart=/usr/bin/docker -d -H fd:// --registry-mirror=https://docker.mirrors.ustc.edu.cn
+```
+
+4:新版的 Docker 推荐使用 json 配置文件的方式，默认为 /etc/docker/daemon.json，非默认路径需要修改 dockerd 的 –config-file，在该文件中加入如下内容： 
+
+```
+{ 
+"registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"] 
+}
+```
+
+docker pull ubuntu  [14.04] 如果不指定TAG（通常表示版本信息）则默认为latest最新版本
+
+docker  run  -it ubuntu:14.04  bash（或者镜像ID，通过docker images查看可能出现多个镜像指向同一镜像ID）    
+
+docker images 列出本地主机上已有镜像的基础信息
+
+更多命令查看 man docker images帮助
+
+为镜像添加新的标签：
+
+```
+docker tag hello-world:latest new-hello-world:latest
+```
+
+new-hello-world:latest和hello-world:latest镜像ID完全一致，实际指向同一个镜像文件，只是别名不同而已，docker tag命令添加的标签实际上起到了类似链接的作用。
+
+docker inspect  578c3e61a98c 或者【name:TAG】查看镜像的详细信息
+
+docker history e38bc07ac18e 或者【name:TAG】查看镜像各层的创建信息
+
+搜索镜像：
+
+ docker search -s 3 nginx 或者docker search --filter=stars=3 nginx    3级以上带nginx关键字的镜像
+
+使用标签删除镜像：
+
+```
+docker rmi  new-hello-world:latest
+```
+
+结果发现hello-world:latest不会受影响。当同一个镜像拥有多个标签时，docker rmi只删除该镜像多个标签中指定的标签而已，并不影响镜像文件。
+
+但是，当镜像只剩下最后一个标签的时候，此时docker rmi命令将会彻底删除镜像。例如：
+
+docker rmi  hello-world:latest 将会彻底删除镜像。
+
+使用镜像ID删除：
+
+```
+docker rmi   e38bc07ac18e 
+```
+
+会先尝试删除所有指向该镜像的标签，然后删除该镜像文件本身。
+
+但是，当有该镜像创建的容器存在时，镜像文件默认是无法删除的。此时可以强制删除：
+
+`docker rmi -f e38bc07ac18e`  强制删除
+
+但是，不建议强制删除一个存在容器依赖的镜像。正确的做法是：`先删除依赖该镜像的所有容器，再删除镜像`。
+
+根据已有镜像的容器来创建镜像
+
+进入运行中的容器docker exec -it containerId /bin/bash
+
+或者docker run -it  imageId /bin/bash 进入容器后：
+
+touch newFile 然后exit。记住此容器的ID。
+
+docker commit -m 'add new file' -a  'docker newbee'  容器的ID  test:01
+
+- **-a :**提交的镜像作者；
+- **-c :**使用Dockerfile指令来创建镜像；
+- **-m :**提交时的说明文字；
+- **-p :**在commit时，将容器暂停。
+
+docker commit c3f279d17e0a  SvenDowideit/testimage:version3
+
+docker images 就可以看到新创建的镜像了。
+
+docker images mymysql:v1   查看某一个镜像
+
+#### 获取镜像
+
+使用`docker pull`命令从网络上下载镜像。
+
+```
+docker pull NAME[:TAG]
+```
+
+例如
+
+```
+$ docker pull ubuntu
+Using default tag: latest
+latest: Pulling from library/ubuntu
+43db9dbdcb30: Downloading 1.494 MB/49.33 MB
+2dc64e8f8d4f: Download complete
+670a583e1b50: Download complete
+Digest: sha256:c6674c44c6439673bf56536c1a15916639c47ea04c3d6296c5df938add67b54b
+Status: Downloaded newer image for ubuntu:latest
+```
+
+不指定Tag的时候默认使用`:latest`，因此，上述命令实际上是`docker pull ubuntu:latest`。
+
+#### 查看镜像信息
+
+使用`docker images`可以列出本地主机上已有的镜像列表。
+
+```
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+mongo               latest              87bde25ffc68        2 days ago          326.7 MB
+ubuntu              latest              42118e3df429        9 days ago          124.8 MB
+```
+
+OPTIONS说明：
+
+- **-a :**列出本地所有的镜像（含中间映像层，默认情况下，过滤掉中间映像层）；
+- **--digests :**显示镜像的摘要信息；
+- **-f :**显示满足条件的镜像；
+- **--format :**指定返回值的模板文件；
+- **--no-trunc :**显示完整的镜像信息；
+- **-q :**只显示镜像ID。
+
+列出本地镜像中REPOSITORY为ubuntu的镜像列表。
+
+```
+ docker images ubuntu
+ docker images | grep nginx
+```
+
+显示出Image id、Repository Tag
+
+```
+docker images –format "table {{.ID}}\t{{.Repository}}\t{{.Tag}}"
+```
+
+还可以使用`docker inspect`命令查看单个镜像的详细信息
+
+```
+$ docker inspect ubuntu
+[
+    {
+        "Id": "sha256:42118e3df429f09ca581a9deb3df274601930e428e452f7e4e9f1833c56a100a",
+        "RepoTags": [
+            "ubuntu:latest"
+        ],
+        "RepoDigests": [
+            "ubuntu@sha256:c6674c44c6439673bf56536c1a15916639c47ea04c3d6296c5df938add67b54b"
+        ],
+          },
+          ...
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:ea9f151abb7e06353e73172dad421235611d4f6d0560ec95db26e0dc240642c1",
+                "sha256:0185b3091e8ee299850b096aeb9693d7132f50622d20ea18f88b6a73e9a3309c",
+                "sha256:98305c1a8f5e5666d42b578043e3266f19e22512daa8c6b44c480b177f0bf006",
+                "sha256:9a39129ae0ac2fccf7814b8e29dde5002734c1699d4e9176061d66f5b1afc95c"
+            ]
+        }
+    }
+]
+```
+
+查看单项信息
+
+```
+$ docker inspect -f {{".Config.Hostname"}} ubuntu
+827f45722fd6
+```
+
+#### 搜索镜像
+
+使用`docker search`命令搜索远程仓库中共享的镜像。
+
+```
+docker search TERM
+```
+
+例如搜索名称为mysql的镜像
+
+```
+$ docker search mysql
+NAME                DESCRIPTION                 STARS  OFFICIAL  AUTOMATED
+mysql               MySQL is a widely used...   2763   [OK]
+mysql/mysql-server  Optimized MySQL Server...   178    [OK]
+```
+
+#### 删除镜像
+
+使用`docker rmi`命令删除镜像。
+
+```
+docker rmi IMAGE [IMAGE...]
+```
+
+其中IMAGE可以是镜像标签或者ID。
+
+例如
+
+```
+docker rmi ubuntu
+docker rmi php:7.0.1
+```
+
+删除所有仓库名为redis的镜像(**-q :**只显示镜像ID )：
+
+```
+docker rmi $(docker images -q redis)
+```
+
+删除所有在mongo:3.2之前的镜像：
+
+```
+docker rmi $(docker images -q -f before=mongo:3.2)
+```
+
+> 删除虚悬（悬虚）镜像（也就是名称为的镜像，一般是由于新的镜像出现导致覆盖了旧的镜像，特点：镜像有许多是none。原因：重复pull同一个tag的镜像，并且，在pull新的镜像时（与本机已有的旧镜像具有相同的tag），旧镜像已经被容器占用，那么，在pull新镜像后，之前被占用的旧镜像就会变为none）：
+
+```
+docker rmi $(docker images -q -f dangling=true)
+docker images -f dangling=true
+```
+
+#### 创建镜像
+
+创建镜像有三种方法：
+
+- 基于已有镜像创建
+- 基于本地模板导入
+- 基于Dockerfile创建
+
+#### 使用已有镜像创建
+
+该方法主要使用`docker commit`命令。
+
+```
+docker commit [OPTIONS] CONTAINER [REPOSITORY[:TAG]]
+```
+
+包含以下主要选项
+
+- -a --author=""，作者信息
+- -m --message=""，提交信息
+- -p --pause=true，提价时暂停容器运行
+
+例如
+
+```
+$ docker run -i -t ubuntu:latest /bin/bash
+root@5a86b68c4e6a:/# ls
+bin   dev  home  lib64  mnt  proc  run   srv  tmp  var
+boot  etc  lib   media  opt  root  sbin  sys  usr
+root@5a86b68c4e6a:~# exit
+exit
+
+$ docker commit -m "create a new images" -a "mylxsw" 5a86b68c4e6a test-cont
+sha256:68f1237c24a744b05a934f1317ead38fc68061ade7981eaae158a2ba8da02a9b
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+test-cont           latest              68f1237c24a7        3 seconds ago       124.8 MB
+php                 latest              fe1a2c2228f4        2 days ago          364 MB
+mongo               latest              87bde25ffc68        2 days ago          326.7 MB
+ubuntu              latest              42118e3df429        9 days ago          124.8 MB
+redis               latest              4465e4bcad80        6 weeks ago         185.7 MB
+nginx               latest              0d409d33b27e        8 weeks ago         182.8 MB
+```
+
+#### 基于本地模板导入
+
+#### 基于Dockerfile创建
+
+#### 存出镜像
+
+使用`docker save`命令保存镜像文件为本地文件。
+
+```
+docker save -o ubuntu_latest.tar ubuntu:latest
+```
+
+或  
+
+```
+docker save 1316871b180b -o /root/dockerfile/loggermanager1.0.tar
+```
+
+>将上面的loggermanager镜像保存成一个tar文件，注意如果目录没有，需要提前建立一下，docker不会帮你建立目录的.可以分享loggermanager1.0.tar给别人了
+
+#### 载入镜像
+
+使用`docker load`从本地文件再导入镜像压缩包到本地镜像仓库。
+
+```
+docker load --input ubuntu_latest.tar
+692b4b3b88ff: Loading layer  2.56 kB/2.56 kB
+Loaded image: ubuntu:latest
+```
+
+>windows:
+>
+>docker load < /c/Users/789/Desktop/ubuntu_latest.tar
+
+#### 上传镜像
+
+上传镜像使用`docker push`命令。
+
+```
+docker push NAME[:TAG]
+```
+
+```
+docker push user/test:latest
+```
+
+默认上传镜像到DockerHub官方仓库。
+
+### **容器**
+
+#### 新建容器
+
+使用`docker create`命令创建一个容器。
+
+```
+docker create -it ubuntu:latest
+docker ps -a
+```
+
+使用docker创建的容器处于`停止`状态，可是使用docker start命令启动。
+
+通过现象看到，create的时候如果本地没有指定的镜像会去仓库下载。
+
+使用docker镜像nginx:latest创建一个容器,并将容器命名为myrunoob 
+
+```
+docker create  --name myrunoob  nginx:latest
+```
+
+#### 启动容器
+
+通过`docker start containerId|name `命令来启动一个已经创建额容器。
+
+```
+docker start 4e4dd842029a
+```
+
+此时通过docker ps命令可以查看一个运行中的容器。
+
+#### 新建并启动容器
+
+```
+docker run ubuntu /bin/echo 'hello world'
+```
+
+docker run就是docker create和docker start两个命令的组合。 
+
+当用docker run来创建并启动容器时，docker在后台运行的标准操作包括：
+
+- 检查本地是否存在指定的镜像，不存在就从公有仓库下载。
+- 利用镜像创建一个容器，并启动该容器。
+- 分配一个文件系统给容器，并在只读的镜像层外挂载一层可读写层。
+- 从宿主机配置的网桥接口中桥接 一个虚拟接口到容器中。
+- 从网桥的地址池配置一个IP地址给容器。
+- 执行用户指定的应用程序。
+- 执行完毕后容器自动终止。
+
+下面的命令启动一个bash终端，允许用户进行交互:
+
+```
+docker run -it ubuntu /bin/bash
+ps
+```
+
+在容器内ps查看进程，可以看到，只运行了bash应用。
+
+用户可以Ctrl+d或者输入exit命令退出容器，退出后容器就处于退出(Exited)状态。
+
+有时候执行docker run会出错，因为命令无法正常执行容器会直接退出，此时可以查看退出的错误代码。
+
+   默认情况下，常见错误代码包括：
+
+   125：Docker daemon执行出错，例如制定了不支持的Docker命令参数。
+
+   126：所指定命令无法执行，例如权限出错。
+
+   127：容器内命令无法找到。
+
+命令执行出错后，会默认返回错误码。
+
+使用--name标记可以为容器自定义命名：
+
+```
+docker run -d -P --name web training/webapp pathon app.py
+```
+
+重启容器：`docker restart`将一个运行态的容器终止，然后再重新启动它。
+
+```
+docker restart
+```
+
+自动重启：
+
+```
+docker run –restart=always –name leafage ubuntu /bin/bash 或
+docker run –restart=on-failure：5 –name leafage ubuntu /bin/bash 只有容器的退出代码为非0值的时候才会重启，最多重启5次
+```
+
+#### 查看容器
+
+查看正在运行在的容器：
+
+```
+docker ps
+```
+
+- **-a :**显示所有的容器，包括未运行的。
+- **-f :**根据条件过滤显示的内容。
+- **--format :**指定返回值的模板文件。
+- **-l :**显示最近创建的容器。
+- **-n :**列出最近创建的n个容器。
+- **--no-trunc :**不截断输出。
+- **-q :**静默模式，只显示容器编号。
+- **-s :**显示总的文件大小。
+
+查看所有容器
+
+```
+docker ps -a
+```
+
+列出所有创建的容器ID 
+
+```
+docker ps -a -q
+```
+
+列出最近创建的5个容器信息。
+
+```
+docker ps -n 5
+```
+
+查看容器更多信息
+
+```
+docker inspect leafage
+```
+
+查看容器的输出日志：
+
+```
+docker logs [container ID or Names]
+```
+
+OPTIONS说明：
+
+- **-f :** 跟踪日志输出
+- **--since :**显示某个开始时间的所有日志
+- **-t :** 显示时间戳
+- **--tail :**仅列出最新N条容器日志
+
+跟踪查看容器mynginx的日志输出 
+
+```
+docker logs -f mynginx
+```
+
+查看容器mynginx从2016年7月1日后的最新10条日志。
+
+```
+docker logs --since="2016-07-01" --tail=10 mynginx
+```
+
+#### 守护态运行
+
+通过添加-d参数来实现，例如下面的命令会在后台运行：
+
+```
+docker run -d ubuntu /bin/sh
+```
+
+此时，要获取容器的输出信息，可以使用docker logs命令
+
+```
+docker logs 4e4dd842029a
+```
+
+#### 终止容器
+
+可以使用docker stop来终止一个运行中的容器。
+
+```
+docker stop 4e4dd842029a
+```
+
+也可以使用`docker kill` 强制终止容器。**-s :**向容器发送一个信号 
+
+```
+$ docker kill -s KILL mynginx
+```
+
+当Docker容器中指定的应用终结时，容器也会自动终止。
+
+可以通过docker ps  -qa命令查看所有容器的ID，例如
+
+```
+$ docker ps -qa
+f13b2d0e88a1
+8ce5b4d6570b
+```
+
+处于终止状态的容器，可以使用docker start命令来重新启动:
+
+```
+docker start 4e4dd842029a
+```
+
+此外，docker restart命令会将一个运行态的容器先终止，然后再重新启动它：
+
+```
+docker restart 4e4dd842029a
+```
+
+退出容器不结束进程（开启守护进程）
+
+> 先按下ctrl p 然后按下 ctrl q
+
+#### 暂停/恢复进程
+
+**docker pause** :暂停容器中所有的进程。
+
+**docker unpause** :恢复容器中所有的进程。
+
+```
+docker pause db01
+docker unpause db01
+```
+
+#### 查看进程信息 
+
+**docker top :**查看容器中运行的进程信息，支持 ps 命令参数。 
+
+查看容器mymysql的进程信息。 
+
+```
+runoob@runoob:~/mysql$ docker top mymysql
+UID    PID    PPID    C      STIME   TTY  TIME       CMD
+999    40347  40331   18     00:58   ?    00:00:02   mysqld
+```
+
+ 查看所有运行容器的进程信息。
+
+```
+for i in  `docker ps |grep Up|awk '{print $1}'`;do echo \ &&docker top $i; done
+```
+
+**docker wait :** 阻塞运行直到容器停止，然后打印出它的退出代码。 
+
+```
+docker wait CONTAINER 
+```
+
+在宿主机查看docker使用cpu、内存、网络、io情况
+
+```
+docker stats CONTAINER
+docker stats -a
+docker stats 2b1b7a428627
+```
+
+#### 进入容器
+
+在使用-d参数时，容器启动后会进入后台，用户无法看到容器中的信息，也无法进行操作。
+
+这个时候如果需要进入容器进行操作，有多种方法：
+
+#####  attach命令
+
+重新进入正在运行的容器
+
+```
+docker attach f13b2d0e88a1
+```
+
+使用attach命令有时候并不方便。当多个窗口同时用attach命令连到同一个容器的时候，所有窗口都会同步显示。当某个窗口因命令阻塞时，其他窗口也无法继续操作。
+
+使用`docker attach`之后，如果使用`Ctrl+C`退出，则容器也会退出运行
+
+#####  exec命令
+
+- [x] 最为推荐的方式
+
+```
+docker exec -it f13b2d0e88a1 /bin/bash
+```
+
+#### 删除容器
+
+使用docker rm命令删除处于`终止或退出`的容器.
+
+选项：
+
+- -f --force=false 强制终止并删除一个运行中的容器
+- -l --link=false 删除容器的连接，但是保留容器
+- -v --volumes=false 删除容器挂载的数据卷
+
+```
+docker rm f13b2d0e88a1 f23b2d0e985a
+docker rm -f f13b2d0e88a1 f23b2d0e985a
+```
+
+删除所有容器
+
+>docker rm 'docker ps -a -q'
+
+-a列出所有的容器、-q标志只需要返回容器的ID而不会返回其他的信息
+
+#### 导出容器
+
+到处容器是指导出一个已经创建的容器到一个文件，不管此时这个容器是否处于运行状态。
+
+```
+docker export -o test.tar 8ce5b4d6570b 
+```
+
+**-o :**将输入内容写到文件 
+
+或者通过重定向：
+
+```markdown
+docker export  8ce5b4d6570b > test.tar
+```
+
+#### 导入容器
+
+导出的文件又可以使用docker import命令导入变成镜像，该命令格式为：
+
+```
+docker import test.tar  aaaa/ubuntu
+docker images
+cat container-migrate.tar| docker import - test/ubuntu
+```
+
+之前介绍的docker load命令来导入一个镜像文件，与docker import命令十分相似
+
+#### 上传文件
+
+主机和容器之间传输文件的话需要用到容器的ID全称（是否为全称，待论证）
+
+首先查看容器的短ID或者name
+
+```
+docker ps -a
+```
+
+然后根据这两项的任意一项拿到ID全称
+
+```
+docker inspect -f '{{.Id}}' HelloDocker
+```
+
+有了这个长长的ID的话，本机和容器之间的文件传输就简单了。
+
+```
+docker cp 本地文件路径 ID全称:容器路径
+```
+
+![img](https://img-blog.csdn.net/20170514211821739?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvTGVhZmFnZV9N/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+![img](https://img-blog.csdn.net/20170514212209844?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvTGVhZmFnZV9N/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+如果是容器传输文件到本地的话，反过来就好了
+
+```
+docker cp ID全称:容器文件路径 本地路径
+```
+
+![img](https://img-blog.csdn.net/20170514212531195?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvTGVhZmFnZV9N/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+#### 小结
+
+HAProxy工具来代理容器访问,这样在容器出现故障时,可以 快速切换到功能正常的容器.此外建议通过指定合适的容器重启策略，来自动重启退出的容器。
+
+### 访问docker仓库
+
+#### 登录
+
+>我的账号密码：13662241921  /  QWERTYUIOP
+
+可以通过执行docker login命令输入用户名密码和邮箱来完成注册和登录。登录成功后本地用户目录下.dockerctg中将保存用户的认证信息。首先到<https://hub.docker.com/account/signup/> 创建账号。网页版需要人机交互验证码，需要翻墙才能看到验证码。
+
+测试登录：
+
+```
+docker login 或 docker login -u 用户名 -p 密码
+```
+
+这条命令会完成登录，并将认证信息报错起来供后面使用。个人认证信息将报错到`$HOME/ .dockercfg`文件中.
+
+登出Docker Hub
+
+```
+docker logout
+```
+
+#### 基本操作
+
+用户无需登录即可通过docker search命令来查找官方仓库中的镜像，并利用docker pull命令将它下载到本地。
+
+```
+docker search nginx
+```
+
+#### 自动创建
+
+自动创建功能对于需要经常升级镜像内程序来说十分方便。有时候用户创建了镜像，安装了某个软件，如果软件发布新版本则需要手动更新镜像。
+
+而自动创建允许用户通过docker hub指定跟踪一个目标网站（目前支持github或BitBucket）上的项目，一旦项目发生新的提交，则自动执行创建。
+
+配置自动创建，步骤如下：
+
+- 创建并登录docker Hub，以及目标网站；在目标网站中连接账户到Docker Hub
+- 在docker Hub中配置一个“自动创建”
+- 选取一个目标网站中的项目（需要包含dockerfile）和分支
+- 指定dockerfile的位置，并提交创建。
+
+之后在docker hub的’‘自动创建“页面中跟踪每次创建的状态。
+
+### 数据管理
+
+容器数据管理主要有两种方式：
+
+- 数据卷：容器内数据直接映射到本地主机环境
+- 数据卷容器：使用特定容器维护数据卷
+
+#### 数据卷[文件夹映射]
+
+数据卷是一个可以供容器使用的特殊目录，它绕过了文件系统，提供了以下特性
+
+- 在容器之间共享和重用
+- 修改立马生效
+- 对数据卷的更新不会影响镜像
+- 卷会一直存在，直到没有容器使用
+
+在运行容器的时候，使用`-v`选项创建数据卷，`可以多次`使用，创建多个数据卷。
+
+```
+$ docker run -i -t --name test-vol -v /Users/mylxsw/Downloads:/opt/aicode ubuntu /bin/bash
+root@7ab155e22ec7:/# ls /opt/aicode/
+PHP2016@DevLink  container-migrate.tar  removeDocker.sh  test-cont.tar  ubuntu-test.tar
+```
+
+上述命令将本地的/Users/mylxsw/Downloads目录映射到了容器的/opt/aicode目录。
+
+> 可以指定`:ro`，设置映射目录为只读: `-v /Users/mylxsw/Downloads:/opt/aicode:ro`，同时，`-v`也支持挂载单个文件到容器。
+>
+> 加了:ro之后，容器内对所挂载数据卷内的数据就无法修改了。
+
+#### 数据卷容器
+
+如果用户需要在容器之间共享一些持续更新的数据，最简单的方法是使用数据卷容器。数据卷容器实际上就是一个普通的容器，专美提供数据卷供其他容器使用。
+
+```
+$ docker run -it -v /backup --name backup ubuntu
+root@be8de791d367:/#
+```
+
+上述命令创建了一个用来作为数据卷的容器，接下来创建几个server容器，用于向该数据卷写入数据，写入数据后，多个容器之间是互通的。
+
+```
+$ docker run -it --volumes-from backup --name server1 ubuntu
+```
+
+使用`--volumes-from`指定要数据卷容器。
+
+备份数据卷容器中的内容，可以参考以下命令
+
+```
+docker run --volumes-from backup -v $(pwd):/backup --name worker ubuntu tar cvf /backup/backup.tar /backup
+```
+
+恢复则使用下面的命令
+
+```
+docker run -v /backup --name backup2 ubuntu /bin/bash
+docker run --volumes-from backup2 -v $(pwd):/backup ubuntu tar xvf /backup/backup.tar
+```
+
+使用--volumes-from参数所挂载数据卷的容器自身并不需要保持运行状态。
+
+删除挂在的容器，数据卷不会自动删除。如果要删除一个数据卷，必须在删除最后一个挂载它的容器显式使用docker rm -v 命令来指定同时删除关联的容器。
+
+###  网络配置
+
+Docker目前提供了**映射容器端口到宿主主机**和**容器互联**的机制为容器提供网络服务。
+
+#### 端口映射
+
+容器中运行了网络服务，我们可以通过`-P`或者`-p`参数指定端口映射。
+
+- **-P** Docker会随机映射一个49000-49900之间的端口到容器内部的开放端口。
+- **-p** 可以指定要映射的端口，格式为`ip:hostPort:containerPort`，可以多次使用`-p`指定多个映射的端口。
+
+例如：
+
+```
+docker run -d -p 127.0.0.1:5000:5000 training/webapp python app.py
+docker run -d -p 5000:5000 training/webapp python app.py
+docker run -d -p 5000:5000/udp training/webapp python app.py
+docker run -d -P training/webapp python app.py
+```
+
+> 使用`docker port [容器名称] 容器内端口` 查看端口映射绑定的地址。
+>
+> ```
+> docker port nostalgic_morse 5000
+> ```
+
+```
+runoob@runoob:~$ docker port mymysql
+3306/tcp -> 0.0.0.0:3306
+```
+
+#### 容器互联通信
+
+容器的链接（linking）系统是除了端口映射外的另一种容器应用之间交互的方式，它会在源和接收容器之间创建一个隧道，接收容器可以看到源容器指定的信息。
+
+容器之间互联通过`--link`参数指定，格式为`--link name:alias`，其中name为要链接到的容器的名称，`alias`为这个连接的别名。
+
+```
+docker run -d --name mysql-demo -e MYSQL_ROOT_PASSWORD=root mysql
+docker run --rm --name web --link mysql-demo:db ubuntu env
+```
+
+![-w567](https://segmentfault.com/img/remote/1460000006760441)
+
+使用`docker ps`可以看到容器的连接。
+
+Docker会在两个互联的容器之间创建一个安全的隧道，而且不用映射端口到宿主主机。Docker中通过两种方式为容器公开连接信息：
+
+- **环境变量** 环境变量的方式采用连接别名的大写前缀开头，比如前面的例子中，所有以`DB_`开头的环境变量。
+- **更新/ect/hosts文件** Docker也会添加host信息到父容器的`/etc/hosts`文件
+
+查看`/etc/hosts`文件：
+
+```
+docker run --rm --name web --link mysql-demo:db -i -t ubuntu /bin/bash
+```
+
+![-w615](https://segmentfault.com/img/remote/1460000006260566)
+
+
+
+### Docker网络模式
+
+>1：host模式  使用--net=host指定  （使用主机的IP访问）
+>
+>2：container模式，使用net=container:NAME_or_ID指定
+>
+>3：none模式，使用--net=none指定
+>
+>4：bridge模式，使用--net=bridge指定（docker默认）
+
+### 命令汇总
+
+容器操作：命令中需要指定 container 时，既可使用其名称，也可使用其 id
+
+| 操作                                                         | 命令                                                         | 示例                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 创建 container                                               | docker create                                                | docker create chenhengjie123/xwalkdriver                     |
+| 创建并运行 container                                         | docker run                                                   | docker run chenhengjie123/xwalkdriver /bin/bash              |
+| 创建运行容器 后进入其 bash 控制台                            | docker run -t -i image /bin/bash                             | docker run -t -i ubuntu /bin/bash                            |
+| 创建并运行 container 并让其在后台运行，并端口映射            | docker run -p [port in container]:[port in physical system] -d [image][command] | docker run -p 5000:5000 -d training/webapp python app.py     |
+| 查看正在运行的所有 container 信息                            | docker ps                                                    | docker ps                                                    |
+| 查看最后创建的 container                                     | docker ps -l                                                 | docker ps -l                                                 |
+| 查看所有 container ，包括正在运行和已经关闭的                | docker ps -a                                                 | docker ps -a                                                 |
+| 输出指定 container 的 stdout 信息（用来看 log ，效果和 tail -f 类似，会实时输出。） | docker logs -f [container]                                   | docker logs -f nostalgic_morse                               |
+| 获取 container 指定端口映射关系                              | docker port [container][port]                                | docker port nostalgic_morse 5000                             |
+| 查看 container容器内部运行的进程                             | docker top [container]                                       | docker top nostalgic_morse                                   |
+| 查看 container 详细信息JSON格式                              | docker inspect [container]                                   | docker inspect nostalgic_morse                               |
+| 停止 continer                                                | docker stop [container]                                      | docker stop nostalgic_morse                                  |
+| 强制停止 container                                           | docker kill [container]                                      | docker kill nostalgic_morse                                  |
+| 启动一个已经停止的 container                                 | docker start [container]                                     | docker start nostalgic_morse                                 |
+| 重启 container (若 container 处于关闭状态，则直接启动)       | docker restart [container]                                   | docker restart nostalgic_morse                               |
+| 删除 container（ 容器是停止状态）                            | docker rm [container]                                        | docker rm nostalgic_morse                                    |
+| 容器卷挂载                                                   | docker run -d -P --name web -v <宿主机目录>:<容器目录> training/webapp python app.py | docker run -d -P --name web -v /webapp training/webapp python app.py |
+| 首先启动了一个容器，并为这个容器增加一个数据卷/dbdata，然后启动另一个容器，共享这个数据卷 | docker run -d --volumes-from db1 --name db2 training/postgres | docker run -d --volumes-from db1 --name db2 training/postgres |
+| 执行容器内命令                                               | docker run ubuntu:15.10 /bin/echo "Hello world"              | docker run ubuntu:15.10 /bin/echo "Hello world"              |
+| 查看docker用户信息                                           | id docker命令                                                | id docker命令                                                |
+| 查看容器root用户密码                                         | docker容器启动时root密码随机分配的                           | docker  logs f1f0c7c59254 >2&1 \| grep '^User:' \| tail -n1  |
+
+镜像操作：
+
+注意：image 中没有指定 tag 名称的话默认使用 latest 这个 tag 。然而 latest 的含义和 VCS 中的 head 不一样，不是代表最新一个镜像，仅仅是代表 tag 名称为 latest 的镜像。若不存在 tag 名称为 latest 的镜像则会报错。
+
+| 操作                                                         | 命令                                      | 示例                                                  |
+| ------------------------------------------------------------ | ----------------------------------------- | ----------------------------------------------------- |
+| 从 container 创建 image                                      | docker commit [container][imageName]      | docker commit nostalgic_morse ouruser/sinatra:v2      |
+| 从 Dockerfile 创建 image                                     | docker build -t [imageName] [pathToFolder | docker build ouruser/sinatra:v3 .                     |
+| 查看本地所有 image                                           | docker images                             | docker images                                         |
+| 在 registry 中搜索镜像                                       | docker search [query]                     | docker search ubuntu                                  |
+| 从 registry 中获取镜像 （若无指定 tag 名称，则默认使用 latest 这个 tag） | docker pull [imageName]                   | docker pull ubuntu:14.04, docker pull training/webapp |
+| 给 image 打 tag                                              | docker tag [imageId][imageName]           | docker tag 5db5f8471261 ouruser/sinatra:devel         |
+| 把本地 image 上传到 registry 中 (此时会把所有 tag 都上传上去) | docker push [imageName]                   | docker push ouruser/sinatra                           |
+| 删除本地 image                                               | docker rmi [image]                        | docker rmi training/sinatra                           |
+
+docker load与docker import
+
+>首先，想要清楚的了解docker load与docker import命令的区别，就必须了解镜像与容器的区别：
+>
+>镜像：用来启动容器的只读模板，是容器启动所需的rootfs，类似于虚拟机所使用的镜像。
+>
+>容器：Docker 容器是一个开源的应用容器引擎，让开发者可以打包他们的应用以及依赖包到一个可移植的容器中，然后发布到任何流行的Linux机器上，也可以实现虚拟化。
+>
+>镜像是容器的基础，可以简单的理解为镜像是我们启动虚拟机时需要的镜像，容器时虚拟机成功启动后，运行的服务。  
+>
+>想要了解docker load与docker import命令的区别，还必须知道docker save与docker export命令：
+>
+>docker save images_name：将一个镜像导出为文件，再使用docker load命令将文件导入为一个镜像，会保存该镜像的的所有历史记录。比docker export命令导出的文件大，很好理解，因为会保存镜像的所有历史记录。
+>
+>docker export container_id：将一个容器导出为文件，再使用docker import命令将容器导入成为一个新的镜像，但是相比docker save命令，容器文件会丢失所有元数据和历史记录，仅保存容器当时的状态，相当于虚拟机快照。
+
+### Window安装常见问题
+
+> 1：启动时：
+>
+> ![1529994843168](C:\Users\789\AppData\Local\Temp\1529994843168.png)
+>
+> 查看Virtualbox中虚拟机的位数和操作系统位数是否一致。如果不一致，则重启电脑进入bios设置virtualization设置为enable。第二部：删除虚拟机，重启docker会重新创建default的虚拟机第三部：检查上面自动创建的虚拟机是否有端口转发，是否有Host-only网络
+
+> 2：在virtual box中，无法开启虚拟机。报错为VT-x is disabled in the BIOS for all CPU modes (VERR_VMX_MSR_ALL_VMX_DISABLED).解决方法是在虚拟机的系统配置中，将RAM大小变小。我选择的是2G。这个问题也是google一些网页查找出来解决的，<http://stackoverflow.com/questions/34746462/error-vt-x-is-disabled-in-the-bios-for-all-cpu-modes-verr-vmx-msr-all-vmx-disa>。
+
+> 3：第一个问题解决后，就冒出了第二问题。也是这次主要解决的问题。显示如下 "this kernel requires an x86-64 cpu but only detected an i686 cpu"。这里是说需要的虚拟机为64位，通常，在setting,system下可以选择虚拟机的操作系统，但是我的电脑，只显示有32bit的操作系统。解决这个问题的核心办法，是在自己的电脑中，进入到BIOS中，然后将virtualization设置为enable。我的电脑，进入BIOS的方法是开机有thinkpad显示时，点击F1(不断点击)，则可以进入BIOS界面。对于不同的电脑，可以查阅对应的办法。（Security-Virtualization）。
+
+>4: shim error: docker-runc not installed on system
+>
+>服务器重启以后，执行docker命令报以上错误，解决办法如下：cd /usr/libexec/docker/sudo ln -s docker-runc-current docker-runc
+
+###  Docker的相关管理工具
+
+kubernetes: https://github.com/GoogleCloudPlatform/kubernetes/
+fig: https://github.com/docker/fig
+Openstack
+ etcd: https://github.com/coreos/etcd
+
+###see：https://segmentfault.com/a/1190000006260561
+
+### see：https://www.cnblogs.com/51kata/p/5262301.html
+
+### see：https://www.yiibai.com/docker/docker-java-example.html
+
+### see：https://blog.csdn.net/chenming_hnu/article/category/6663742
+
+### see：http://www.cnblogs.com/jsonhc/tag/docker/
+
+### https://www.cnblogs.com/jsonhc/p/7767669.html
+
+http://www.docker.org.cn/page/resources.html
+
+
+
+### 构建
+
+#### Dockerfile
+
+Dockerfile`注意Dockerfile的D需要大写 `是一个文本格式的配置文件，用户可以使用Dockerfile快速创建自定义的镜像。
+
+#### 基本结构
+
+一般来说，Dockerfile分为四部分：
+
+- 基础镜像信息
+- 维护者信息
+- 镜像操作指令
+- 容器启动时执行的指令
+
+#### 指令
+
+指令一般格式为`INSTRUCTION arguments`。
+
+##### FROM
+
+格式为`FROM <image>`。第一条指令必须为`FROM`指令，指定了基础镜像。
+
+```
+FROM ubuntu:latest
+```
+
+##### MAINTAINER
+
+格式为`MAINTAINER <name>`指定维护者信息。
+
+```
+MAINTAINER mylxsw mylxsw@aicode.cc
+```
+
+##### RUN
+
+格式为`RUN <command>`或者`RUN ["executable", "param1", "param2"...]`。每条指令将在当前镜像的基础上执行，并提交为新的镜像。
+
+格式`RUN <command>`时将在shell终端中执行命令(直接在命令行中输入的命令一样)，也就是`/bin/sh   -c`中执行，而`RUN ["可执行文件", "param1", "param2"...]`则使用`exec`执行。
+
+```
+RUN echo '<h1>Hello,Decoker!</h1>' > /usr/share/nginx/html/index.html
+```
+
+##### CMD
+
+该命令提供容器启动时执行的命令，每个Dockerfile中只能与一条CMD命令，如果指定了多条，则只有最后一条会被执行。如果用户启动容器的时候指定了运行的命令，则会覆盖CMD指令。
+
+格式支持三种：
+
+- `CMD ["executable", "param1", "param2"] `使用exec执行
+- `CMD command param1 param2` 使用`/bin/sh -c`执行
+- `CMD ["param1", "param2"]` 提供给ENTRYPOINT的默认参数
+
+##### EXPOSE
+
+格式为`EXPOSE <port> [<port>...]`，该指令用于告诉Docker容器要暴露的端口号，供互联系统使用。
+
+```
+EXPOSE 22 80 8443
+```
+
+上述指令暴露了22, 80, 8443端口供互联的系统使用，使用的时候可以指定`-P`或者`-p`参数进行端口映射。
+
+##### ENV
+
+格式为`ENV <key> <value>`。指定一个环境变量，会被后续的RUN指令使用，并且在容器运行时保持。
+
+比如：
+
+```
+ENV PG_MAJOR 9.3
+ENV PG_VERSION 9.35
+```
+
+##### ADD
+
+格式为`ADD <src> <dest>`。该命令复制指定的`<src>`到`<dest>`，其中`<src`可以是Dockerfile所在目录的一个相对路径（文件或目录），也可以是网络上的资源路径或者是tar包。
+
+> 如果`<src>`是tar包的话，会在dest位置**自动解压**为目录。
+
+##### COPY
+
+格式为`COPY <scr> <dest>`，复制本地主机的`<src>`到容器的`<dest>`，目标路径不存在则自动创建。使用本地目录为源目录时，推荐使用COPY。
+
+> 注意，`ADD`命令和`COPY`命令基本上是一样的，只不过是`ADD`命令可以复制网络资源，同时会对压缩包进行自动解压，而`COPY`则是单纯的复制本地文件（目录）。
+>
+> 如果在Dockerfile中这样写：
+>
+> COPY ./package.json /app/
+>
+> 这并不是要复制 执行docker build命令所在目录下的package.json，也不是复制Dockerfile所在目录下的package.json，而是复制`上下文`目录下的package.json
+
+将主机/www/runoob目录拷贝到容器96f7f14e99ab的/www目录下。
+
+```
+docker cp /www/runoob 96f7f14e99ab:/www/
+```
+
+将主机/www/runoob目录拷贝到容器96f7f14e99ab中，目录重命名为www。
+
+```
+docker cp /www/runoob 96f7f14e99ab:/www
+```
+
+将容器96f7f14e99ab的/www目录拷贝到主机的/tmp目录中。
+
+```
+docker cp  96f7f14e99ab:/www /tmp/
+```
+
+##### ENTRYPOINT
+
+配置容器启动后执行的命令，并且不会被`docker run`提供的参数覆盖。每个Dockerfile中只能有一个ENTRYPOINT，当指定多个的时候，只有最后一个生效。
+
+格式有两种：
+
+- ENTRYPOINT ["executable", "param1", "param2"]
+- ENTRYPOINT command param1 param2
+
+##### VOLUME
+
+格式为`VOLUME ["/data"]`，创建一个可以从本地主机或其它容器挂载的挂载点，一般用来存放数据库和需要保持的数据等。
+
+##### USER
+
+格式为`USER daemon`，用于指定运行容器时的用户名或者UID，后续的RUN命令也会使用指定的用户。
+
+##### WORKDIR
+
+格式为`WORKDIR /path/to/workdir`，用于为后续的RUN，CMD，ENTRYPOINT指令配置工作目录。
+
+可以多次使用，如果后续指定的路径是相对路径，则会基于前面的路径。
+
+```
+WORKDIR /a
+WORKDIR b
+RUN pwd
+```
+
+则最后得到的路径是`/a/b`。
+
+##### ONBUILD
+
+指定基于该镜像创建新的镜像时自动执行的命令。格式为`ONBUILD [INSTRUCTION]`。
+
+
+
+#### 直接用Git Repo构建
+
+docker build支持直接从URL构建
+
+```
+docker build http://github.com/twang2218/gitlab-ce-zh.git#:8.14
+```
+
+用给定tar压缩包构建
+
+```
+docker build http://server/context.tar.gz
+```
+
+从标准输入中读取上下文压缩包进行构建
+
+```
+docker build - < context.tar.gz
+```
+
+### 创建镜像
+
+编写完Dockerfile之后，就可以通过`docker build`命令构建一个镜像了。
+
+> 可以通过`.dockerignore`指定忽略的文件和目录，类似于git中的`.gitignore`文件。
+
+比如
+
+```
+docker build -t build_repo/first_image /tmp/docker_builder
+```
+
+> 书写dockerfile，该dockerfile用到了本机的镜像A（From A），利用该dockerfile build 镜像B，那么，镜像B被称为镜像A的child
+
+一般来说，应该将Dockerfile置于一个空目录下，或者项目的根目录下。如果该目录下没有所需要的文件，则需要把所需要的文件复制一份过来。如果目录下确实有东西不希望构建时传给docker引擎，则需要用.dockerignore剔除，剔除的文件不会传递给docker引擎。
+
+默认情况下，如果不额外指定Dockerfile的话，会将上下文的名字为Dockerfile的文件作为Dockerfile。
+
+这只是默认行为，实际上Dockerfile的文件名并不需要必须为Dockerfile，并且并不要求必须位于上下文目录中，比如可以使用 -f ../Dockerfile.php参数指定某个文件为Dockerfile。
+
+当然，一般大家习惯性的会使用默认的文件名Dockerfile，以及将其置于构建镜像的上下文目录中。
+
+使用当前目录的Dockerfile创建镜像。
+
+```
+docker build -t runoob/ubuntu:v1 . 
+```
+
+使用URL **github.com/creack/docker-firefox** 的 Dockerfile 创建镜像。
+
+```
+docker build github.com/creack/docker-firefox
+```
+
+```
+docker build -t centos:base -f /soft/docker/Dockerfile /soft
+```
+
+>通过-f来指定Dockerfile文件的位置，后面的/soft及其目录下必须能够找到Dockerfile文件否则就会报上下文环境的错误,MV,COPY,ADD的文件位置都是相对/soft来说的。
+
+ docker build会`递归`查找目录下的所有Dockerfile文件
+
+### 实战
+
+#### 案例一
+
+这第一个镜像自然是简单又实用，以官方ubuntu 14.04为基础，更改默认的软件源。我将其命名为ali.ubuntu，日后使用这个镜像，执行apt-get相关命令的时候，可以节省不少时间。 
+
+建立项目文件夹：
+
+```
+$ mkdir ali.ubuntu
+```
+
+创建项目文件
+
+```
+$ cd ali.ubuntu
+$ touch Dockerfile
+$ touch sources.list
+```
+
+在项目目录中，有两个文件：
+
+```
+$ pwd
+/Users/adam/workspace/ali.ubuntu
+$ ls
+Dockerfile  sources.list
+```
+
+将阿里源内容添加到sources.list 
+下面这个源的内容，适用于ubuntu 14.04.
+
+```
+deb http://mirrors.aliyun.com/ubuntu/ trusty main multiverse restricted universe
+deb http://mirrors.aliyun.com/ubuntu/ trusty-backports main multiverse restricted universe
+deb http://mirrors.aliyun.com/ubuntu/ trusty-proposed main multiverse restricted universe
+deb http://mirrors.aliyun.com/ubuntu/ trusty-security main multiverse restricted universe
+deb http://mirrors.aliyun.com/ubuntu/ trusty-updates main multiverse restricted universe
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty main multiverse restricted universe
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-backports main multiverse restricted universe
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-proposed main multiverse restricted universe
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-security main multiverse restricted universe
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-updates main multiverse restricted universe
+```
+
+编译Dockerfile
+
+1. 首先，使用FROM指令，来指定基础镜像。
+2. 使用MAINTAINER说明该镜像是制作维护人，和邮箱
+3. 将sources.list添加到镜像中的/etc/apt/目录下
+4. 为了验证是否成功，在镜像中，执行一次apt-get update命令。
+
+```
+FROM ubuntu:14.04
+MAINTAINER Abbott "4754023662qq.com"
+ADD sources.list /etc/apt/
+RUN apt-get update
+```
+
+至此，一切准备工作都做完成，是时候让Docker执行我们的命令了：
+
+```
+$ pwd
+/Users/adam/workspace/ali.ubuntu
+$docker build  -t abbott/abbott.ubuntu ./
+```
+
+docker build 命令，-t参数指定镜像名称，后面指定项目目录，下面看看执行的结果： 
+
+```
+$ docker build  -t abbott/abbott.ubuntu ./
+Sending build context to Docker daemon 3.584 kB
+Step 1 : FROM ubuntu:14.04
+ ---> 1e0c3dd64ccd
+Step 2 : MAINTAINER Adam Gao “solonot@163.com”
+ ---> Running in fb678c1c7680
+ ---> 71d73db293d4
+Removing intermediate container fb678c1c7680
+Step 3 : ADD sources.list /etc/apt/
+ ---> 411de53b11b4
+Removing intermediate container 3b22cc5fdebd
+Step 4 : RUN apt-get update
+ ---> Running in bf63399b3802
+Ign http://mirrors.aliyun.com trusty InRelease
+Get:1 http://mirrors.aliyun.com trusty-backports InRelease [65.9 kB]
+Get:2 http://mirrors.aliyun.com trusty-proposed InRelease [65.9 kB]
+Get:3 http://mirrors.aliyun.com trusty-security InRelease [65.9 kB]
+Get:4 http://mirrors.aliyun.com trusty-updates InRelease [65.9 kB]
+Get:5 http://mirrors.aliyun.com trusty Release.gpg [933 B]
+Get:6 http://mirrors.aliyun.com trusty Release [58.5 kB]
+Get:7 http://mirrors.aliyun.com trusty-backports/main Sources [10.3 kB]
+Get:8 http://mirrors.aliyun.com trusty-backports/multiverse Sources [1751 B]
+Get:9 http://mirrors.aliyun.com trusty-backports/restricted Sources [40 B]
+...些处省略太多的log输出...
+Fetched 23.2 MB in 27s (841 kB/s)
+Reading package lists...
+ ---> 4f1dec752b62
+Removing intermediate container bf63399b3802
+Successfully built 4f1dec752b62
+```
+
+我们的Dockerfile中一共有四行指令，在docker build的时候，就分成了4步。看到输出的内容，每一步都在上一步的基础上，创建了一个临时的容器用来执行命令，并且在步骤结束的时候，删除该容器。最后一行，Successfully build 4f1dec752b62说明成功生成镜像，它的ID是4f1dec752b62. 
+
+可以在`docker build`命令中使用`-f`标志指向文件系统中任何位置的Dockerfile。 
+
+```
+$ docker build -f /path/to/a/Dockerfile
+```
+
+让我们用docker images这个命令来查看一下 
+
+```
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+kyugao/ali.ubuntu   latest              4f1dec752b62        9 hours ago         211.2 MB
+```
+
+#### 案例二
+
+有了制作简单镜像的基础之后，今天准备在上一个Docker image基础上，加入mongodb服务。
+
+首先看一下，现在本地有哪些镜像：
+
+```
+$ docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+kyugao/ali.ubuntu   latest              4f1dec752b62        2 days ago          211.2 MB
+ubuntu              14.04               1e0c3dd64ccd        10 days ago         187.9 MB
+```
+
+开始今天的工作：
+
+- 创建工作目录：mongodb
+- 生成Dockerfile文件
+
+```
+$ mkdir mongodb
+$ touch Dockerfile
+```
+
+准备mongodb的发行包，与Dockerfile放在同级目录下[下载地址](https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1404-3.2.10.tgz)。该版本是14.04的，通过curl还是讯雷，主要看速度。
+
+- 打开Dockerfile编写头两句:
+
+```
+FROM kyugao/ali.ubuntu
+MAINTAINER Adam Gao "solonot@163.com"
+```
+
+– 第一个新命令：WORKDIR  比如，将这一次的工作目录设定为：/root/workdir 
+
+切换目录用，可以多次切换(相当于cd命令)，对RUN,CMD,ENTRYPOINT生效
+
+```
+WORKDIR /root/workdir
+```
+
+作用一：若不存在，生成该目录  作用二：进入这个目录，并执行接下来的指令，比如通过ADD命令，将mongodb的包，复制到工作目录中。 
+
+```
+ADD mongodb-linux-x86_64-ubuntu1404-3.2.10.tar ./
+```
+
+ ADD将文件<src>拷贝到container的文件系统对应的路径<dest>  
+
+ADD只有在build镜像的时候运行一次，后面运行container的时候不会再重新加载了。
+
+- 如果要ADD本地文件，则本地文件必须在 docker build <PATH>，指定的<PATH>目录下
+- 如果要ADD远程文件，则远程文件必须在 docker build <PATH>，指定的<PATH>目录下。比如:
+
+```
+docker build github.com/creack/docker-firefox
+```
+
+docker build github.com/creack/docker-firefox
+
+这里将介绍ADD命令的一个新的作用，就是：自动解压。也就是说，最终这个压缩包会被解压到/root/workdir目录下。所以，在镜像里看是下面这样的 
+
+```
+$ pwd
+/root/workdir/mongodb-linux-x86_64-ubuntu1404-3.2.10
+```
+
+– 第二个新命令：ENV  设置环境变量，在这里就是想将mongodb的命令加到path中： 
+
+```
+ENV PATH $PATH:/root/workdir/mongodb-linux-x86_64-ubuntu1404-3.2.10/bin
+```
+
+和linux中设置有点不一样，中间没有”=”号。这样，在镜像中的任何地方，都可以执行mongod这个命令来启动服务了。
+
+– 第三个新命令：EXPOSE 
+开放端口，容器是一个相对封闭的环境，正常运行的程序和服务，在宿主机中是无法访问的，所以我要开放mongodb服务的端口：
+
+```
+EXPOSE 27017
+```
+
+– 第三个新命令：ENTRYPOINT  ENTRYPOINT这个命令是启动容易的时候，会运行哪个命令，或程序。  我们指定mongod，这是我们想启动的服务，而指定dbpath为数据存储目录。 
+
+```
+RUN mkdir dbpath
+ENTRYPOINT ["mongod", "--dbpath=./dbpath"]
+```
+
+完整的Dockerfile 
+
+```
+FROM kyugao/ali.ubuntu
+MAINTAINER Adam Gao "solonot@163.com"
+WORKDIR /root/workdir
+ADD mongodb-linux-x86_64-ubuntu1404-3.2.10.tar ./
+ENV PATH $PATH:/root/workdir/mongodb-linux-x86_64-ubuntu1404-3.2.10/bin
+EXPOSE 27017
+RUN mkdir dbpath
+ENTRYPOINT ["mongod", "--dbpath=./dbpath"]
+```
+
+使用docker build生成镜像：
+
+```
+$ docker build -t kyugao/mongodb ./
+```
+
+下面的指令：
+
+```
+$ docker run -d -p 27017:27017 kyugao/mongodb
+dfe43f4c7de3af1ccf8445d4c535ed212c2935abd0212a098b5f674483723c36
+$ docker run -d -p 127.0.0.1:27016:27017 kyugao/mongodb
+2465c7597164c507bdf3feb372ec15554ff25015d534ae15100a1425a69f5b4b
+```
+
+-d 参数，表示命令这个容器是一个后台服务。  -p 参数，表示面后要在宿主机和docker容器之间建立一个端口映射，当映射端口时指定了ip地址，如上面第二个docker run指令，便只能在本机访问了。  那么，如果查看这个后台的服务呢？ 
+
+```
+$ $ docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                        NAMES
+2465c7597164        kyugao/mongodb      "mongod --dbpath=./db"   3 minutes ago       Up 3 minutes        127.0.0.1:27016->27017/tcp   berserk_golick
+dfe43f4c7de3        kyugao/mongodb      "mongod --dbpath=./db"   7 minutes ago       Up 7 minutes        0.0.0.0:27017->27017/tcp     dreamy_franklin
+```
+
+#### 案例三
+
+公司要把j2ee的project搬到 docker里，所以，先从一个tomcat的镜像开始吧！
+
+```
+# docker pull tomcat
+```
+
+因为是在阿里云的ecs上，使用了阿里云的docker库，因此下载速度飞快！
+
+查看本地已下载的镜像：
+
+```
+# docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+ubuntu              latest              8251da35e7a7        12 days ago         188.4 MB
+tomcat              latest              71093fb71661        5 weeks ago         347.7 MB
+```
+
+基于这个image，创建一个容器吧：
+
+```
+# docker create --name dev_tomcat -p 8080:8080 tomcat
+```
+
+ --name 给这个容器起一个名字
+ -p host到container的端口映射
+
+打一个比方说，一个image就相当于一个系统光盘，容器，就是一部安装了这个系统电脑。启动：
+
+```
+# docker start dev_tomcat
+# docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED              STATUS              PORTS                    NAMES
+94e167c8b2b8        tomcat:latest       "catalina.sh run"   About a minute ago   Up About a minute   0.0.0.0:8080->8080/tcp   dev_tomcat
+```
+
+通过docker ps命令，可以看到现在这个容器的运行情况。不过既然这是启动一个tomcat的容器，如何能看到tomcat的启动情况呢： 
+
+```
+# docker logs dev_tomcat
+```
+
+看到这些log， 
+
+1. 可以确定tomcat启动成功 
+2. Tomcat自带应用已经部署成功：manager, doc, examples, root, host-manager. 
+3. tomcat目录/usr/local/tomcat 
+
+4. webapp目录/usr/local/tomcat/webapps 
+
+来访问一下：[http://ipaddress:8080](http://ipaddress:8080/)，正常情况下，应该可能看到熟悉的tomcat的经典界面了。
+
+上面提到，container相当于一个安装了image这个系统的电脑，那没理由不可以进去看看的吧！那就进去吧：
+
+```
+# docker exec -t -i dev_tomcat /bin/bash
+//docker exec意思是：在dev_tomcat下面运行一个命令，在这里，运行的是/bin/bash
+//-t 表示分配一个pseudo-TTY，-i 表示可交互
+//运行之后，提示符就变成了，tomcat这个image的默认工作目录是/usr/local/tomcat，自动打开：
+root@94e167c8b2b8:/usr/local/tomcat#
+root@94e167c8b2b8:/usr/local/tomcat# cd webapps/
+//进入webapps里面，看看是不是几个默认的应用都在里面
+root@94e167c8b2b8:/usr/local/tomcat/webapps# ls
+ROOT  docs  examples  host-manager  manager
+```
+
+#### 案例四
+
+Docker与MySql
+
+根据上一篇blog的经验，来创建一个mysql的容器：
+
+```
+# docker pull mysql
+# docker create --name dev_mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql
+// 这第二个command多了一个指定环境变量的，-e，设定root帐号的初始密码
+# docker start dev_mysql
+```
+
+不出意外，现在已经可以通过mysql客户端，比如workbench来登录了。
+
+ Docker的数据卷
+
+ 在测试阶段，我的项目，每一天，甚至每一次小的修改，都会有新的war包要部署，而我又不想每次都打包一个镜像，这样我就要将webapps的目录，也就是/usr/local/tomcat/webapps暴露出来，方便在host中，随时更新里面的war包。 
+
+```
+# docker create --name dev_mila_tomcat -v /root/test/webapps:/usr/local/tomcat/webapps tomcat
+```
+
+上面的命令，可以将镜像中的/usr/local/tomcat/webapps目录映射到host的/root/test/webapps目录下，这样，我每次只需要将war包放到/root/test/webapps中，docker中的tomcat就能自动检测到了！
+
+运行环境的统一，有了这么一个docker image，我可以拿到任意一部服务器上跑。由于容器的封装，保证了运行环境的统一！
+
+既然可以暴露webapps目录了，那不仿再多暴露几个，现在我的test项目会保留一些图片和音乐文件，所以我想把这两个目录暴露出来，以便在host上面，可以方便的做备份
+
+```
+# docker create --name dev_mila_tomcat \ 
+    -v /root/test/webapps:/usr/local/tomcat/webapps \
+    -v /root/test/data/image:/testdata/image \
+    -v /root/test/data/audio:/testdata/audio \
+    tomcat
+```
+
+好了，这样我可以在host上面，直接跑一个tar打包备份文件咯！  
+
+#### 案例五
+
+在这里，创建一个Java应用程序并使用`docker`进行运行。此示例分以下几个步骤完成。
+
+创建一个目录
+
+目录是组织文件所必需的，所以首先使用以下命令创建目录一个目录。
+
+```
+$ mkdir -p /home/yiibai/docker/java-docker-app
+```
+
+创建一个Java文件
+
+现在创建一个Java文件，将此文件保存为`Hello.java`。这个 `Hello.java` 的代码内容如下 - 
+
+```
+class Hello{  
+    public static void main(String[] args){  
+        System.out.println("This is first java app \n by using Docker");  
+    }  
+}
+```
+
+将其保存在文件`Hello.java`中，并放置在 `/home/yiibai/docker/java-docker-app` 目录下。 
+
+创建一个Dockerfile文件
+
+创建Java文件后，还需要创建一个Dockerfile文件，其中包含了Docker的说明。 Dockerfile不包含任何文件扩展名。 所以这个文件简单使用`Dockerfile`作为名称保存即可。此 *Dockerfile* 文件的内容如下 - 
+
+```
+FROM java:8
+COPY . /var/www/java  
+WORKDIR /var/www/java  
+RUN javac Hello.java  
+CMD ["java", "Hello"]
+```
+
+所有指令要使用大写字母编写，因为这是它的惯例(约定)。将此文件放在`/home/yiibai/docker/java-docker-app`目录中。 现在将`Dockerfile`也放置在在`/home/yiibai/docker/java-docker-app`目录中，与`Hello.java`放在同一个目录。
+
+如下 -
+
+```
+wukang@wukang-virtual-machine:/usr/local/java-docker-app$ ls
+Dockerfile  Hello.java
+wukang@wukang-virtual-machine:/usr/local/java-docker-app$
+```
+
+构建Docker映像
+
+创建Dockerfile后，需要更改工作目录。 
+
+```
+$ cd  /home/yiibai/docker/java-docker-app
+```
+
+现在，按照以下命令创建一个映像。这里必须以root身份登录才能创建映像。 在这个例子中，我们已经切换为root用户的身份。 在以下命令中，`java-app`是的映像名称。当然Docker的映像名称可以是任意的。 
+
+```
+sudo docker build -t java-app .
+```
+
+如果未安装*Java 8*，那么会自动下载*Java 8*安装再执行。在成功构建映像后。 现在，我们可以运行Docker映像了 
+
+运行Docker映像
+
+成功创建映像后 现在可以使用`run`命令运行docker。以下命令用于运行`java-app` 
+
+```
+yiibai@ubuntu:~/docker/java-docker-app$ sudo docker run java-app
+```
+
+上面命令的运行输出结果如下 -
+
+```
+yiibai@ubuntu:~/docker/java-docker-app$ sudo docker run java-app
+This is first java app
+by using Docker
+yiibai@ubuntu:~/docker/java-docker-app$
+```
+
+在这里可以看到，在运行`sudo docker run java-app`之后，它产生了一个输出。
+
+在经过上**5**个步骤之后，您应该已经可在系统上成功运行docker映像了。除了所有这些以外，还可以在接下来的文章中学习和使用其他命令。
+
+#### 安装Nginx
+
+首先，下载nginx镜像
+
+```
+docker pull nginx
+```
+
+启动nginx
+
+```
+docker run --name nginx -d -p 80:80 nginx
+```
+
+创建Nginx配置文件目录
+
+```
+mkdir /opt/nginx/html
+```
+
+启动nginx容器后，将nginx.conf配置文件复制到nginx配置目录下/opt/nginx/，将default.conf配置文件复制到/opt/nginx/conf.d/目录下
+
+```
+docker cp nginx:/etc/nginx/nginx.conf /opt/nginx/
+docker cp nginx:/etc/nginx/conf.d/ /opt/nginx/conf.d/
+```
+
+停止并删除nginx容器
+
+```
+#停止nginx容器
+docker stop nginx
+#删除nginx容器
+docker rm nginx
+#查看nginx容器是否删除
+docker ps -a
+```
+
+重新启动Nginx容器
+
+```
+docker run \
+-d --name nginx -p 80:80 \
+-v /opt/nginx/html/:/usr/share/nginx/html \
+-v /opt/nginx/nginx.conf:/etc/nginx/nginx.conf \
+-v /opt/nginx/conf.d/:/etc/nginx/conf.d \
+nginx
+```
+
+根据default.conf配置文件中的访问配置，需要再/opt/nginx/html/文件下添加index.html文件。
+
+![1530007650381](C:\Users\789\AppData\Local\Temp\1530007650381.png)
+
+访问ngix，无出错则搭建完成。
+
+#### 安装mysql
+
+```
+$ mkdir -p ~/mysql/data ~/mysql/logs ~/mysql/conf
+```
+
+>data目录将映射为mysql容器配置的数据文件存放路径logs目录将映射为mysql容器的日志目录conf目录里的配置文件将映射为mysql容器的配置文件
+
+```
+docker run -p 3306:3306 --name mymysql -v $PWD/conf:/etc/mysql/conf.d -v $PWD/logs:/logs -v $PWD/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql
+```
+
+>`pwd`=$PWD 可用echo $PWD验证
+>
+>命令说明：
+>
+>-p 3306:3306：将容器的 3306 端口映射到主机的 3306 端口。
+>
+>-v $PWD/conf:/etc/mysql/conf.d：将主机当前目录下的 conf/my.cnf 挂载到容器的 /etc/mysql/my.cnf。
+>
+>-v $PWD/logs:/logs：将主机当前目录下的 logs 目录挂载到容器的 /logs。
+>
+>-v $PWD/data:/var/lib/mysql ：将主机当前目录下的data目录挂载到容器的 /var/lib/mysql 。       
+>
+>-e MYSQL_ROOT_PASSWORD=123456：初始化 root 用户的密码。
+
+#### 安装tomcat
+
+```
+docker run --name tomcat -p 8080:8080 -v $PWD/test:/usr/local/tomcat/webapps/test -d tomcat
+```
+
+>-p 8080:8080：将容器的8080端口映射到主机的8080端口-v $PWD/test:/usr/local/tomcat/webapps/test：将主机中当前目录下的test挂载到容器的/test.
+>
+>主机的test和容器的test会自动创建。

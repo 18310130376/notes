@@ -1,0 +1,218 @@
+#### Vim编辑器
+
+首先：卸载旧版本vi
+
+```
+sudo apt-get remove vim-common
+```
+
+然后：安装新版本vim
+
+```
+sudo apt-get install vim
+```
+
+| 命令                                      | 功能                                                         | 命令             | 功能                                                         |
+| ----------------------------------------- | ------------------------------------------------------------ | ---------------- | ------------------------------------------------------------ |
+| h                                         | 光标向左移动一个字符                                         | ndd              | 向下删除n行                                                  |
+| j                                         | 光标向下移动一个字符                                         | d$               | 删除光标所在处到该行行尾的所有内容                           |
+| k                                         | 光标向上移动一个字符                                         | yy               | 复制光标所在行                                               |
+| l                                         | 光标向右移动一个字符                                         | dd               | 删除光标所在行                                               |
+| /word                                     | 从光标所在处向下搜索word                                     | p,P              | p为在下一行粘贴复制的内容,P为在上一行                        |
+| ?word                                     | 从光标所在处向上搜索word                                     | u                | 撤销前一个动作                                               |
+| x,X                                       | x为向后删除一个字符,X为向前删除一个字符                      | .                | 重复前一个动作                                               |
+| nx                                        | 向后删除n个字符                                              | i,I  （shift+i） | i为在光标所在处插入,I为在光标所在行的第一个非空字符处插入    |
+| dd                                        | 删除光标所在行                                               | a,A              | a为在光标所在处的下一个字符串插入,A为在光标所在行的最后一个字符串插入 |
+| o,O                                       | o为在光标所在行的下一行插入新行,O为光标所在行的上一行插入新行 | ZZ               | 文档未改变,则不保存离开。有改变,则保存离开                   |
+| :w filename                               | 另存为                                                       | :r filename      | 将filename的内容添加到光标所在行的后面                       |
+| :n1,n2 w filename                         | 将n1到n2行的内容保存到filename中                             | ctrl+R           | 重做：如果撤销了多次，可以使用ctrl+R来反转撤销               |
+| dw                                        | 可以删除一个word                                             | :q!              | 丢弃所有的修改并退出                                         |
+| :e!                                       | 放弃所有修改并重新载入该文件的原始内容                       | $                | 将光标移动到当前行行尾                                       |
+| vim -d file1 file2 或 vimdiff file1 file2 | 文件比较                                                     | CTRL+A           | 将光移动到本行开头                                           |
+| CTRL+E                                    | 将光标移动到本行末尾                                         | CTRL+Y           | 粘贴文本                                                     |
+| CTRL+K                                    | 从光标处剪切文本直到本行结束                                 | Shift+Insert     | 将文本粘贴到终端                                             |
+
+| 命令                       | 功能                         | 命令                        | 功能                           |
+| -------------------------- | ---------------------------- | --------------------------- | ------------------------------ |
+| uname -a                   | 查看内核/操作系统/CPU信息    | head -n 1 /etc/issue        | 查看操作系统版本               |
+| cat /proc/cpuinfo          | 查看CPU信息                  | hostname                    | 查看计算机名                   |
+| lsmod                      | 列出加载的内核模块           | env                         | 查看环境变量                   |
+| free -m                    | 查看内存使用量和交换区使用量 | df -h                       | 查看各分区使用情况             |
+| du -sh < 目录名>           | 查看指定目录的大小           | grep MemTotal /proc/meminfo | 查看内存总量                   |
+| grep MemFree /proc/meminfo | 查看空闲内存量               | uptime                      | 查看系统运行时间、用户数、负载 |
+| cat /proc/loadavg          | 查看系统负载                 | mount \| column -t          | 查看挂接的分区状态             |
+| fdisk -l                   | 查看所有分区                 | ifconfig                    | 查看所有网络接口的属性         |
+| iptables -L                | 查看防火墙设置               | netstat -lntp               | 查看所有监听端口               |
+| netstat -antp              | 查看所有已经建立的连接       | netstat -s                  | 查看网络统计信息               |
+| ps -ef                     | 查看所有进程                 | top                         | 实时显示进程状态               |
+| w                          | 查看活动用户                 | id < 用户名>                | 查看指定用户信息               |
+| last                       | 查看用户登录日志             | cut -d: -f1 /etc/passwd     | 查看系统所有用户               |
+| cut -d: -f1 /etc/group     | 查看系统所有组               | crontab -l                  | 查看所有用户的定时任务         |
+
+>Linux centos重启命令：
+>
+>1、reboot 
+>
+>2、shutdown -r now 立刻重启(root用户使用) 
+>
+>3、shutdown -r 10 过10分钟自动重启(root用户使用) 
+>
+>4、shutdown -r 20:35 在时间为20:35时候重启(root用户使用)  如果是通过shutdown命令设置重启的话，可以用shutdown -c命令取消重启 
+>
+>Linux centos关机命令：
+>
+>1、halt 立刻关机 
+>
+>2、poweroff 立刻关机 
+>
+>3、shutdown -h now 立刻关机(root用户使用) 
+>
+>4、shutdown -h 10 10分钟后自动关机  
+>
+>如果是通过shutdown命令设置关机的话，可以用shutdown -c命令取消重启 很多人使用hostname 主机名 来修改,其实这个只是做为暂时的,重启后将恢复到原来的名字.很多人说修改/etc/hosts文件,其实这个文件里的主机名只是为来提供给dns解析的.如果你用不上dns,只需要修改主机名,那修改这个没用.其实是修改这个文件etc/sysconfig/network这个文件里的主机名.
+>
+>NETWORKING=yes
+>
+>HOSTNAME=主机名
+>
+>记得重启!!!------------------------------------------------------------------------
+>
+>完整:第一步：#hostname oratest 
+>
+>第二步：修改/etc/sysconfig/network中的hostname
+>
+>第三步：修改/etc/hosts文件 
+
+#### 文件操作
+
+```
+more, less, head tail
+tail -f /var/log/messages
+```
+
+```
+ls > ls.txt
+cat ls.txt
+说明: 
+> 是把输出转向到指定的文件，如文件已存在的话也会重新写入，文件原内容不会保留
+>>是把输出附向到文件的后面，文件原内容会保留下来
+```
+
+```
+sort sort.txt   对文件内容排序
+```
+
+```
+touch file 创建一个空的文件
+```
+
+清空文件内容
+
+```
+$ : > filename
+$ > filename
+$ echo "" > filename
+$ echo > filename
+$ cat /dev/null > fil
+```
+
+复制文件内容到另一个文件(a中的内容复制到b中，b中之前的内容会被清空)
+
+```
+cat a.json > b.json
+```
+
+目录带空格
+
+```
+cd a\ bcd
+```
+
+#### 目录操作
+
+```
+mkdir -p /home/yiibai/docker/ubuntu-in-docker
+```
+```
+rm -rf 目录名 (非空文件夹)
+rmdir 空文件夹
+```
+
+```
+ls -l | grep "^-" | wc -l    （文件个数 不包含子目录）
+```
+
+```
+ls -lR| grep "^-" | wc -l  （文件个数 包含子目录）
+```
+
+```
+ls -lR | grep "^d" | wc -l （文件个数 目录下文件夹的个数，包含子目录）
+```
+
+```
+ls -l |grep "^d"|wc -l d 表示 目录  统计当前文件内目录的个数
+```
+
+```
+ls -lR|grep "^d"|wc -l  统计当前文件夹下文件的个数，包括子文件夹里的 r 表示连级
+```
+
+```
+du -h --max-depth=1  文件夹小
+```
+
+#### 用户管理
+
+```
+passwd
+```
+
+#### 权限操作
+
+```
+chmod u+x   表示该档案的拥有者权限
+```
+
+#### 网络操作
+
+关闭网卡
+
+```
+sudo ifconfig eth0 down 
+```
+
+启用网卡
+
+```
+sudo ifconfig eth0 up 
+```
+
+#### 系统维护
+
+更新资源
+
+```
+apt-get update
+```
+
+升级系统
+
+```
+apt-get upgrade
+```
+
+#### 模拟请求
+
+```
+POST：curl -d "user=nickwolfe http://www.linuxidc.com/login.cgi
+```
+
+```
+GET ：curl http://www.linuxidc.com/login.cgi？user=nickwolfe
+```
+
+```
+$ curl -u name：passwd ftp://ip：port/path/file 
+$ curl ftp://name：passwd@ip：port/path/file
+```
