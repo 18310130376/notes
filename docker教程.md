@@ -1416,6 +1416,8 @@ docker load与docker import
 >
 >可以在~/.bashrc中设置alias dm='docker-machine'简化输入
 >
+>docker-machine create --driver virtualbox default
+>
 >docker-machine start default
 >
 >docker-machine ls
@@ -1460,23 +1462,11 @@ docker load与docker import
 
 
 
-
-
-
-
-
-
-
-
-
-
 ```
 set DOCKER_HOST=tcp://127.0.0.1:2375
 set DOCKER_CERT_PATH=C:\Users\${user}\.boot2docker\certs\boot2docker-vm
 set DOCKER_TLS_VERIFY=1
 ```
-
-
 
 
 
