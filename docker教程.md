@@ -2382,7 +2382,7 @@ SET DOCKER_MACHINE_NAME=default
 
 访问docker服务
 
- docker -H tcp://192.168.99.100:2376 images
+ docker -H tcp://192.168.99.101:2376 images
 
 linux下：
 
@@ -2430,5 +2430,5 @@ DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 
 
 
-
+http://blog.51cto.com/xiangcun168/1958904
 
