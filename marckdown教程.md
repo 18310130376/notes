@@ -168,3 +168,14 @@ V1×V2=∣∣∣∣∣i∂X∂u∂X∂vj∂Y∂u∂Y∂vk00∣∣∣∣∣V1×V2
 ### 标题
 
 使用#表示一级标题，##表示二级标题，以此类推，有6个标题。
+
+
+
+修改vue主题样式：
+
+blockquote {
+    border-left: 4px solid #dc2621;
+    padding: 10px 0px 10px 15px;
+    color: #da5959;
+    background-color: rgba(36, 33, 37, 0.96);
+}

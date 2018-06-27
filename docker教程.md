@@ -296,6 +296,16 @@ OPTIONS=--selinux-enabled -H fd:// -g="/data/docker"
 
 注：修改配置文件后重启docker服务才生效。-g="/data/docker"是将Docker的默认根路径从/var/lib/docker改成/data/docker, 比如所有的Docker images都会放到这个目录下。
 
+#### centos安装
+
+```
+yum update
+yum install docker
+systemctl start docker
+systemctl enable docker //开机自启动
+docker -v
+```
+
 #### 配置docker服务
 
 为了避免每次使用docker命令都需要特殊身份，可以将当前用户加入到docker用户组(docker用户组在docker安装时自动创建的)
@@ -347,6 +357,21 @@ export HTTPS_PROXY=https://dev-proxy.xxx.com:8080
 ```
 boot2docker stop
 boot2docker start
+```
+
+#### 更换仓库地址
+
+在宿主机器编辑文件
+
+```
+mkdir -p /etc/docker
+tee /etc/docker/daemon.json <<- 'EOF'
+{
+    'registry-mirrors':["https://registry.docker-cn.com"]
+}
+EOF
+systemctl daemon-reload
+systemctl restart docker
 ```
 
 #### docker日志
@@ -718,10 +743,8 @@ nginx               latest              0d409d33b27e        8 weeks ago         
 使用`docker save`命令保存镜像文件为本地文件。
 
 ```
-docker save -o ubuntu_latest.tar ubuntu:latest
+docker save -o ubuntu_latest.tar ubuntu:latest  或 
 ```
-
-或  
 
 ```
 docker save 1316871b180b -o /root/dockerfile/loggermanager1.0.tar
@@ -1296,6 +1319,14 @@ docker run --rm --name web --link mysql-demo:db -i -t ubuntu /bin/bash
 
 ### Docker网络模式
 
+
+
+查看当前 docker0 ip
+
+```
+sudo ifconfig docker0
+```
+
 >1：host模式  使用--net=host指定  （使用主机的IP访问）
 >
 >2：container模式，使用net=container:NAME_or_ID指定
@@ -1379,6 +1410,76 @@ docker load与docker import
 >
 >服务器重启以后，执行docker命令报以上错误，解决办法如下：cd /usr/libexec/docker/sudo ln -s docker-runc-current docker-runc
 
+
+
+>cmd命令：
+>
+>可以在~/.bashrc中设置alias dm='docker-machine'简化输入
+>
+>docker-machine start default
+>
+>docker-machine ls
+>
+>docker-machine ip default
+>
+>docker-machine rm default
+>
+>docker-machine env default 提示设置环境变量：
+>
+>C:\Users\789>docker-machine env default
+>SET DOCKER_TLS_VERIFY=1
+>SET DOCKER_HOST=tcp://192.168.99.100:2376
+>SET DOCKER_CERT_PATH=C:\Users\789\.docker\machine\machines\default
+>SET DOCKER_MACHINE_NAME=default
+>REM Run this command to configure your shell:
+>REM     FOR /f "tokens=*" %i IN ('docker-machine env default') DO %i
+>
+>复制上面的SET指令或者eval "$(docker-machine env default)" 就可以了。
+>
+>最终需要执行FOR /F "tokens=*" %i IN ('docker-machine env ron-docker') DO %i 完成设置。
+>
+>windows的cmd命令或者浏览器输入docker version最下方出现：
+>
+>An error occurred trying to connect: Get http://127.0.0.1:2375/v1.22/version: dial tcp 127.0.0.1:2375: connectex: No connection could be made because the target machine actively refused it
+>
+>
+>
+>Post http://127.0.0.1:2375/v1.20/containers/create: dial tcp 127.0.0.1:2375: ConnectEx tcp: No connection could be made because the target machine actively refused it..
+>
+> * Are you trying to connect to a TLS-enabled daemon without TLS?
+>
+> * Is your docker daemon up and running?
+>
+>   执行
+>
+>   docker-machine regenerate-certs default
+>
+>   docker-machine restart default
+>
+>   设置上面环境变量
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+set DOCKER_HOST=tcp://127.0.0.1:2375
+set DOCKER_CERT_PATH=C:\Users\${user}\.boot2docker\certs\boot2docker-vm
+set DOCKER_TLS_VERIFY=1
+```
+
+
+
+
+
 ###  Docker的相关管理工具
 
 kubernetes: https://github.com/GoogleCloudPlatform/kubernetes/
@@ -1400,7 +1501,7 @@ Openstack
 
 http://www.docker.org.cn/page/resources.html
 
-
+see：https://www.cnblogs.com/sparkdev/p/7066789.html
 
 ### 构建
 
@@ -1612,6 +1713,10 @@ docker build -t centos:base -f /soft/docker/Dockerfile /soft
 >通过-f来指定Dockerfile文件的位置，后面的/soft及其目录下必须能够找到Dockerfile文件否则就会报上下文环境的错误,MV,COPY,ADD的文件位置都是相对/soft来说的。
 
  docker build会`递归`查找目录下的所有Dockerfile文件
+
+事实证明上面的论证是不正确的：
+
+![1530078683158](C:\Users\789\AppData\Local\Temp\1530078683158.png)
 
 ### 实战
 
@@ -2136,3 +2241,204 @@ docker run --name tomcat -p 8080:8080 -v $PWD/test:/usr/local/tomcat/webapps/tes
 >-p 8080:8080：将容器的8080端口映射到主机的8080端口-v $PWD/test:/usr/local/tomcat/webapps/test：将主机中当前目录下的test挂载到容器的/test.
 >
 >主机的test和容器的test会自动创建。
+
+#### 部署sprongBoot
+
+方案1：`手动拷贝jar包到目录，手动执行build`
+
+第一步：搭建springboot的web应用，可在CMD命令行中通过mvn install命令将应用打成jar包:如demo-0.0.1-SNAPSHOT.jar
+
+第二步：将jar包copy到centos文件系统中，指定目录示例为：/usr/local/demo-0.0.1-SNAPSHOT.jar
+
+第三步：构建docker镜像：此处以docker build方式构建
+
+a./usr/local下创建dockerfile文件
+
+```
+# 指定一个基础镜像
+FROM  java:8
+#安装应用执行的环境java
+RUN yum -y install java
+#将指定的jar文件复制到容器中
+COPY demo-0.0.1-SNAPSHOT.jar /usr/local/
+#执行jar文件
+ENTRYPOINT ["java" ,"-jar","/usr/local/demo-0.0.1-SNAPSHOT.jar"]
+```
+
+或
+
+```
+FROM java:8
+VOLUME /tmp
+ADD springboot4Docker-1.0-SNAPSHOT.jar app.jar
+RUN sh -c 'touch /app.jar'
+ENV JAVA_OPTS=""
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+```
+
+>VOLUME 指定了临时文件目录为/tmp。其效果是在主机 /var/lib/docker 目录下创建了一个临时文件，并链接到容器的/tmp。改步骤是可选的，如果涉及到文件系统的应用就很有必要了。/tmp目录用来持久化到 Docker 数据文件夹，因为 Spring Boot 使用的内嵌 Tomcat 容器默认使用/tmp作为工作目录 
+>项目的 jar 文件作为 “app.jar” 添加到容器的 
+>ENTRYPOINT 执行项目 app.jar。为了缩短 Tomcat 启动时间，添加一个系统属性指向 “/dev/urandom” 作为 Entropy Source 
+
+pom.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <artifactId>springboot4Docker</artifactId>
+    <groupId>com.docker</groupId>
+    <version>1.0-SNAPSHOT</version>
+    <modelVersion>4.0.0</modelVersion>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <docker.image.prefix>13662241921</docker.image.prefix>
+        <spring.boot.version>1.3.3.RELEASE</spring.boot.version>
+    </properties>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.4.3</version>
+                <configuration>
+                    <imageName>${docker.image.prefix}/${project.artifactId}</imageName>
+                    <dockerDirectory>src/main/docker</dockerDirectory>
+                    <resources>
+                        <resource>
+                            <targetPath>/</targetPath>
+                            <directory>${project.build.directory}</directory>
+                            <include>${project.build.finalName}.jar</include>
+                        </resource>
+                    </resources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+>Spotify 的 docker-maven-plugin 插件是用于构建 Maven 的 Docker Image 
+>1）imageName指定了镜像的名字，本例为 springio/lidong-spring-boot-demo 
+>2）dockerDirectory指定 Dockerfile 的位置 
+>3）resources是指那些需要和 Dockerfile 放在一起，在构建镜像时使用的文件，一般应用 jar 包需要纳入。
+
+b.通过docker build方式构建镜像:docker build -t="springboot/test"  --no-cache.(备注：-t是为该镜像指定名称,不需要缓存)
+
+c.上述步骤执行完毕后，通过docker images命令查看生成的镜像id为：bfac85643697
+
+d.运行此镜像：docker run  -p 8080:8080 --name webtest bfac85643697（备注：-p是指定端口的映射将应用端口8086映射到容器端口8082，用于对应用进行访问，bfac85643697为生成的镜像id）或通过docker run -i -t -d  -p 8082:8086 --name webtest bfac85643697  -g "daemon off;"运行，区别在于第二种方式是启动了一个后台的守护进程，
+
+e:应用运行以后，通过以下链接访问：http://192.168.0.193:8082/test（备注：192.168.0.193为docker宿主机ip，8082为上述指定的docker映射端口，test为应用的映射url，根据自己的情况指定访问的url）
+
+see:
+
+https://www.jianshu.com/p/efd70ad53602
+
+https://spring.io/guides/gs/spring-boot-docker/
+
+https://www.jianshu.com/p/c435ea4c0cc0
+
+maven 集成docker的命令
+
+```
+mvn package docker:build 
+
+```
+
+```
+docker push kitesweet/pan-search-springboot
+docker pull kitesweet/pan-search-springboot
+```
+```
+[ERROR] Failed to execute goal com.spotify:docker-maven-plugin:1.0.0:build (default-cli) on project springboot4Docker: Exception caught: java.util.concurrent.ExecutionException: com.spotify.docker.cli
+ent.shaded.javax.ws.rs.ProcessingException: org.apache.http.client.ClientProtocolException: Cannot retry request with a non-repeatable request entity: Connection reset by peer: socket write error -> [
+Help 1]
+```
+
+解决方案：
+
+1：环境变量配置正确，在windows系统环境变量中新建DOCKER_HOST,值为tcp://ip:端口
+
+DOCKER_HOST=tcp://192.168.99.100:2376
+
+DOCKER_HOST=unix:///var/run/docker.sock mvn clean install （linux）
+
+export DOCKET_HOST=unix:///private/var/tmp/docker.sock
+
+2：编辑docker
+
+vim /etc/sysconfig/docker
+
+加入 other_args="-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock"
+
+:wq!
+
+3：重启 service docker restart
+
+4：mvn clean package docker:build -DskipTests
+
+192.168.99.100
+
+SET DOCKER_TLS_VERIFY=1
+SET DOCKER_HOST=tcp://192.168.99.100:2376
+SET DOCKER_CERT_PATH=C:\Users\789\.docker\machine\machines\default
+SET DOCKER_MACHINE_NAME=default
+
+访问docker服务
+
+ docker -H tcp://192.168.99.100:2376 images
+
+linux下：
+
+ service docker start启动，需要先停止docker服务，用docker提供的命令行参数启动，例如docker daemon -H 0.0.0.0:2375。启动之后通过浏览器访问http://dockerhost:port/info查看你刚才的启动是否成功，如果正常返回一串json说明服务启动成功了。之后修改pom文件，在docker-maven-plugin插件的configuration节点下新增一个dockerHost节点，填入你的docker server的主机地址和端口，我这边填写的是http://10.100.120.22：2375，每一个模块都需要做这样的修改，之后在重新构建就没有问题了。
+
+docker info
+
+首先要查看docker daemon是否在运行。
+
+ps aux | grep docker
+
+
+
+```
+
+com.spotify:docker-maven-plugin 报localhost:2375 Connection refused 错误正确解决方法
+
+docker-machine env 查看docker host和证书信息
+<dockerHost>https://192.168.99.100:2376</dockerHost>
+<dockerCertPath>C:\Users\Administrator\.docker\machine\machines\default</dockerCertPath>
+```
+
+Canot connect to the Docker daemon. Is 'docker -d' running on this host?
+
+
+
+以及类似的错误,就连docker version命令都报错了,楼主开始找啊找,找到了好多东西,结果发现没一个能行的,最后楼主使用这样的命令:
+
+```
+# vim /etc/default/docker
+```
+
+在该文件中添加如下内容:
+
+```
+DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
+# service docker restart
+```
+
+
+
+
+
+
+
+
+
+
+

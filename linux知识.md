@@ -1,3 +1,5 @@
+see：http://www.runoob.com/linux/linux-tutorial.html
+
 #### Vim编辑器
 
 首先：卸载旧版本vi
@@ -105,6 +107,20 @@ sort sort.txt   对文件内容排序
 ```
 touch file 创建一个空的文件
 ```
+
+```
+echo 12345 | tee a.text 标准输出并且结果写入文件。如果文件不存在，则创建；如果已经存在，则覆盖之
+```
+
+```
+tee -a file 输出到标准输出的同时，追加到文件file中。如果文件不存在，则创建；如果已经存在，就在末尾追加内容
+```
+
+```
+tee file1 file2 -  输出到标准输出两次，同时保存到file1和file2中。（标准输出的次数=-出现的次数+1）
+```
+
+
 
 清空文件内容
 
