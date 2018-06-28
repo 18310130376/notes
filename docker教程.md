@@ -2339,6 +2339,129 @@ d.运行此镜像：docker run  -p 8080:8080 --name webtest bfac85643697（备�
 
 e:应用运行以后，通过以下链接访问：http://192.168.0.193:8082/test（备注：192.168.0.193为docker宿主机ip，8082为上述指定的docker映射端口，test为应用的映射url，根据自己的情况指定访问的url）
 
+
+
+方案二：maven docker插件
+
+pom.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <artifactId>springboot4Docker</artifactId>
+    <groupId>com.docker</groupId>
+    <version>1.0-SNAPSHOT</version>
+    <modelVersion>4.0.0</modelVersion>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <docker.image.prefix>13662241921</docker.image.prefix>
+        <spring.boot.version>1.3.3.RELEASE</spring.boot.version>
+    </properties>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>1.3.3.RELEASE</version>
+        <relativePath/>
+    </parent>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.4.12</version>
+                <configuration>
+                 <imageName>13662241921/aaa</imageName>
+                  <!--   <imageTags>
+                        docker的tag为项目版本号、latest
+                        <imageTag>${git.commit.id.abbrev}</imageTag>
+                        <imageTag>latest</imageTag>
+                    </imageTags> -->
+
+                     <!-- <baseImage>java</baseImage>  -->
+                     <!-- <entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint> -->
+                   <dockerDirectory>src/main/docker</dockerDirectory>
+                   <!--  <dockerHost>https://192.168.99.100:2376</dockerHost>
+                    <dockerCertPath>C:\Users\789\.docker\machine\machines\default</dockerCertPath> -->
+                    <pushImage>true</pushImage>
+                   <!--  <registryUrl>registry.cn-hangzhou.aliyuncs.com</registryUrl> -->
+                    <serverId>docker-hub</serverId>
+                   <!--<serverId>docker-hub</serverId>--> 
+                    <resources>
+                        <resource>
+                            <targetPath>/</targetPath>
+                            <directory>${project.build.directory}</directory>
+                            <include>${project.build.finalName}.jar</include>
+                        </resource>
+                    </resources>
+                   <settingsFile>/settings.xml</settingsFile>
+                </configuration>
+            </plugin> 
+        </plugins>
+    </build>
+</project>
+```
+
+pom的同级目录下settings.xml
+
+```
+<settings>
+<server>
+    <id>docker-hub</id>
+    <username>13662241921</username>
+    <password>{JY/vuiMyBDMHVI8mgiqB//YnzLZbAnul5JQRggLVwU8=}</password>
+    <configuration>
+      <email>47540266@qq.com</email>
+    </configuration>
+</server>
+</settings>
+```
+
+上面的password需要maven加密，加密步骤如下：
+
+1 随意定义一个种子
+
+```
+mvn --encrypt-master-password 123asdadfafdadf
+{BHe/qKN8q30HBG3bAGbYLOVLnAqVRkzjb9/7yWs+Ks0=}
+```
+
+2 编辑~/.m2/settings-security.xml，写入
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<settingsSecurity>
+   <master>{上一步生成的内容}</master>
+</settingsSecurity>
+```
+
+3 最终生成docker加密后的密码填写入项目pom同级settings.xml
+
+```
+mvn --encrypt-password 你的邮箱密码
+{RxLx1asdfiafrjIHfXZDadfwveda23avsdv=}
+```
+
+4 运行命令
+
+```
+mvn package docker:build
+```
+
 see:
 
 https://www.jianshu.com/p/efd70ad53602
@@ -2367,11 +2490,7 @@ sudo docker pull registry.cn-hangzhou.aliyuncs.com/viiso/dockerdemo:[镜像版�
 
 ```
 
-maven 集成docker的命令
 
-```
-mvn package docker:build
-```
 
 ```
 docker push kitesweet/pan-search-springboot
@@ -2466,8 +2585,6 @@ DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 
 http://blog.51cto.com/xiangcun168/1958904
 
-<<<<<<< HEAD
-
 
 
 
@@ -2539,13 +2656,7 @@ default)Looks like something went wrong in step ´Checking if machine default ex
 
 ```
 # vim /etc/default/docker
-
-
-
 DOCKER_OPTS="-H 0.0.0.0:5555"
-
-
-
 # service docker restart
 ```
 
@@ -2613,11 +2724,67 @@ export DOCKER_HOST=""
 
 刚在新的Centos上安装Docker-CE,后运行`docker run hello-world`报错`Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?`
 
-**解决办法**
-`$ systemctl daemon-reload$ sudo service docker restart$ sudo service docker status (should see active (running))$ sudo docker run hello-world`
-=======
 https://www.jianshu.com/p/c435ea4c0cc0
 
 http://www.54chen.com/architecture/maven-nexus-notes.html
 
 http://www.54chen.com/architecture/maven-nexus-notes.html
+
+
+
+
+
+#### 访问远程机器docker
+
+Ubuntu 15.04以后：
+
+1 创建/etc/systemd/system/docker.service.d目录 【远程机器】
+
+```
+$ sudo mkdir /etc/systemd/system/docker.service.d
+```
+
+2 创建文件内容 【远程机器】
+
+```
+[Service]
+
+ExecStart=
+
+ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
+```
+
+3 刷新docker守护进程 【远程机器】
+
+```
+sudo systemctl daemon-reload
+```
+
+4 重启docker服务 【远程机器】
+
+```
+sudo systemctl restart docker
+```
+
+5 确认是否成功 【远程机器】
+
+```
+ps -ef | grep docker
+```
+
+6 本地测试（本地不需要创建虚拟机，有docker客户端即可，但是cmd窗口管了）
+
+```
+docker info
+http://$ip:2376/info
+
+SET DOCKER_HOST=tcp://192.168.135.130:2376
+docker images(可以，访问的远程DOCKER_HOST机器)
+docker -H tcp://192.168.135.130:2376 images(可以，访问的参数指定的docker)
+```
+
+7 也可以临时启用远程访问
+
+```
+sudo dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock &
+```

@@ -182,7 +182,10 @@ du -h --max-depth=1  文件夹小
 
 ```
 passwd
+sudo passwd root //设置root密码
 ```
+
+
 
 #### 权限操作
 
