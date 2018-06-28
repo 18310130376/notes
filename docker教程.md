@@ -1,6 +1,6 @@
 ### docker安装
 
-Docker 要求 Ubuntu 系统的内核版本高于 3.10 .
+Docker 要求 Ubuntu 系统的内核版本高于 3.10   .
 
 通过 uname -r 命令查看你当前的内核版本
 
