@@ -1378,6 +1378,18 @@ sudo ifconfig docker0
 | 把本地 image 上传到 registry 中 (此时会把所有 tag 都上传上去) | docker push [imageName]                   | docker push ouruser/sinatra                           |
 | 删除本地 image                                               | docker rmi [image]                        | docker rmi training/sinatra                           |
 
+docker-machine：
+
+| 操作                                              | 命令                     | 示例                                              |
+| ------------------------------------------------- | ------------------------ | ------------------------------------------------- |
+| docker-machine ssh  machineName                   | 会进入docker服务器的目录 | docker-machine ssh default                        |
+| docker-machine ls                                 | 列出docker服务器         | docker-machine ls                                 |
+| docker-machine ip default                         | 查看服务器               | docker-machine ip default                         |
+| docker-machine rm default                         | 删除docker服务器         | docker-machine rm default                         |
+| docker-machine start default                      | 创建docker服务器         | docker-machine start default                      |
+| docker-machine create --driver virtualbox default | 创建docker服务器         | docker-machine create --driver virtualbox default |
+| docker-machine env default                        | 提示设置环境变量         | docker-machine env default                        |
+
 docker load与docker import
 
 >首先，想要清楚的了解docker load与docker import命令的区别，就必须了解镜像与容器的区别：
@@ -1416,18 +1428,6 @@ docker load与docker import
 >
 >可以在~/.bashrc中设置alias dm='docker-machine'简化输入
 >
->docker-machine create --driver virtualbox default
->
->docker-machine start default
->
->docker-machine ls
->
->docker-machine ip default
->
->docker-machine rm default
->
->docker-machine env default 提示设置环境变量：
->
 >C:\Users\789>docker-machine env default
 >SET DOCKER_TLS_VERIFY=1
 >SET DOCKER_HOST=tcp://192.168.99.100:2376
@@ -1442,7 +1442,11 @@ docker load与docker import
 >
 >windows的cmd命令或者浏览器输入docker version最下方出现：
 >
+>
+>
 >An error occurred trying to connect: Get http://127.0.0.1:2375/v1.22/version: dial tcp 127.0.0.1:2375: connectex: No connection could be made because the target machine actively refused it
+>
+>如果出现上述问题，则重新设置环境变量。
 >
 >
 >
@@ -2318,7 +2322,16 @@ pom.xml
 >2）dockerDirectory指定 Dockerfile 的位置 
 >3）resources是指那些需要和 Dockerfile 放在一起，在构建镜像时使用的文件，一般应用 jar 包需要纳入。
 
-b.通过docker build方式构建镜像:docker build -t="springboot/test"  --no-cache.(备注：-t是为该镜像指定名称,不需要缓存)
+b.通过docker build方式构建镜像:docker build -t="springboot"  --no-cache.(备注：-t是为该镜像指定名称,不需要缓存)
+
+>SECURITY WARNING: You are building a Docker image from Windows against a non-Windows Docker host. All files and directories added to build context will have '-rwxr-xr-x' permissions. It is recommended to double check and reset permissions for sensitive files and directories.
+
+解决：
+
+>//如果我们的虚拟名为default,进入之后用chmod命令对相应的目录进行权限操作
+>docker-machine ssh default
+>
+>会进入docker服务器的目录
 
 c.上述步骤执行完毕后，通过docker images命令查看生成的镜像id为：bfac85643697
 
@@ -2334,11 +2347,30 @@ https://spring.io/guides/gs/spring-boot-docker/
 
 https://www.jianshu.com/p/c435ea4c0cc0
 
+https://www.jianshu.com/p/3b91b8958c3e
+
+
+
+https://spring.io/guides/gs/spring-boot-docker/
+
+https://www.jb51.net/article/138187.htm
+
+https://www.jianshu.com/p/c435ea4c0cc0
+
+https://blog.csdn.net/chen798213337/article/details/51046175
+
+http://www.cnblogs.com/frinder6/p/6694829.html?utm_source=itdadao&utm_medium=referral
+
+```
+sudo docker login --username=***pro@gmail.com registry.cn-hangzhou.aliyuncs.com
+sudo docker pull registry.cn-hangzhou.aliyuncs.com/viiso/dockerdemo:[镜像版本号]
+
+```
+
 maven 集成docker的命令
 
 ```
-mvn package docker:build 
-
+mvn package docker:build
 ```
 
 ```
@@ -2350,6 +2382,8 @@ docker pull kitesweet/pan-search-springboot
 ent.shaded.javax.ws.rs.ProcessingException: org.apache.http.client.ClientProtocolException: Cannot retry request with a non-repeatable request entity: Connection reset by peer: socket write error -> [
 Help 1]
 ```
+
+mvn package && java -jar target/docker-app-0.1.0.jar
 
 解决方案：
 
@@ -2431,4 +2465,14 @@ DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 
 
 http://blog.51cto.com/xiangcun168/1958904
+
+https://www.jianshu.com/p/c435ea4c0cc0
+
+http://www.54chen.com/architecture/maven-nexus-notes.html
+
+http://www.54chen.com/architecture/maven-nexus-notes.html
+
+
+
+
 
