@@ -2466,13 +2466,158 @@ DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 
 http://blog.51cto.com/xiangcun168/1958904
 
+<<<<<<< HEAD
+
+
+
+
+#### Docker学习笔记 — 开启Docker远程访问
+
+```
+DOCKER_HOST=$host:2375 docker ps
+默认情况下，Docker守护进程会生成一个socket（/var/run/docker.sock）文件来进行本地进程通信，而不会监听任何端口，因此只能在本地使用docker客户端或者使用Docker API进行操作。 
+如果想在其他主机上操作Docker主机，就需要让Docker守护进程监听一个端口，这样才能实现远程通信。
+修改Docker服务启动配置文件，添加一个未被占用的端口号，重启docker守护进程。
+# vim /etc/default/docker
+DOCKER_OPTS="-H 0.0.0.0:5555"
+# service docker restart
+此时发现docker守护进程已经在监听5555端口，在另一台主机上可以通过该端口访问Docker进程了。
+# docker -H IP:5555 images
+但是我们却发现在本地操作docker却出现问题。
+# docker images
+FATA[0000] Cannot connect to the Docker daemon. Is 'docker -d' running on this host
+这是因为Docker进程只开启了远程访问，本地套接字访问未开启。我们修改/etc/default/docker，然后重启即可。
+
+# vim /etc/default/docker
+DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
+# service docker restart
+现在本地和远程均可访问docker进程了。
+```
+
+
+
+
+
+文件共享：
+
+https://www.jianshu.com/p/d809971b1fc1
+
+https://www.cnblogs.com/flying607/p/8574645.html
+
+https://blog.csdn.net/suresand/article/details/79982378
+
+https://blog.csdn.net/lvyuan1234/article/details/69255944
+
+http://www.ituring.com.cn/article/497750
+
+https://www.cnblogs.com/xingqi/p/9013350.html
+
+
+
+default)Looks like something went wrong in step ´Checking if machine default exists´...Press any key to continue... 
+
+
+
+这是因为，启动时如果检测到没有 Boot2Docker，就会去下载，这个下载过程出现网络连接上的错误了，导致启动失败。
+
+如果存在下载失败的临时文件，要将其删除。（我的机器上的路径是C:\Users\zheng\.docker\machine\cache\boot2docker.iso.tmp24517390）
+自己用其他工具去下载对应的 boot2docker.iso 文件（下载链接：https://github.com/boot2docker/boot2docker/releases/download/v17.05.0-ce/boot2docker.iso）
+然后放置到对应的目录（我的是：C:\Users\zheng\.docker\machine\cache\boot2docker.iso）就可以了。
+
+
+
+
+
+
+
+本机安装一个docker ,远程主机安装一个docker ，这篇文章主要就是讲解如何用本地的docker client 访问远程主机的docker daemon
+
+默认情况下，[Docker](http://lib.csdn.net/base/docker)守护进程会生成一个socket（/var/run/docker.sock）文件来进行本地进程通信，而不会监听任何端口，因此只能在本地使用docker客户端或者使用Docker API进行操作。 
+如果想在其他主机上操作Docker主机，就需要让Docker守护进程监听一个端口，这样才能实现远程通信。
+
+修改Docker服务启动配置文件，添加一个未被占用的端口号，重启docker守护进程。
+
+```
+# vim /etc/default/docker
+
+
+
+DOCKER_OPTS="-H 0.0.0.0:5555"
+
+
+
+# service docker restart
+```
+
+如果没有这个文件，应该考虑修改 /etc/sysconfig/docker这个文件。
+
+此时发现docker守护进程已经在监听5555端口，在另一台主机上可以通过该端口访问Docker进程了。
+
+实例说明：
+
+我们可以从一台安装了docker的机器访问另一台安装了docker的机器。一般情况下我们使用当前机器的docker客户端访问当前机器的Server端。下面演示如何访问其他docker服务端。
+
+- 第一台IP：192.168.12.3
+- 第二台IP：192.168.12.4
+
+使用第二台安装有docker的服务器做演示。为区分，设置label不同。
+
+修改守护进程（Server）默认的启动配置：
+
+默认是：`-H fd://`，可修改为：`-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock -H fd:// --label name=server_1`
+
+可设置多个连接方式。
+
+tcp 是远程连接，unix 是本地socket 链接，fd不知道。
+
+第一台访问第二台机器的docker服务：
+
+- 通过http连接Server:
+
+  ```
+  curl http://192.168.12.4:2375/info
+  ```
+
+  访问的是服务器192.168.12.4:2375的info接口，返回服务器相关信息。
+
+- 通过docker客户端访问Server：
+
+  ```
+  docker -H tcp://192.168.12.4:2375 info
+  ```
+
+如果是是第一台机器访问第一台机器Docker的服务端，则使用127.0.0.1:2375就行了。
+
+和服务器端一样，客户端也支持三种连接方式，默认是 `-H unix:///var/run/docker.sock`：
+
+- `-H unix:///path/to/sock`
+- `tcp://host:port`
+- `fd://socketfd`
+
+docker客户端使用`docker info`默认访问的是本地Server。可以修改环境变量DOCKER_HOST改变默认连接。命令行直接输入：
+
+```
+export DOCKER_HOST="tcp://127.0.0.1:2375"
+```
+
+`127.0.0.1:237` 可以替换为实际的Server地址。
+
+如果想恢复本地连接，将 DOCKER_HOST 置空即可：
+
+```
+export DOCKER_HOST=""
+```
+
+
+
+
+刚在新的Centos上安装Docker-CE,后运行`docker run hello-world`报错`Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?`
+
+**解决办法**
+`$ systemctl daemon-reload$ sudo service docker restart$ sudo service docker status (should see active (running))$ sudo docker run hello-world`
+=======
 https://www.jianshu.com/p/c435ea4c0cc0
 
 http://www.54chen.com/architecture/maven-nexus-notes.html
 
 http://www.54chen.com/architecture/maven-nexus-notes.html
-
-
-
-
-
