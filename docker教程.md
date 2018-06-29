@@ -10,7 +10,7 @@ runoob@runoob:~$ uname -sr或
 runoob@runoob:~$ uname -a
 ```
 
-系统版本
+系统版本 
 
 ```
 sudo lsb_release -a
