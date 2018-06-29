@@ -10,6 +10,17 @@ runoob@runoob:~$ uname -sr或
 runoob@runoob:~$ uname -a
 ```
 
+系统版本
+
+```
+sudo lsb_release -a
+No LSB modules are available.
+Distributor ID: Ubuntu
+Description:    Ubuntu 17.04
+Release:        17.04
+Codename:       zesty
+```
+
 查看操作系统是32位还是64位： 
 
 ```
@@ -1137,6 +1148,13 @@ docker cp ID全称:容器文件路径 本地路径
 
 ![img](https://img-blog.csdn.net/20170514212531195?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvTGVhZmFnZV9N/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
 
+```
+# docker cp mysql:/usr/local/bin/docker-entrypoint.sh /root
+# docker cp /root/docker-entrypoint.sh mysql:/usr/local/bin/
+```
+
+
+
 #### 小结
 
 HAProxy工具来代理容器访问,这样在容器出现故障时,可以 快速切换到功能正常的容器.此外建议通过指定合适的容器重启策略，来自动重启退出的容器。
@@ -1186,12 +1204,234 @@ docker search nginx
 
 之后在docker hub的’‘自动创建“页面中跟踪每次创建的状态。
 
+
+
+### 默认镜像和容器的位置
+
+Docker 默认的位置在/var/lib/docker,当前所有的镜像、容器都存储在这儿。如果你有任何在运行的容器，停止这些容器，并确保没有容器在运行，然后运行以下命令，确定当前Docker使用的存储驱动。
+
+```
+＃ docker info
+```
+
+在输出的信息中，查找Storage Driver那行，并记下它。在我的主机上是devicemapper。下一步是停止Docker 服务 
+
+```
+sudo systemctl stop docker
+```
+
+下一步是在/etc/systemd/system/docker.service.d 目录下创建一个Drop-In文件“docker.conf”，默认 docker.service.d 文件夹不存在。所以你必须先创建它。 
+
+```
+# sudo mkdir /etc/systemd/system/docker.service.d
+# sudo touch /etc/systemd/system/docker.service.d/docker.conf
+```
+
+我们希望Docker 服务，使用docker.conf文件中提到的特定参数，将默认服务所使用的位于/lib/systemd/system/docker.service文件中的参数进行覆盖。 
+
+定义新的存储位置   现在打开docker.conf增加如下内容： 
+
+```
+# sudo vi /etc/systemd/system/docker.service.d/docker.conf
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd --graph="/mnt/new_volume" --storage-driver=devicemapper
+```
+
+保存并退出VI编辑器，/mnt/new_volume 是新的存储位置，而devicemapper是当前docker所使用的存储驱动。如果你的存储驱动有所不同，请输入之前第一步查看并记下的值。Docker[官方文档](https://goo.gl/VnHP61)中提供了更多有关各种存储驱动器的信息。现在，你可以重新加载服务守护程序，并启动Docker服务了。这将改变新的镜像和容器的存储位置。 
+
+```
+# sudo systemctl daemon-reload
+# sudo systemctl start docker
+```
+
+为了确认一切顺利，运行 # docker info 命令检查Docker 的根目录.它将被更改为/mnt/new_volume 
+
+**如果你已经有存在的容器和镜像，该怎么办？** 
+
+如果你想将现有的容器和镜像迁移到新的位置，*在修改docker.conf之后，不要重新加载daemon守护程序和启动docker服务* *，*（**译者注**：在不添加docker.conf文件的方式下，使用软链接的方法进行改变根目录。）将/var/lib/docker 中已存在的数据移动到新的位置里。然后创建一个符号链接。
+
+Note：我没有尝试过以下方式，因为我不需要保留现有的容器和镜像，但这些步骤应该有效；如果你遇到任何问题和其它任何替代的方法请在下方评论。我会修改帖子。在你准备尝试冒险之前，请备份一下你的数据。
+
+```
+# cp -rp /var/lib/docker /mnt/new_volume
+```
+
+创建软链接（**译者注**：创建软链之前，请先将原/var/lib/docker目录修改为其它名字，如/var/lib/docker-backup）
+
+```
+# mv /var/lib/docker /var/lib/docker-backup-2017-0510
+```
+
+```
+# ln -s /mnt/new_volume/docker /var/lib/docker
+```
+
+然后*重新加载 daemon守护程序和* 启动 docker服务。（**译者注**：这里无需重新加载daemon守护程序，只需启动docker 服务即可）
+
+```
+# sudo systemctl daemon-reload
+# sudo systemctl start docker 
+```
+
+现在已存在的数据应该在软链的源目录内，以及新的容器和镜像将存储在新的位置里，即/mnt/new_volume/docker ，运行 # docker info 进行确认。
+
+（**译者注**：步骤正确的话，此时根目录应该指向了软链接的源目录 /mnt/new_volume/docker，如下：）
+
+```
+...省略输出
+Name: docker
+ID: 5WBA:EF4D:WQ7P:DVRN:JCI4:LWDT:XSR2:G7RE:F5TI:PD3B:A57K:E4QA
+Docker Root Dir: /mnt/new_volume/docker
+...省略输出
+```
+
 ### 数据管理
+
+在介绍VOLUME指令之前，我们来看下如下场景需求：
+
+1）容器是基于镜像创建的，最后的容器文件系统包括镜像的只读层+可写层，容器中的进程操作的数据持久化都是保存在容器的可写层上。一旦容器删除后，这些数据就没了，除非我们人工备份下来（或者基于容器创建新的镜像）。能否可以让容器进程持久化的数据保存在主机上呢？这样即使容器删除了，数据还在。
+
+2）当我们在开发一个web应用时，开发环境是在主机本地，但运行测试环境是放在docker容器上。
+
+这样的话，我在主机上修改文件（如html，js等）后，需要再同步到容器中。这显然比较麻烦。
+
+3）多个容器运行一组相关联的服务，如果他们要共享一些数据怎么办？
+
+对于这些问题，我们当然能想到各种解决方案。而docker本身提供了一种机制，可以将主机上的某个目录与容器的某个目录（称为挂载点、或者叫卷）关联起来，容器上的挂载点下的内容就是主机的这个目录下的内容，这类似linux系统下mount的机制。 这样的话，我们修改主机上该目录的内容时，不需要同步容器，对容器来说是立即生效的。 挂载点可以让多个容器共享。
 
 容器数据管理主要有两种方式：
 
 - 数据卷：容器内数据直接映射到本地主机环境
+
 - 数据卷容器：使用特定容器维护数据卷
+
+  
+
+  **一、通过docker run命令** 
+
+1、运行命令：docker run --name test -it -v /home/xqh/myimage:/data ubuntu /bin/bash
+
+其中的 -v 标记 在容器中设置了一个挂载点 /data（就是容器中的一个目录），并将主机上的 /home/xqh/myimage 目录中的内容关联到 /data下。
+
+这样在容器中对/data目录下的操作，还是在主机上对/home/xqh/myimage的操作，都是完全实时同步的，因为这两个目录实际都是指向主机目录。
+
+2、运行命令：docker run --name test1 -it -v /data ubuntu /bin/bash
+
+上面-v的标记只设置了容器的挂载点，并没有指定关联的主机目录。这时docker会自动绑定主机上的一个目录。通过docker inspect 命令可以查看到。
+
+```
+xqh@ubuntu:~/myimage$ docker inspect test1
+[
+{
+    "Id": "1fd6c2c4bc545163d8c5c5b02d60052ea41900a781a82c20a8f02059cb82c30c",
+.............................
+    "Mounts": [
+        {
+            "Name": "0ab0aaf0d6ef391cb68b72bd8c43216a8f8ae9205f0ae941ef16ebe32dc9fc01",
+            "Source": "/var/lib/docker/volumes/0ab0aaf0d6ef391cb68b72bd8c43216a8f8ae9205f0ae941ef16ebe32dc9fc01/_data",
+            "Destination": "/data",
+            "Driver": "local",
+            "Mode": "",
+            "RW": true
+        }
+    ],
+...........................
+```
+
+上面 Mounts下的每条信息记录了容器上一个挂载点的信息，"Destination" 值是容器的挂载点，"Source"值是对应的主机目录。
+
+可以看出这种方式对应的主机目录是自动创建的，其目的不是让在主机上修改，而是让多个容器共享。
+
+**通过dockerfile创建挂载点** 
+
+上面介绍的通过docker run命令的-v标识创建的挂载点只能对创建的容器有效。
+
+通过dockerfile的 VOLUME 指令可以在镜像中创建挂载点，这样只要通过该镜像创建的容器都有了挂载点。
+
+还有一个区别是，通过 VOLUME 指令创建的挂载点，无法指定主机上对应的目录，是自动生成的。
+
+```
+#test
+FROM ubuntu
+MAINTAINER hello1
+VOLUME ["/data1","/data2"]
+```
+
+上面的dockfile文件通过VOLUME指令指定了两个挂载点 /data1 和 /data2.
+
+我们通过docker inspect 查看通过该dockerfile创建的镜像生成的容器，可以看到如下信息
+
+```
+    "Mounts": [
+        {
+            "Name": "d411f6b8f17f4418629d4e5a1ab69679dee369b39e13bb68bed77aa4a0d12d21",
+            "Source": "/var/lib/docker/volumes/d411f6b8f17f4418629d4e5a1ab69679dee369b39e13bb68bed77aa4a0d12d21/_data",
+            "Destination": "/data1",
+            "Driver": "local",
+            "Mode": "",
+            "RW": true
+        },
+        {
+            "Name": "6d3badcf47c4ac5955deda6f6ae56f4aaf1037a871275f46220c14ebd762fc36",
+            "Source": "/var/lib/docker/volumes/6d3badcf47c4ac5955deda6f6ae56f4aaf1037a871275f46220c14ebd762fc36/_data",
+            "Destination": "/data2",
+            "Driver": "local",
+            "Mode": "",
+            "RW": true
+        }
+    ],
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+可以看到两个挂载点的信息。
+
+**三、容器共享卷（挂载点）**
+
+docker run --name test1 -it myimage /bin/bash
+
+上面命令中的 myimage是用前面的dockerfile文件构建的镜像。 这样容器test1就有了 /data1 和 /data2两个挂载点。
+
+下面我们创建另一个容器可以和test1共享 /data1 和 /data2卷 ，这是在 docker run中使用 --volumes-from标记，如：
+
+可以是来源不同镜像，如：
+
+docker run --name test2 -it --volumes-from test1  ubuntu  /bin/bash
+
+也可以是同一镜像，如：
+
+docker run --name test3 -it --volumes-from test1  myimage  /bin/bash
+
+上面的三个容器 test1 , test2 , test3 均有 /data1 和 /data2 两个目录，且目录中内容是共享的，任何一个容器修改了内容，别的容器都能获取到。
+
+**四、最佳实践：数据容器**
+
+如果多个容器需要共享数据（如持久化数据库、配置文件或者数据文件等），可以考虑创建一个特定的数据容器，该容器有1个或多个卷。
+
+其它容器通过--volumes-from 来共享这个数据容器的卷。
+
+因为容器的卷本质上对应主机上的目录，所以这个数据容器也不需要启动。
+
+如： docker run --name dbdata myimage echo "data container"
+
+说明：有个卷，容器之间的数据共享比较方便，但也有很多问题需要解决，如权限控制、数据的备份、卷的删除等。这些内容后续文章介绍。
+
+**五、挂载宿主机已存在目录后，在容器内对其进行操作，报“Permission denied”。**
+
+可通过两种方式解决：
+
+1> 关闭selinux。
+
+临时关闭：# setenforce 0
+
+永久关闭：修改/etc/sysconfig/selinux文件，将SELINUX的值设置为disabled。
+
+2> 以特权方式启动容器 
+
+指定--privileged参数
+
+如：# docker run -it --privileged=true -v /test:/soft centos /bin/bash
 
 #### 数据卷[文件夹映射]
 
@@ -1211,6 +1451,8 @@ PHP2016@DevLink  container-migrate.tar  removeDocker.sh  test-cont.tar  ubuntu-t
 ```
 
 上述命令将本地的/Users/mylxsw/Downloads目录映射到了容器的/opt/aicode目录。
+
+如果宿主机上的目录指定的是相对目录(opt，没有/开头)，则所谓的相对路径指的是/var/lib/docker/volumes/，与宿主机的当前目录无关。 
 
 > 可以指定`:ro`，设置映射目录为只读: `-v /Users/mylxsw/Downloads:/opt/aicode:ro`，同时，`-v`也支持挂载单个文件到容器。
 >
@@ -1636,6 +1878,11 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | 执行容器内命令                                               | docker run ubuntu:15.10 /bin/echo "Hello world"              | docker run ubuntu:15.10 /bin/echo "Hello world"              |
 | 查看docker用户信息                                           | id docker命令                                                | id docker命令                                                |
 | 查看容器root用户密码                                         | docker容器启动时root密码随机分配的                           | docker  logs f1f0c7c59254 >2&1 \| grep '^User:' \| tail -n1  |
+| 查看容器内发生改变的文件                                     | docker diff mysqldb                                          | docker diff mysqldb                                          |
+| 实时输出Docker服务器端的事件，包括容器的创建，启动，关闭等   | docker events                                                | docker events                                                |
+| 退出登录                                                     | docker logout                                                | docker logout                                                |
+| 登录                                                         | docker login                                                 | docker login                                                 |
+| 此时，通过docker stats可以观察到此时的资源使用情况是固定不变的， | docker stats                                                 | docker stats                                                 |
 
 镜像操作：
 
@@ -1717,8 +1964,6 @@ docker load与docker import
 >最终需要执行FOR /F "tokens=*" %i IN ('docker-machine env ron-docker') DO %i 完成设置。
 >
 >windows的cmd命令或者浏览器输入docker version最下方出现：
->
->
 >
 >An error occurred trying to connect: Get http://127.0.0.1:2375/v1.22/version: dial tcp 127.0.0.1:2375: connectex: No connection could be made because the target machine actively refused it
 >
@@ -1817,6 +2062,8 @@ http://www.54chen.com/architecture/maven-nexus-notes.html
 http://www.54chen.com/architecture/maven-nexus-notes.html
 
 https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
+
+http://www.cnblogs.com/hanyifeng/p/5860731.html#3965281
 
 docker学习
 
@@ -2565,6 +2812,139 @@ docker run --name tomcat -p 8080:8080 -v $PWD/test:/usr/local/tomcat/webapps/tes
 >
 >主机的test和容器的test会自动创建。
 
+Dockerfile方式：
+
+```
+FROM ubuntu:14.04
+MAINTAINER boonya <boonya@sina.com> 
+# now add java and tomcat support in the container 
+ADD jdk-8u121-linux-x64.tar.gz /usr/local/ 
+ADD apache-tomcat-8.5.16.tar.gz /usr/local/ 
+ADD tomcat-users.xml /usr/local/apache-tomcat-8.5.16/conf/tomcat-users.xml
+# configuration of java and tomcat ENV 
+ENV JAVA_HOME /usr/local/jdk1.8.0_121 
+ENV CLASSPATH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar 
+ENV CATALINA_HOME /usr/local/apache-tomcat-8.5.16 
+ENV CATALINA_BASE /usr/local/apache-tomcat-8.5.16 
+ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/lib:$CATALINA_HOME/bin 
+# container listener port 
+EXPOSE 8080 
+# startup web application services by self 
+CMD /usr/local/apache-tomcat-8.5.16/bin/catalina.sh run 等同于-->
+ENTRYPOINT ["/usr/share/tomcat7/bin/catalina.sh", "run" ]
+```
+
+然后执行：
+
+```
+docker build -t tomcat-web .
+```
+
+启动tomcat：
+
+```
+docker run -p 8080:8080 tomcat-web:latest
+```
+
+或指定挂载目录：
+
+```
+docker run --name web -d -p 8080:8080  -v /home/webapp/pro:/var/lib/tomcat7/webapps/
+```
+
+本地开发部署到远程tomcat：
+
+tomcat-users.xml 
+
+```
+<role rolename="manager-gui"/> 
+<role rolename="manager-script"/> 
+<user username="tomcat" password="password" roles="manager-gui, manager-script"/>
+```
+
+maven settings.xml 
+
+```
+<servers>
+   <server> 
+     <id>TomcatServer</id>
+     <username>tomcat</username> 
+     <password>password</password> 
+    </server>
+</servers>
+```
+
+项目 pom.xml配置 
+
+```
+<build>
+        <finalName>webtest</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.tomcat.maven</groupId>
+                <artifactId>tomcat7-maven-plugin</artifactId>
+                <version>2.1</version>
+                <configuration>
+                    <url>http://192.168.99.100:8080/manager/text</url>
+                    <server>TomcatServer</server>
+                    <path>/webtest</path>
+                </configuration>
+            </plugin>
+        </plugins>
+</build>
+```
+
+上面部署时出现 403 Access Denied 
+
+目录结构：
+
+```
+jdk-8u121-linux-x64.tar.gz
+apache-tomcat-8.5.16.tar.gz
+DockerFile
+tomcat-user.xml
+```
+
+上面Docker镜像的构建是成功了的 
+
+但是通过Maven发布项目到Tomcat8却遇到了服务器拒绝访问403的错误 
+
+主要是要配置${TOMCAT_HOME}/conf/tomcat-users.xml和${TOMCAT_HOME}/webapps/manager/META-INF/context.xml两个文件 
+
+编辑${TOMCAT_HOME}/conf/tomcat-users.xml： 
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+ 
+<tomcat-users xmlns="http://tomcat.apache.org/xml"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+              version="1.0">
+<role rolename="manager"/>
+<role rolename="manager-gui"/>
+<role rolename="admin"/>
+<role rolename="admin-gui"/>
+<role rolename="manager-script"/>
+<user username="tomcat" password="password" roles="admin-gui,admin,manager-gui,manager,manager-script"/>
+</tomcat-users>
+```
+
+编辑${TOMCAT_HOME}/webapps/manager/META-INF/context.xml： 
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<Context antiResourceLocking="false" privileged="true" docBase="${catalina.home}/webapps/manager" >
+  <Valve className="org.apache.catalina.valves.RemoteAddrValve"    allow="^.*$" />
+  <Manager sessionAttributeValueClassNameFilter="java\.lang\.(?:Boolean|Integer|Long|Number|String)|org\.apache\.catalina\.filters\.CsrfPreventionFilter\$LruCache(?:\$1)?|java\.util\.(?:Linked)?HashMap"/>
+</Context>
+```
+
+登录tomcat的管理界面 
+
+注：镜像是基于Tomcat8的远程管理角色权限，管理账号和密码是：tomcat/password。 
+
+执行maven命令：mvn clean tomcat7:deploy 。看是否部署成功。
+
 #### 部署sprongBoot
 
 方案1：`手动拷贝jar包到目录，手动执行build`
@@ -3001,7 +3381,7 @@ Ubuntu 15.04以后：
 
 ```
 $ sudo mkdir /etc/systemd/system/docker.service.d
-$ sudo vi /etc/systemd/system/docker.service.d/docker.conf
+$ sudo vi /etc/systemd/system/docker.service.d/docker.conf  一说为：http-proxy.conf（经过验证都可以）
 ```
 
 2 创建文件内容 【远程机器】
@@ -3011,7 +3391,7 @@ $ sudo vi /etc/systemd/system/docker.service.d/docker.conf
 
 ExecStart=
 
-ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock  (--insecure-registry=192.168.1.104:5000)
+ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock  (--insecure-registry=192.168.1.104:5000)
 ```
 
 3 刷新docker守护进程 【远程机器】
@@ -3063,3 +3443,8 @@ FragmentPath=/usr/lib/systemd/system/docker.service
 $ grep EnvironmentFile /usr/lib/systemd/system/docker.service
 EnvironmentFile=-/etc/sysconfig/docker
 ```
+
+
+
+
+ overlay2
