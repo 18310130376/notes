@@ -235,3 +235,64 @@ GET ：curl http://www.linuxidc.com/login.cgi？user=nickwolfe
 $ curl -u name：passwd ftp://ip：port/path/file 
 $ curl ftp://name：passwd@ip：port/path/file
 ```
+#### 别名
+
+```
+alias dia='docker images -a'
+```
+
+```
+vi ~/.bashrc 增加:
+# my
+alias la='ls -al --color=auto'
+# my-end
+立即生效:
+source ～/.bashrc
+```
+
+查看已配置的别名
+
+```
+docker@default:~$ alias
+ls='ls -p'
+cp='cp -i'
+df='df -h'
+dia='docker images -a'
+d='dmenu_run &'
+ce='cd /etc/sysconfig/tcedir'
+ll='ls -l'
+```
+
+删除已配置的别名
+
+```
+ unalias docim
+```
+
+#### 快捷键
+
+- `Ctrl + l` ：清除屏幕，同clear
+- `Ctrl + a` ：将光标定位到命令的开头
+- `Ctrl + e` ：与上一个快捷键相反，将光标定位到命令的结尾
+- `Ctrl + u` ：剪切光标之前的内容，在输错命令或密码
+- `Ctrl + k` ：与上一个快捷键相反，剪切光标之后的内容
+- `Ctrl + y` ：粘贴以上两个快捷键所剪切的内容。Alt+y粘贴更早的内容
+- `Ctrl + w` ：删除光标左边的参数（选项）或内容（实际是以空格为单位向前剪切一个word）
+- `Ctrl + /` ：撤销，同`Ctrl+x` + `Ctrl+u`
+- `Ctrl + f` ：按字符前移（右向），同→
+- `Ctrl + b` ：按字符后移（左向），同←
+- `Alt + f` ：按单词前移，标点等特殊字符与空格一样分隔单词（右向），同Ctrl+→
+- `Alt + b` ：按单词后移（左向），同Ctrl+←
+- `Alt + d` ：从光标处删除至字尾。可以Ctrl+y粘贴回来
+- `Alt + \` ：删除当前光标前面所有的空白字符
+- `Ctrl + d` ：删除光标处的字符，同Del键。没有命令是表示注销用户
+- `Ctrl + h` ：删除光标前的字符
+- `Ctrl + r` ：逆向搜索命令历史，比history好用
+- `Ctrl + g` ：从历史搜索模式退出，同ESC
+- `Ctrl + p` ：历史中的上一条命令，同↑
+- `Ctrl + n` ：历史中的下一条命令，同↓
+- `Alt + .`：同!$，输出上一个命令的最后一个参数（选项or单词）。
+
+
+
+https://www.cnblogs.com/toughlife/p/5633510.html

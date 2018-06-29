@@ -757,14 +757,8 @@ docker save 1316871b180b -o /root/dockerfile/loggermanager1.0.tar
 使用`docker load`从本地文件再导入镜像压缩包到本地镜像仓库。
 
 ```
-docker load --input ubuntu_latest.tar
-692b4b3b88ff: Loading layer  2.56 kB/2.56 kB
-Loaded image: ubuntu:latest
+docker load --input ubuntu_latest.tar 或 docker load < /c/Users/789/Desktop/ubuntu_latest.tar
 ```
-
->windows:
->
->docker load < /c/Users/789/Desktop/ubuntu_latest.tar
 
 #### 上传镜像
 
@@ -1222,6 +1216,119 @@ PHP2016@DevLink  container-migrate.tar  removeDocker.sh  test-cont.tar  ubuntu-t
 >
 > 加了:ro之后，容器内对所挂载数据卷内的数据就无法修改了。
 
+**一、创建一个数据卷**
+
+```
+如下为容器添加一个数据卷，并将容器名改为data。这个数据卷在容器里的目录是/opt/data
+[root@localhost ~]# docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+docker.io/ubuntu    latest              0ef2e08ed3fa        2 weeks ago         130 MB
+ 
+[root@localhost ~]# docker run --name data -v /opt/data -t -i docker.io/ubuntu /bin/bash
+root@2b9aebcf6ce8:/# cd /opt/data/
+root@2b9aebcf6ce8:/opt/data# ls
+root@2b9aebcf6ce8:/opt/data# echo "123" > 123
+root@2b9aebcf6ce8:/opt/data# echo "123123" > 123123
+root@2b9aebcf6ce8:/opt/data# ls
+123  123123
+ 
+[root@localhost volumes]# docker ps
+CONTAINER ID        IMAGE               COMMAND               CREATED             STATUS              PORTS                     NAMES
+2b9aebcf6ce8        docker.io/ubuntu    "/bin/bash"           49 seconds ago      Up 48 seconds                                 data
+ 
+在宿主机上，查看对应上面的那个数据卷的目录路径：
+[root@localhost ~]# docker inspect data|grep /var/lib/docker/volumes
+                "Source": "/var/lib/docker/volumes/89d6562b9c1fe10dd21707cb697a5d481b3c1b000a69b762f540fa826a16972a/_data",
+[root@localhost ~]# ls /var/lib/docker/volumes/89d6562b9c1fe10dd21707cb697a5d481b3c1b000a69b762f540fa826a16972a/_data
+123  123123
+[root@localhost ~]# echo "asdhfjashdfjk" >> /var/lib/docker/volumes/89d6562b9c1fe10dd21707cb697a5d481b3c1b000a69b762f540fa826a16972a/_data/123
+[root@localhost ~]#
+ 
+root@2b9aebcf6ce8:/opt/data# ls
+123  123123
+root@2b9aebcf6ce8:/opt/data# cat 123
+123
+asdhfjashdfjk
+```
+
+**二、挂载宿主机文件或目录到容器数据卷**
+
+```
+可以直接挂载宿主机文件或目录到容器里，可以理解为目录映射，这样就可以让所有的容器共享宿主机数据，从而只需要改变宿主机的数据源就能够影响到所有的容器数据。
+ 
+注意：
+-v后面的映射关系是"宿主机文件/目录:容器里对应的文件/目录"，其中，宿主机上的文件/目录是要提前存在的，容器里对应的文件/目录会自动创建。
+ 
+数据卷权限：
+挂载的数据默认为可读写权限。
+但也可以根据自己的需求，将容器里挂载共享的数据设置为只读，这样数据修改就只能在宿主机上操作。如下实例：
+ 
+1）挂载宿主机文件到容器上
+[root@localhost ~]# cat /etc/web.list
+192.168.1.100
+192.168.1.101
+192.168.1.103
+[root@localhost ~]# docker run -t -i --name test -v /etc/web.list:/etc/web.list:ro docker.io/centos /bin/bash
+[root@e21a3fefa3ae /]# cat /etc/web.list
+192.168.1.100
+192.168.1.101
+192.168.1.103
+[root@e21a3fefa3ae /]# echo "192.168.1.115" >> /etc/web.list
+bash: /etc/web.list: Read-only file system
+[root@e21a3fefa3ae /]#
+  
+在宿主机上修改共享数据
+[root@localhost ~]# echo "192.168.1.115" >> /etc/web.list
+[root@localhost ~]#
+  
+[root@e21a3fefa3ae /]# cat /etc/web.list
+192.168.1.100
+192.168.1.101
+192.168.1.103
+192.168.1.115
+ 
+2）挂载宿主机目录到容器上
+[root@localhost ~]# mkdir /var/huanqiupc
+[root@localhost ~]# echo "test" > /var/huanqiupc/test
+[root@localhost ~]# echo "test1" > /var/huanqiupc/test1
+[root@localhost ~]# docker run -t -i --name hqsb -v /var/huanqiupc:/opt/huantime docker.io/centos /bin/bash
+[root@87cf93ce46a9 /]# cd /opt/huantime/
+[root@87cf93ce46a9 huantime]# ls
+test  test1
+[root@87cf93ce46a9 huantime]# cat test
+test
+[root@87cf93ce46a9 huantime]# cat test1
+test1
+[root@87cf93ce46a9 huantime]# echo "1231" >>test
+[root@87cf93ce46a9 huantime]# echo "44444" >>test1
+ 
+宿主机上查看
+[root@localhost ~]# cat /var/huanqiupc/test
+test
+1231
+[root@localhost ~]# cat /var/huanqiupc/test1
+test1
+44444
+ 
+3）挂载多个目录
+[root@localhost ~]# mkdir /opt/data1 /opt/data2
+[root@localhost ~]# echo "123456" > /opt/data1/test1
+[root@localhost ~]# echo "abcdef" > /opt/data2/test2
+[root@localhost ~]# docker run --name data -v /opt/data1:/var/www/data1 -v /opt/data2:/var/www/data2:ro -t -i docker.io/ubuntu /bin/bash
+root@cf2d57b9bee1:/# ls /var/www/data1
+test1
+root@cf2d57b9bee1:/# ls /var/www/data2
+test2
+root@cf2d57b9bee1:/# cat /var/www/data1/test1
+123456
+root@cf2d57b9bee1:/# cat /var/www/data2/test2
+abcdef
+root@cf2d57b9bee1:/# echo "date1" >> /var/www/data1/test1
+root@cf2d57b9bee1:/# echo "date2" >> /var/www/data2/test2
+bash: /var/www/data2/test2: Read-only file system
+root@cf2d57b9bee1:/#
+```
+
 #### 数据卷容器
 
 如果用户需要在容器之间共享一些持续更新的数据，最简单的方法是使用数据卷容器。数据卷容器实际上就是一个普通的容器，专美提供数据卷供其他容器使用。
@@ -1252,9 +1359,56 @@ docker run -v /backup --name backup2 ubuntu /bin/bash
 docker run --volumes-from backup2 -v $(pwd):/backup ubuntu tar xvf /backup/backup.tar
 ```
 
-使用--volumes-from参数所挂载数据卷的容器自身并不需要保持运行状态。
+> 使用--volumes-from参数所挂载数据卷的容器自身并不需要保持运行状态。
 
 删除挂在的容器，数据卷不会自动删除。如果要删除一个数据卷，必须在删除最后一个挂载它的容器显式使用docker rm -v 命令来指定同时删除关联的容器。
+
+详情步骤：
+
+```shell
+启动一个名为xqsj_Container容器，此容器包含两个数据卷/var/volume1和/var/volume2（这两个数据卷目录是在容器里的，容器创建的时候会自动生成这两目录）
+注意一个细节：
+下面的创建命令中，没有加-t和-i参数，所以这个容器创建好之后是登陆不了的！
+-i：表示以“交互模式”运行容器
+-t：表示容器启动后会进入其命令行
+[root@linux-node2 ~]# docker run -v /var/volume1 -v /var/volume2 --name xqsj_Container centos /bin/bash
+[root@linux-node2 ~]#
+ 
+所以要想创建容器后能正常登陆，就需要添加上面两个参数
+[root@localhost ~]# docker run -t -i -v /var/volume1 -v /var/volume2 --name xqsj_Container centos /bin/bash
+[root@73a34f3c1cd9 /]#
+
+查看宿主机上与数据卷对应的目录路径：
+[root@localhost ~]# docker inspect xqsj_Container|grep /var/lib/docker/volumes
+                "Source": "/var/lib/docker/volumes/b8d2e5bcadf2550abd36ff5aa544c721a45464a4406fb50979815de773086627/_data",
+                "Source": "/var/lib/docker/volumes/a34fa3a0a7a2f126b0d30a32b1034f20917ca7bd0dda346014d768b5ebb68f6b/_data",
+                
+ 由上面命令结果可以查到，两个数据卷/var/volume1和/var/volume2下的数据在/var/lib/docker/volumes/下对于的两个目录的_data下面
+ 
+创建App_Container容器，挂载xqsj_Container容器中的数据卷
+[root@linux-node2 ~]# docker run -t -i --rm --volumes-from xqsj_Container --name App_Container centos /bin/bash
+[root@b9891bcdfed0 /]# ls /var/volume1                           //发现这两个数据卷都存在
+[root@b9891bcdfed0 /]# ls /var/volume2
+[root@b9891bcdfed0 /]# echo "this is volume1" > /var/volume1/test1
+[root@b9891bcdfed0 /]# echo "this is volume2" > /var/volume1/test2
+
+可以再创建一个容器，挂载App_Container中从xqsj_Container挂载的数据卷。当然也可以直接挂载初始的xqsj_Container容器数据卷
+[root@linux-node2 ~]# docker run -t -i --rm --volumes-from App_Container --name LastApp_Container centos /bin/bash
+[root@b4c27e360614 /]# ls /var/volume1
+test1
+[root@b4c27e360614 /]# ls /var/volume2
+test2
+[root@b4c27e360614 /]# cat /var/volume1/test1 
+this is volume1
+[root@b4c27e360614 /]# cat /var/volume2/test2 
+this is volume2
+
+即便是删除了初始的数据卷容器xqsj_Container，或是删除了其它容器，但只要是有容器在使用该数据卷，那么它里面的数据就不会丢失！（除非是没有容器在使用它们）
+```
+
+
+
+
 
 ###  网络配置
 
@@ -1274,18 +1428,22 @@ docker run -d -p 127.0.0.1:5000:5000 training/webapp python app.py
 docker run -d -p 5000:5000 training/webapp python app.py
 docker run -d -p 5000:5000/udp training/webapp python app.py
 docker run -d -P training/webapp python app.py
+#使用 ip::containerPort 绑定 localhost 的任意端口到容器的 5000 端口，本地主机会自动分配一个端口
+docker run -d -p 127.0.0.1::5000 training/webapp python app.py
+#还可以使用 udp 标记来指定 udp 端口
+docker run -d -p 127.0.0.1:5000:5000/udp training/webapp python app.py
+docker run -d -p 5000:5000  -p 3000:80 training/webapp python app.py
 ```
 
-> 使用`docker port [容器名称] 容器内端口` 查看端口映射绑定的地址。
->
-> ```
-> docker port nostalgic_morse 5000
-> ```
+使用docker port [容器名称] 容器内端口 查看端口映射绑定的地址。
 
 ```
+docker port nostalgic_morse 5000
 runoob@runoob:~$ docker port mymysql
 3306/tcp -> 0.0.0.0:3306
 ```
+
+- 容器有自己的内部网络和 IP 地址（使用 `docker inspect` 可以获取所有的变量）
 
 #### 容器互联通信
 
@@ -1302,24 +1460,126 @@ docker run --rm --name web --link mysql-demo:db ubuntu env
 
 使用`docker ps`可以看到容器的连接。
 
+```
+docker ps
+CONTAINER ID  IMAGE                     COMMAND               CREATED             STATUS             PORTS                    NAMES
+349169744e49  training/postgres:latest  su postgres -c '/usr  About a minute ago  Up About a minute  5432/tcp                 db, web/db
+aed84ee21bde  training/webapp:latest    python app.py         16 hours ago        Up 2 minutes       0.0.0.0:49154->5000/tcp  web
+```
+
+`可以看到自定义命名的容器，db 和 web，db 容器的 names 列有 db 也有 web/db。这表示 web 容器链接到 db 容器，web 容器将被允许访问 db 容器的信息`。
+
+Docker 在两个互联的容器之间创建了一个安全隧道，而且不用映射它们的端口到宿主主机上。在启动 db 容器的时候并没有使用 `-p` 和 `-P` 标记，从而避免了暴露数据库端口到外部网络上
+
 Docker会在两个互联的容器之间创建一个安全的隧道，而且不用映射端口到宿主主机。Docker中通过两种方式为容器公开连接信息：
 
 - **环境变量** 环境变量的方式采用连接别名的大写前缀开头，比如前面的例子中，所有以`DB_`开头的环境变量。
 - **更新/ect/hosts文件** Docker也会添加host信息到父容器的`/etc/hosts`文件
 
+
+
+使用 `env` 命令来查看 web 容器的环境变量
+
+```
+$ sudo docker run --rm --name web2 --link db:db training/webapp env
+DB_NAME=/web2/db
+DB_PORT=tcp://172.17.0.5:5432
+DB_PORT_5000_TCP=tcp://172.17.0.5:5432
+DB_PORT_5000_TCP_PROTO=tcp
+DB_PORT_5000_TCP_PORT=5432
+DB_PORT_5000_TCP_ADDR=172.17.0.5
+. . .
+```
+
+其中 DB_ 开头的环境变量是供 web 容器连接 db 容器使用，前缀采用大写的连接别名。
+
+除了环境变量，Docker 还添加 host 信息到父容器的 `/etc/hosts` 的文件。下面是父容器 web 的 hosts 文件
+
 查看`/etc/hosts`文件：
 
 ```
-docker run --rm --name web --link mysql-demo:db -i -t ubuntu /bin/bash
+$ sudo docker run -t -i --rm --link db:db training/webapp /bin/bash
+root@aed84ee21bde:/opt/webapp# cat /etc/hosts
+172.17.0.7  aed84ee21bde
+. . .
+172.17.0.5  db
 ```
 
-![-w615](https://segmentfault.com/img/remote/1460000006260566)
+这里有 2 个 hosts，第一个是 web 容器，web 容器用 id 作为他的主机名，第二个是 db 容器的 ip 和主机名。 可以在 web 容器中安装 ping 命令来测试跟db容器的连通。
 
+```
+root@aed84ee21bde:/opt/webapp# apt-get install -yqq inetutils-ping
+root@aed84ee21bde:/opt/webapp# ping db
+PING db (172.17.0.5): 48 data bytes
+56 bytes from 172.17.0.5: icmp_seq=0 ttl=64 time=0.267 ms
+56 bytes from 172.17.0.5: icmp_seq=1 ttl=64 time=0.250 ms
+56 bytes from 172.17.0.5: icmp_seq=2 ttl=64 time=0.256 ms
+```
 
+用 ping 来测试db容器，它会解析成 `172.17.0.5`。 *注意：官方的 ubuntu 镜像默认没有安装 ping，需要自行安装。
+
+用户可以链接多个父容器到子容器，比如可以链接多个 web 到 db 容器上
+
+### ssh远程连接container
+
+一  **container安装ssh服务**
+
+首先进入Container，进行以下步骤
+
+① 安装ssh
+
+```
+sudo apt-get install openssh-server #安装ssh服务器
+service ssh status # 查看ssh服务启动情况
+service ssh start # 启动ssh服务
+```
+
+② 配置ssh，允许root登陆
+
+```
+vi /etc/ssh/sshd_config
+将PermitRootLogin的值从withoutPassword改为yes
+```
+
+③ 重启ssh服务
+
+```
+service ssh restart # 重启动ssh服务
+```
+
+二 保存Container镜像
+
+另外开启Docker Quickstart Terminal，保存镜像
+
+```
+docker ps #查看正在运行的container
+**找到所要保存的container的container id，假设为xxxxxx**
+docker commit xxxxxxxx tomjerry/foobar
+（注：tomjerry/foobar为要保存的新镜像的名字，可任意写）
+```
+
+三  重新运行container
+
+```
+docker run -it -p 50001:22 tomjerry/foobar /bin/bash
+service ssh start
+注意-p 50001:22这句，意思是将docker的50001端口和container的22端口绑定，这样访问docker的50001等价于访问container的22端口
+```
+
+四 ssh连接container
+
+```
+你可以用xshell或putty等ssh客户端工具连接container
+首先假设各方的ip如下：
+本地windows ip： 192.168.99.1
+docker ip：192.168.99.100
+container ip：172.17.0.3
+那么，你要远程container，则要访问以下地址：
+ssh 192.168.99.100:50001
+这样通过访问docker的50001端口，就神奇的间接连通到container的22端口了，从而达到ssh连接container的目的，至此。
+```
 
 ### Docker网络模式
-
-
 
 查看当前 docker0 ip
 
@@ -1335,7 +1595,21 @@ sudo ifconfig docker0
 >
 >4：bridge模式，使用--net=bridge指定（docker默认）
 
+### Docker Compose 项目
+
+Docker Compose 是 Docker 官方编排（Orchestration）项目之一，负责快速在集群中部署分布式应用。
+
+Dockerfile 可以让用户管理一个单独的应用容器；而 Compose 则允许用户在一个模板（YAML 格式）中定义一组相关联的应用容器（被称为一个 `project`，即项目），例如一个 Web 服务容器再加上后端的数据库服务容器等。
+
+安装 Compose 之前，要先安装 Docker，在此不再赘述。
+
+
+
 ### 命令汇总
+
+`TODO：命令行自动补全`
+
+see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 
 容器操作：命令中需要指定 container 时，既可使用其名称，也可使用其 id
 
@@ -1351,7 +1625,7 @@ sudo ifconfig docker0
 | 输出指定 container 的 stdout 信息（用来看 log ，效果和 tail -f 类似，会实时输出。） | docker logs -f [container]                                   | docker logs -f nostalgic_morse                               |
 | 获取 container 指定端口映射关系                              | docker port [container][port]                                | docker port nostalgic_morse 5000                             |
 | 查看 container容器内部运行的进程                             | docker top [container]                                       | docker top nostalgic_morse                                   |
-| 查看 container 详细信息JSON格式                              | docker inspect [container]                                   | docker inspect nostalgic_morse                               |
+| 查看 container 详细信息JSON格式                              | docker inspect [container]                                   | sudo docker inspect -f  "{{ .Name }}" aed84ee21bde           |
 | 停止 continer                                                | docker stop [container]                                      | docker stop nostalgic_morse                                  |
 | 强制停止 container                                           | docker kill [container]                                      | docker kill nostalgic_morse                                  |
 | 启动一个已经停止的 container                                 | docker start [container]                                     | docker start nostalgic_morse                                 |
@@ -1367,16 +1641,18 @@ sudo ifconfig docker0
 
 注意：image 中没有指定 tag 名称的话默认使用 latest 这个 tag 。然而 latest 的含义和 VCS 中的 head 不一样，不是代表最新一个镜像，仅仅是代表 tag 名称为 latest 的镜像。若不存在 tag 名称为 latest 的镜像则会报错。
 
-| 操作                                                         | 命令                                      | 示例                                                  |
-| ------------------------------------------------------------ | ----------------------------------------- | ----------------------------------------------------- |
-| 从 container 创建 image                                      | docker commit [container][imageName]      | docker commit nostalgic_morse ouruser/sinatra:v2      |
-| 从 Dockerfile 创建 image                                     | docker build -t [imageName] [pathToFolder | docker build ouruser/sinatra:v3 .                     |
-| 查看本地所有 image                                           | docker images                             | docker images                                         |
-| 在 registry 中搜索镜像                                       | docker search [query]                     | docker search ubuntu                                  |
-| 从 registry 中获取镜像 （若无指定 tag 名称，则默认使用 latest 这个 tag） | docker pull [imageName]                   | docker pull ubuntu:14.04, docker pull training/webapp |
-| 给 image 打 tag                                              | docker tag [imageId][imageName]           | docker tag 5db5f8471261 ouruser/sinatra:devel         |
-| 把本地 image 上传到 registry 中 (此时会把所有 tag 都上传上去) | docker push [imageName]                   | docker push ouruser/sinatra                           |
-| 删除本地 image                                               | docker rmi [image]                        | docker rmi training/sinatra                           |
+| 操作                            | 命令                                         | 示例                                                  |
+| ------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| 从 container 创建 image         | docker commit [container][imageName]         | docker commit nostalgic_morse ouruser/sinatra:v2      |
+| 从 Dockerfile 创建 image        | docker build -t [imageName] [pathToFolder    | docker build ouruser/sinatra:v3 .                     |
+| 查看本地所有 image              | docker images                                | docker images                                         |
+| 在 registry 中搜索镜像          | docker search [query]                        | docker search ubuntu                                  |
+| 从 registry 中获取镜像          | docker pull [imageName]                      | docker pull ubuntu:14.04, docker pull training/webapp |
+| 给 image 打 tag                 | docker tag [imageId][imageName]              | docker tag 5db5f8471261 ouruser/sinatra:devel         |
+| 把本地 image 上传到 registry 中 | docker push [imageName]                      | docker push ouruser/sinatra                           |
+| 删除本地 image                  | docker rmi [image]                           | docker rmi training/sinatra                           |
+| 载入镜像                        | docker load < ubuntu_14.04.tar               | docker load < ubuntu_14.04.tar                        |
+| 存出镜像                        | docker save -o ubuntu_14.04.tar ubuntu:14.04 | docker save -o ubuntu_14.04.tar ubuntu:14.04          |
 
 docker-machine：
 
@@ -1474,28 +1750,77 @@ set DOCKER_TLS_VERIFY=1
 
 
 
-###  Docker的相关管理工具
+###  参考网址
 
 kubernetes: https://github.com/GoogleCloudPlatform/kubernetes/
+
 fig: https://github.com/docker/fig
+
 Openstack
+
  etcd: https://github.com/coreos/etcd
 
-###see：https://segmentfault.com/a/1190000006260561
+http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F   （官方文档）
 
-### see：https://www.cnblogs.com/51kata/p/5262301.html
+https://segmentfault.com/a/1190000006260561
 
-### see：https://www.yiibai.com/docker/docker-java-example.html
+https://www.cnblogs.com/51kata/p/5262301.html
 
-### see：https://blog.csdn.net/chenming_hnu/article/category/6663742
+https://www.yiibai.com/docker/docker-java-example.html
 
-### see：http://www.cnblogs.com/jsonhc/tag/docker/
+https://blog.csdn.net/chenming_hnu/article/category/6663742
 
-### https://www.cnblogs.com/jsonhc/p/7767669.html
+http://www.cnblogs.com/jsonhc/tag/docker/
+
+https://www.cnblogs.com/jsonhc/p/7767669.html
 
 http://www.docker.org.cn/page/resources.html
 
-see：https://www.cnblogs.com/sparkdev/p/7066789.html
+https://www.cnblogs.com/sparkdev/p/7066789.html
+
+https://www.jianshu.com/p/efd70ad53602
+
+https://spring.io/guides/gs/spring-boot-docker/
+
+https://www.jianshu.com/p/c435ea4c0cc0
+
+https://www.jianshu.com/p/3b91b8958c3e
+
+https://spring.io/guides/gs/spring-boot-docker/
+
+https://www.jb51.net/article/138187.htm
+
+https://www.jianshu.com/p/c435ea4c0cc0
+
+https://blog.csdn.net/chen798213337/article/details/51046175
+
+http://www.cnblogs.com/frinder6/p/6694829.html?utm_source=itdadao&utm_medium=referral
+
+http://blog.51cto.com/xiangcun168/1958904
+
+https://www.jianshu.com/p/d809971b1fc1
+
+https://www.cnblogs.com/flying607/p/8574645.html
+
+https://blog.csdn.net/suresand/article/details/79982378
+
+https://blog.csdn.net/lvyuan1234/article/details/69255944
+
+http://www.ituring.com.cn/article/497750
+
+https://www.cnblogs.com/xingqi/p/9013350.html
+
+https://www.jianshu.com/p/c435ea4c0cc0
+
+http://www.54chen.com/architecture/maven-nexus-notes.html
+
+http://www.54chen.com/architecture/maven-nexus-notes.html
+
+https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
+
+docker学习
+
+https://www.cnblogs.com/kevingrace/p/6238195.html
 
 ### 构建
 
@@ -1536,7 +1861,9 @@ MAINTAINER mylxsw mylxsw@aicode.cc
 
 格式为`RUN <command>`或者`RUN ["executable", "param1", "param2"...]`。每条指令将在当前镜像的基础上执行，并提交为新的镜像。
 
-格式`RUN <command>`时将在shell终端中执行命令(直接在命令行中输入的命令一样)，也就是`/bin/sh   -c`中执行，而`RUN ["可执行文件", "param1", "param2"...]`则使用`exec`执行。
+格式`RUN <command>`时将在shell终端中执行命令(直接在命令行中输入的命令一样)，也就是`/bin/sh   -c`中执行，而`RUN ["可执行文件", "param1", "param2"...]`则使用`exec`执行。指定使用其它终端可以通过第二种方式实现，例如 `RUN ["/bin/bash", "-c", "echo hello"]`
+
+每条 `RUN` 指令将在当前镜像基础上执行指定命令，并提交为新的镜像。当命令较长时可以使用 `\` 来换行
 
 ```
 RUN echo '<h1>Hello,Decoker!</h1>' > /usr/share/nginx/html/index.html
@@ -1544,7 +1871,7 @@ RUN echo '<h1>Hello,Decoker!</h1>' > /usr/share/nginx/html/index.html
 
 ##### CMD
 
-该命令提供容器启动时执行的命令，每个Dockerfile中只能与一条CMD命令，如果指定了多条，则只有最后一条会被执行。如果用户启动容器的时候指定了运行的命令，则会覆盖CMD指令。
+该命令提供容器启动时执行的命令，`每个Dockerfile中只能与一条CMD命令，如果指定了多条，则只有最后一条会被执行`。如果用户启动容器的时候指定了运行的命令，则会覆盖CMD指令。
 
 格式支持三种：
 
@@ -1575,21 +1902,21 @@ ENV PG_VERSION 9.35
 
 ##### ADD
 
-格式为`ADD <src> <dest>`。该命令复制指定的`<src>`到`<dest>`，其中`<src`可以是Dockerfile所在目录的一个相对路径（文件或目录），也可以是网络上的资源路径或者是tar包。
-
-> 如果`<src>`是tar包的话，会在dest位置**自动解压**为目录。
+格式为`ADD <src> <dest>`。该命令复制指定的`<src>`到`<dest>`，其中`<src`可以是Dockerfile所在目录的一个相对路径（文件或目录），也可以是网络上的资源路径或者是tar包。如果`<src>`是tar包的话，会在dest位置**自动解压**为目录。
 
 ##### COPY
 
-格式为`COPY <scr> <dest>`，复制本地主机的`<src>`到容器的`<dest>`，目标路径不存在则自动创建。使用本地目录为源目录时，推荐使用COPY。
+格式为`COPY <scr> <dest>`，复制本地主机的`<src>`（为 Dockerfile 所在目录的相对路径）到容器的`<dest>`，目标路径不存在则自动创建。使用本地目录为源目录时，推荐使用COPY。
 
-> 注意，`ADD`命令和`COPY`命令基本上是一样的，只不过是`ADD`命令可以复制网络资源，同时会对压缩包进行自动解压，而`COPY`则是单纯的复制本地文件（目录）。
->
-> 如果在Dockerfile中这样写：
->
-> COPY ./package.json /app/
->
-> 这并不是要复制 执行docker build命令所在目录下的package.json，也不是复制Dockerfile所在目录下的package.json，而是复制`上下文`目录下的package.json
+```
+注意，ADD命令和COPY命令基本上是一样的，只不过是ADD命令可以复制网络资源，同时会对压缩包进行自动解压，而COPY则是单纯的复制本地文件（目录）。
+
+如果在Dockerfile中这样写：
+
+COPY ./package.json /app/
+
+这并不是要复制 执行docker build命令所在目录下的package.json，也不是复制Dockerfile所在目录下的package.json，而是复制上下文目录下的package.json
+```
 
 将主机/www/runoob目录拷贝到容器96f7f14e99ab的/www目录下。
 
@@ -1611,7 +1938,7 @@ docker cp  96f7f14e99ab:/www /tmp/
 
 ##### ENTRYPOINT
 
-配置容器启动后执行的命令，并且不会被`docker run`提供的参数覆盖。每个Dockerfile中只能有一个ENTRYPOINT，当指定多个的时候，只有最后一个生效。
+配置容器启动后执行的命令，并且`不会`被`docker run`提供的参数覆盖。每个Dockerfile中只能有一个ENTRYPOINT，当指定多个的时候，只有最后一个生效。
 
 格式有两种：
 
@@ -1667,6 +1994,8 @@ docker build - < context.tar.gz
 ```
 
 ### 创建镜像
+
+基本的格式为 `docker build [选项] 路径`，该命令将读取指定路径下（包括子目录）的 Dockerfile，并将该路径下所有内容发送给 Docker 服务端，由服务端来创建镜像。因此一般建议放置 Dockerfile 的目录为空目录。也可以通过 `.dockerignore` 文件（每一行添加一条匹配模式）来让 Docker 忽略路径下的目录和文件。
 
 编写完Dockerfile之后，就可以通过`docker build`命令构建一个镜像了。
 
@@ -2276,7 +2605,7 @@ ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 
 pom.xml
 
-```xml
+```json
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -2460,37 +2789,15 @@ mvn --encrypt-password 你的邮箱密码
 
 ```
 mvn package docker:build
+
 ```
 
-see:
 
-https://www.jianshu.com/p/efd70ad53602
-
-https://spring.io/guides/gs/spring-boot-docker/
-
-https://www.jianshu.com/p/c435ea4c0cc0
-
-https://www.jianshu.com/p/3b91b8958c3e
-
-
-
-https://spring.io/guides/gs/spring-boot-docker/
-
-https://www.jb51.net/article/138187.htm
-
-https://www.jianshu.com/p/c435ea4c0cc0
-
-https://blog.csdn.net/chen798213337/article/details/51046175
-
-http://www.cnblogs.com/frinder6/p/6694829.html?utm_source=itdadao&utm_medium=referral
 
 ```
 sudo docker login --username=***pro@gmail.com registry.cn-hangzhou.aliyuncs.com
 sudo docker pull registry.cn-hangzhou.aliyuncs.com/viiso/dockerdemo:[镜像版本号]
-
 ```
-
-
 
 ```
 docker push kitesweet/pan-search-springboot
@@ -2547,8 +2854,6 @@ docker info
 
 ps aux | grep docker
 
-
-
 ```
 
 com.spotify:docker-maven-plugin 报localhost:2375 Connection refused 错误正确解决方法
@@ -2559,8 +2864,6 @@ docker-machine env 查看docker host和证书信息
 ```
 
 Canot connect to the Docker daemon. Is 'docker -d' running on this host?
-
-
 
 以及类似的错误,就连docker version命令都报错了,楼主开始找啊找,找到了好多东西,结果发现没一个能行的,最后楼主使用这样的命令:
 
@@ -2574,18 +2877,6 @@ Canot connect to the Docker daemon. Is 'docker -d' running on this host?
 DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 # service docker restart
 ```
-
-
-
-
-
-
-
-
-
-http://blog.51cto.com/xiangcun168/1958904
-
-
 
 
 #### Docker学习笔记 — 开启Docker远程访问
@@ -2611,29 +2902,7 @@ DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 现在本地和远程均可访问docker进程了。
 ```
 
-
-
-
-
-文件共享：
-
-https://www.jianshu.com/p/d809971b1fc1
-
-https://www.cnblogs.com/flying607/p/8574645.html
-
-https://blog.csdn.net/suresand/article/details/79982378
-
-https://blog.csdn.net/lvyuan1234/article/details/69255944
-
-http://www.ituring.com.cn/article/497750
-
-https://www.cnblogs.com/xingqi/p/9013350.html
-
-
-
 default)Looks like something went wrong in step ´Checking if machine default exists´...Press any key to continue... 
-
-
 
 这是因为，启动时如果检测到没有 Boot2Docker，就会去下载，这个下载过程出现网络连接上的错误了，导致启动失败。
 
@@ -2724,16 +2993,6 @@ export DOCKER_HOST=""
 
 刚在新的Centos上安装Docker-CE,后运行`docker run hello-world`报错`Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?`
 
-https://www.jianshu.com/p/c435ea4c0cc0
-
-http://www.54chen.com/architecture/maven-nexus-notes.html
-
-http://www.54chen.com/architecture/maven-nexus-notes.html
-
-
-
-
-
 #### 访问远程机器docker
 
 Ubuntu 15.04以后：
@@ -2742,6 +3001,7 @@ Ubuntu 15.04以后：
 
 ```
 $ sudo mkdir /etc/systemd/system/docker.service.d
+$ sudo vi /etc/systemd/system/docker.service.d/docker.conf
 ```
 
 2 创建文件内容 【远程机器】
@@ -2751,7 +3011,7 @@ $ sudo mkdir /etc/systemd/system/docker.service.d
 
 ExecStart=
 
-ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
+ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock  (--insecure-registry=192.168.1.104:5000)
 ```
 
 3 刷新docker守护进程 【远程机器】
@@ -2772,19 +3032,34 @@ sudo systemctl restart docker
 ps -ef | grep docker
 ```
 
-6 本地测试（本地不需要创建虚拟机，有docker客户端即可，但是cmd窗口管了）
+6 本地测试（本地不需要创建虚拟机，有docker客户端即可，但是cmd窗口关了就不生效了）
 
 ```
+docker-machine env default （需要粘贴提示的信息）
 docker info
 http://$ip:2376/info
 
 SET DOCKER_HOST=tcp://192.168.135.130:2376
 docker images(可以，访问的远程DOCKER_HOST机器)
 docker -H tcp://192.168.135.130:2376 images(可以，访问的参数指定的docker)
+
 ```
 
 7 也可以临时启用远程访问
 
 ```
 sudo dockerd -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock &
+```
+8 查看docker使用的配置文件
+
+```
+//查看环境配置文件
+$ systemctl show docker | grep EnvironmentFile
+EnvironmentFile=-/etc/sysconfig/docker (ignore_errors=yes)
+//查看服务启动文件位置：
+$ systemctl show --property=FragmentPath docker
+FragmentPath=/usr/lib/systemd/system/docker.service
+
+$ grep EnvironmentFile /usr/lib/systemd/system/docker.service
+EnvironmentFile=-/etc/sysconfig/docker
 ```
