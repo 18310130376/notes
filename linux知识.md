@@ -185,6 +185,91 @@ passwd
 sudo passwd root //设置root密码
 ```
 
+1 允许root用户远程登录
+
+修改ssh服务配置文件
+
+```
+sudo vi /etc/ssh/sshd_config
+```
+
+调整PermitRootLogin参数值为yes
+
+2 允许无密码登录 
+
+同上，修改ssh服务配置文件，两种情况：
+
+1） 将PermitEmptyPasswords yes前面的#号去掉
+
+2） 将PermitEmptyPasswords 参数值修改为yes，如下图：
+
+无论哪种，最后PermitEmptyPasswords参数值为yes
+
+以上两种配置，均需要重启ssh服务
+
+```
+service sshd restart  # 或者
+/etc/initd.d/sshd restart
+```
+
+为了安全起见，FreeBSD默认情况下是不允许root用户进行SSH远程登录的，需要进行以下操作才可以进行Root用户的ssh远程登录。 
+
+首先vi编辑/etc/inetd.conf,去掉ssh前的#注释，保存后:wq退出 (开启监听ssh服务)
+
+编辑/etc/rc.conf， 最后加入:sshd_enable=”yes”即可
+激活sshd服务：
+
+```
+#/etc/rc.d/sshd start
+```
+
+检查服务是否启动，在22端口应该有监听。
+
+```
+# check port number 22
+#netstat -an # 或
+#netstat -tnlp
+```
+
+最后，编辑ssh配置文件
+
+```
+#vi  /etc/ssh/sshd_config
+```
+
+在/etc/ssh/sshd_config最后中加入
+
+```
+PermitRootLogin yes #允许root登录
+PermitEmptyPasswords no #不允许空密码登录
+PasswordAuthentication yes # 设置是否使用口令验证。
+```
+
+修改完配置文件后，重新启动sshd服务器(/etc/rc.d/sshd restart)即可。
+
+补充：
+
+1 如果重启后还是不行， 请重新载入sshd_config 文件
+
+```
+/etc/rc.d/sshd reload
+```
+
+2 如果出现using keyboard-interactive authentication
+
+password:
+请确认配置文件中，PasswordAuthentication参数值是否已经改成yes
+另外如果客户端是putty， 那么请确认”尝试’智能键盘’认证（SSH-2）”的勾是否有去掉!!!!
+
+3 如果是使用root帐号登陆
+
+请确认密码是否为空
+空密码无法登陆
+
+4 请确认是否有安装SSH
+
+确认sysinstall>>>configure>>>networking>>>sshd是否的勾是否有打上.
+
 
 
 #### 权限操作

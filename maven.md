@@ -35,4 +35,5 @@ mvn -v
 
 ```
 mvn package && java -jar target/gs-spring-boot-docker-0.1.0.jar  //打包并且运行
+mvn package docker:build -DpushImage
 ```

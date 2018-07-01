@@ -580,6 +580,26 @@ Status: Downloaded newer image for ubuntu:latest
 
 不指定Tag的时候默认使用`:latest`，因此，上述命令实际上是`docker pull ubuntu:latest`。
 
+#### 加速下载镜像
+
+为docker添加国内镜像，加速下载镜像：
+
+修改配置文件/etc/docker/daemon.json，如果该文件没有则进行创建：
+
+```
+[root@docker ~]# cat /etc/docker/daemon.json 
+{
+    "dns": ["192.168.101.2","8.8.8.8"],
+    "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]
+}
+```
+
+然后重启docker：
+
+```
+# systemctl restart docker
+```
+
 #### 查看镜像信息
 
 使用`docker images`可以列出本地主机上已有的镜像列表。
@@ -1204,7 +1224,89 @@ docker search nginx
 
 之后在docker hub的’‘自动创建“页面中跟踪每次创建的状态。
 
+### **docker私有仓库** 
 
+**适用于：Docker 1.8**      **环境：****Centos7**
+
+每个版本的docker修改配置内容都不同，请大家看好安装的docker版本。
+
+1）下载 docker registry私有镜像
+
+\# docker pull docker.io/registry
+
+2）修改配置文件
+
+\# gedit /etc/sysconfig/docker
+
+OPTIONS='--selinux-enabled --insecure-registry 192.168.137.17:5000'
+
+注：红色IP为修改的部分
+
+3）从容器中启动Registry
+
+\# docker run -d -p 5000:5000 --name registry -v /home/dockeruser/data:/tmp/registry  docker.io/registry
+
+注：-d 表示该容器在后台运行
+
+-p将主机的5000端口与容器的5000端口映射
+
+--name 将容器的名称命名为registry
+
+-v 表示将镜像的存储位置“/tmp/registry” 变更为宿主机的“/home/dockeruser/data”
+
+注：这一步一定要在步骤2）之后，否则修改配置文件不会生效
+
+4）在上传到私有的registry之前，需要指定新的Registry目的地址，需要在镜像名前加上
+
+主机名和端口的前缀。
+
+\#docker images  node/helloworld
+
+得到22d56cbd9e6
+
+\#docker tag  22d56cbd9e6  192.168.137.17:5000/node/helloworld
+
+注：192.168.137.17:5000 为所在主机的IP地址和端口
+
+5）将打标签的镜像上传到私有库
+
+\# docker push 192.168.137.17:5000/node/helloworld
+
+显示信息如下：
+
+The push refers to a repository [192.168.137.17:5000/node/helloworld] (len: 1)
+
+Sending image list
+
+Pushing repository 192.168.137.17:5000/node/helloworld (1 tags)
+
+d8bd0657b25f: Image successfully pushed
+
+a582cd499e0f: Image successfully pushed
+
+df45579dbc81: Image successfully pushed
+
+Pushing tag for rev [df45579dbc81] on
+
+{http://192.168.137.17:5000/v1/repositories/node/helloworld/tags/latest}
+
+遇到问题：
+
+The push refers to a repository [192.168.137.17:5000/node/helloworld] (len: 1)
+
+unable to ping registry endpoint https://192.168.137.17:5000/v0/
+
+v2 ping attempt failed with error: Get https://192.168.137.17:5000/v2/: dial tcp 192.168.137.17:5000: connection refused
+
+ v1 ping attempt failed with error: Get https://192.168.137.17:5000/v1/_ping: dial tcp 192.168.137.17:5000: connection refused
+
+解决方案：
+
+\# gedit /etc/sysconfig/docker
+
+OPTIONS='--selinux-enabled --insecure-registry 192.168.137.17:5000'
+
+注：这一步一定要在创建私有仓库的容器之前【步骤2）】，否则修改配置文件不会生效
 
 ### 默认镜像和容器的位置
 
@@ -1771,9 +1873,12 @@ PING db (172.17.0.5): 48 data bytes
 ① 安装ssh
 
 ```
+apt-get update
 sudo apt-get install openssh-server #安装ssh服务器
-service ssh status # 查看ssh服务启动情况
-service ssh start # 启动ssh服务
+安装ssh-client命令：
+sudo apt-get install openssh-client
+service ssh status # 查看ssh服务启动情况ps -e|grep ssh
+service ssh start # 启动ssh服务sudo /etc/init.d/ssh start
 ```
 
 ② 配置ssh，允许root登陆
@@ -1783,10 +1888,29 @@ vi /etc/ssh/sshd_config
 将PermitRootLogin的值从withoutPassword改为yes
 ```
 
+允许无密码登录 
+
+```
+同上，修改ssh服务配置文件，两种情况：
+
+1） 将PermitEmptyPasswords yes前面的#号去掉
+
+2） 将PermitEmptyPasswords 参数值修改为yes，如下图：
+
+PermitRootLogin without-password 改为 PermitRootLogin yes`
+#PermitRootLogin yes #允许root用户以任何认证方式登录（用户名密码认证和公钥认证）
+#PermitRootLogin without-password #只允许root用公钥认证方式登录
+#PermitRootLogin no #不允许root用户以任何认证方式登录
+PasswordAuthentication yes 改为 PasswordAuthentication no
+```
+
+无论哪种，最后PermitEmptyPasswords参数值为yes 
+
 ③ 重启ssh服务
 
 ```
-service ssh restart # 重启动ssh服务
+service ssh restart # 重启动ssh服务   或
+/etc/initd.d/sshd restart
 ```
 
 二 保存Container镜像
@@ -1818,8 +1942,109 @@ docker ip：192.168.99.100
 container ip：172.17.0.3
 那么，你要远程container，则要访问以下地址：
 ssh 192.168.99.100:50001
+ssh root@192.168.99.100:50001
 这样通过访问docker的50001端口，就神奇的间接连通到container的22端口了，从而达到ssh连接container的目的，至此。
 ```
+
+以下是用`Dockerfile`设置sshd服务容器，您可以使用连接并检查其他容器的卷,或者可以快速访问测试容器。
+
+```
+# sshd
+# VERSION               0.0.1
+FROM  ubuntu:12.04
+MAINTAINER Thatcher R. Peskens "thatcher@dotcloud.com"
+# make sure the package repository is up to date
+RUN apt-get update
+RUN apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+RUN echo 'root:screencast' |chpasswd
+EXPOSE 22
+CMD    ["/usr/sbin/sshd", "-D"]
+```
+
+使用如下命令构建镜像： 
+
+```
+$ sudo docker build --rm -t eg_sshd .
+```
+
+然后运行它，你可以使用`docker port`来找出容器端口22映射到主机的端口 
+
+```
+$ sudo docker run -d -P --name test_sshd eg_sshd
+$ sudo docker port test_sshd 22
+0.0.0.0:49154
+```
+
+现在你可以使用ssh登陆Docker进程的主机IP地址，端口是49154(IP地址可以使用ifconfig获取)： 
+
+```
+$ ssh root@192.168.1.2 -p 49154
+# The password is ``screencast``.
+$$
+```
+
+最后，清理停止的容器，并且删除容器，然后删除镜像。 
+
+```
+$ sudo docker stop test_sshd
+$ sudo docker rm test_sshd
+```
+
+### docker守护进程配置启动
+
+安装好docker后，需要启动docker守护进程。有多种启动方式。 
+
+**一、服务的方式**
+
+因为docker守护进程被安装成服务。所以，可以通过服务的方式启停docker守护进程，包括查看状态。
+
+sudo start docker  //启动
+
+sudo stop docker  //停止
+
+sudo status docker  //查看状态
+
+**二、利用docker daemon命令**
+
+sudo docker daemon
+
+利用sudo ps -A 可以获取守护进程的进程号
+
+**三、让远程api可以访问docker守护进程**
+
+sudo docker daemon -H tcp://0.0.0.0:2375
+
+这需要每次都带参数，而且无法通过服务的方式启动。
+
+可以通过在配置文件配置，来让服务启动也可以让远程访问生效。
+
+对于ubuntu操作系统，修改/etc/default/docker文件中的DOCKER_OPTS设置，如下：
+
+```
+# Use DOCKER_OPTS to modify the daemon startup options.
+#DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4"
+DOCKER_OPTS="-H=unix:///var/run/docker.sock -H=0.0.0.0:2375"
+```
+
+这样通过 sudo start docker启动docker后，就可以远程访问了，如：
+http://192.168.142.138:2375/info   //相当于在本地 docker info访问
+
+http://192.168.142.138:2375/containers/json  //返回活动的容器
+
+http://192.168.142.138:2375/containers/json？all=1 返回所有容器
+
+除了利用web访问外，还可利用docker命令远程访问，如果别的机器上也装了docker，
+
+访问方式如： docker -H  192.168.142.138:2375 info
+
+注意：可以采用 sudo docker daemon 方式启动守护进程，然后进行本地的docker命令操作，可以铜鼓日志查看不同命令对应的url
+
+ 在linux下，可以通过curl工具访问url，因为返回的是json串，非格式化的。可以结合python命令，转为格式化的json，让看起来比较清楚。如：
+
+curl http://192.168.142.138:2375/images/json | python -mjson.tool
+
+
 
 ### Docker网络模式
 
@@ -1839,11 +2064,548 @@ sudo ifconfig docker0
 
 ### Docker Compose 项目
 
+http://www.ityouknow.com/docker/2018/03/22/docker-compose.html
+
 Docker Compose 是 Docker 官方编排（Orchestration）项目之一，负责快速在集群中部署分布式应用。
 
 Dockerfile 可以让用户管理一个单独的应用容器；而 Compose 则允许用户在一个模板（YAML 格式）中定义一组相关联的应用容器（被称为一个 `project`，即项目），例如一个 Web 服务容器再加上后端的数据库服务容器等。
 
 安装 Compose 之前，要先安装 Docker，在此不再赘述。
+
+### Docker Machine
+
+see:https://www.cnblogs.com/jsonhc/p/7784466.html
+
+Docker Machine 最主要有两个作用：
+
+- 使用 Docker Machine 方便在不同的环境中使用 Docker ，比如：Win/Mac
+- 使用 Docker Machine 方便在云环境下批量部署 Docker环境，比如：私有云，公有云批量安装Docker环境
+
+Docker Machine 是一个用于配置和管理你的宿主机（上面具有 Docker Engine 的主机）的工具。通常，你在你的本地系统上安装 Docker Machine。Docker Machine有自己的命令行客户端 docker-machine 和 Docker Engine 客户端 docker。你可以使用 Machine 在一个或多个虚拟系统上安装 Docker Engine。 
+
+Docker Machine 安装很简单 
+
+```
+curl -L https://github.com/docker/machine/releases/download/v0.14.0/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine && \
+install /tmp/docker-machine /usr/local/bin/docker-machine
+
+#完成后，查看版本信息。
+docker-machine -v
+docker-machine version 0.14.0, build 89b8332
+```
+
+查看是否存在可用的主机 
+
+```
+$  docker-machine ls
+NAME   ACTIVE   DRIVER   STATE   URL   SWARM   DOCKER   ERRORS
+```
+
+创建一个主机
+
+```
+docker-machine create --driver virtualbox default
+```
+
+这个命令会下载 boot2docker，基于 boot2docker 创建一个虚拟主机。boot2docker 是一个轻量级的 linux 发行版，基于专门为运行 docker 容器而设计的 Tiny Core Linux 系统，完全从 RAM 运行，45Mb左右，启动时间约5s。 
+
+再次查看服务列表 
+
+```
+docker-machine ls
+NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER        ERRORS
+default   *        virtualbox   Running   tcp://192.168.99.100:2376           v17.12.1-ce
+```
+
+创建主机成功后，可以通过 env 命令来让后续操作对象都是目标主机 
+
+```
+$ docker-machine env default
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://192.168.99.100:2376"
+export DOCKER_CERT_PATH="C:\Users\hkrt-neo\.docker\machine\machines\default"
+export DOCKER_MACHINE_NAME="default"
+export COMPOSE_CONVERT_WINDOWS_PATHS="true"
+# Run this command to configure your shell:
+# eval $("D:\Program Files\Docker Toolbox\docker-machine.exe" env default)
+```
+
+相当于配置了一个环境变量 default，后续根据提示在命令行输入命令之后就可以操作 default 主机。
+
+可以通过 SSH 登录到主机
+
+```
+$ docker-machine ssh default
+
+docker@default:~$ docker --version
+Docker version 17.12.1-ce, build 7390fc6
+```
+
+连接到主机之后你就可以在其上使用 Docker 了，退出虚拟机使用命令：`exit` 
+
+------
+
+docker-machine 是docker官方提供的docker管理工具。
+通过docker-machine可以轻松的做到：
+
+　　在Windows平台和MAC平台安装和运行docker
+
+　　搭建和管理多个docker 主机
+
+　　搭建swarm集群
+
+环境win下面安装的virtualbox，virtualbox安装的centos7，网络模式NAT+hostonly
+
+ip：192.168.56.102（hostonly）
+
+1、安装docker-machine：
+
+```
+curl -L https://github.com/docker/machine/releases/download/v0.13.0/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine &&
+chmod +x /tmp/docker-machine &&
+sudo cp /tmp/docker-machine /usr/local/bin/docker-machine
+```
+
+2、查看docker-machine版本：
+
+```
+# docker-machine version
+[root@docker ~]# docker-machine version
+docker-machine version 0.13.0, build 9ba6da9
+```
+
+3、在centos7环境下创建machine：
+
+```
+[root@localhost ~]# docker-machine create -d virtualbox default
+Creating CA: /root/.docker/machine/certs/ca.pem
+Creating client certificate: /root/.docker/machine/certs/cert.pem
+Running pre-create checks...
+Error with pre-create check: "VBoxManage not found. Make sure VirtualBox is installed and VBoxManage is in the path"
+```
+
+但是却报错了，以为virtualbox安装的centos7环境支持的是virtualbox驱动，才发现环境安装支持virtualbox驱动
+
+使用virtualbox驱动需要安装virtualbox，而Ubuntu的解决方法为：
+
+于是采用generic驱动，具体介绍查看官网：https://docs.docker.com/machine/drivers/generic/
+
+```
+[root@localhost ~]# docker-machine create -d generic --generic-ip-address=192.168.56.102 --generic-ssh-key ~/.ssh/id_rsa --generic-ssh-user=root vm
+```
+
+Running pre-create checks...
+
+Creating machine...
+
+(vm) Importing SSH key...
+
+Waiting for machine to be running, this may take a few minutes...
+
+Detecting operating system of created instance...
+
+Waiting for SSH to be available...
+
+Error creating machine: Error detecting OS: Too many retries waiting for SSH to be available. Last error: Maximum number of retries (60) exceeded
+
+　　--generic-ip-address=192.168.56.102：这里的ip是指本机，如果需要为其他远程docker主机安装可以改为其他docker主机ip（这里是本地创建docker-machine）
+
+依然报错，这是由于docker-machine为本机创建machine时也需要进行ssh认证：
+
+```
+[root@localhost ~]# ssh-keygen
+[root@localhost ~]# ssh-copy-id root@192.168.56.102
+```
+
+将密码发给自己，然后重新继续创建machine：
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+[root@localhost ~]# docker-machine create -d generic --generic-ip-address=192.168.56.102 --generic-ssh-key ~/.ssh/id_rsa --generic-ssh-user=root vm
+Running pre-create checks...
+Creating machine...
+(vm) Importing SSH key...
+Waiting for machine to be running, this may take a few minutes...
+Detecting operating system of created instance...
+Waiting for SSH to be available...
+Detecting the provisioner...
+Provisioning with centos...
+Copying certs to the local machine directory...
+Copying certs to the remote machine...
+Setting Docker configuration on the remote daemon...
+Checking connection to Docker...
+Docker is up and running!
+To see how to connect your Docker Client to the Docker Engine running on this virtual machine, run: docker-machine env vm
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+于是终于创建machine成功了
+
+查看docker-machine：
+
+```
+[root@localhost ~]# docker-machine ls  
+NAME   ACTIVE   DRIVER    STATE     URL                         SWARM   DOCKER        ERRORS
+vm     -        generic   Running   tcp://192.168.56.102:2376           v17.09.0-ce 
+```
+
+查看vm的环境变量：
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+[root@localhost ~]# docker-machine env vm
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://192.168.56.102:2376"
+export DOCKER_CERT_PATH="/root/.docker/machine/machines/vm"
+export DOCKER_MACHINE_NAME="vm"
+# Run this command to configure your shell: 
+# eval $(docker-machine env vm)
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+加载环境变量：
+
+```
+[root@localhost ~]# eval $(docker-machine env vm)
+```
+
+利用ssh登录到machine中：
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+[root@localhost ~]# docker-machine ssh --help
+Usage: docker-machine ssh [arg...]
+Log into or run a command on a machine with SSH.
+Description:
+Arguments are [machine-name] [command]
+[root@localhost ~]# docker-machine ssh vm
+Last login: Sat Nov  4 17:55:53 2017 from 192.168.56.102
+[root@vm ~]# 
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+现在在本地环境创建一个容器启动：
+
+```
+[root@localhost ~]# docker run -d --name=nginx nginx
+[root@localhost ~]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS              PORTS               NAMES
+6e62975fab90        nginx               "nginx -g 'daemon ..."   About a minute ago   Up 59 seconds       80/tcp              nginx
+```
+
+然后ssh远程到docker-machine中：
+
+```
+[root@localhost ~]# docker-machine ssh vm           
+Last login: Sat Nov  4 18:13:27 2017 from 192.168.56.102
+[root@vm ~]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED              STATUS              PORTS               NAMES
+6e62975fab90        nginx               "nginx -g 'daemon ..."   About a minute ago   Up About a minute   80/tcp              nginx
+```
+
+可以看见docker主机和docker-machine主机里面的容器id相同
+
+利用docker-machine能够安装docker和创建容器
+
+ 
+
+ 
+
+上面是本地为自己创建machine，现在为远程的docker主机创建docker-machine：
+
+环境：centos7，192.168.101.14，vmware下面安装的docker以及docker-machine，为192.168.56.102这台docker主机创建machine：
+
+（两个ip不同进行了转发所以可以访问（前面是vm下面的nat的静态ip，后面是virtualbox的两张网卡（nat和host only）））
+
+1、首先将192.168.101.14和主机192.168.56.102进行ssh连接认证：
+
+```
+[root@docker ~]# ssh-keygen
+[root@docker ~]# ssh-copy-id root@192.168.56.102
+```
+
+2、创建machine：
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+[root@docker ~]# docker-machine create -d generic --generic-ip-address=192.168.56.102 --generic-ssh-key ~/.ssh/id_rsa --generic-ssh-user=root default
+Creating CA: /root/.docker/machine/certs/ca.pem
+Creating client certificate: /root/.docker/machine/certs/cert.pem
+Running pre-create checks...
+Creating machine...
+(default) Importing SSH key...
+Waiting for machine to be running, this may take a few minutes...
+Detecting operating system of created instance...
+Waiting for SSH to be available...
+Detecting the provisioner...
+Provisioning with centos...
+Copying certs to the local machine directory...
+Copying certs to the remote machine...
+Setting Docker configuration on the remote daemon...
+Checking connection to Docker...
+Docker is up and running!
+To see how to connect your Docker Client to the Docker Engine running on this virtual machine, run: docker-machine env default
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+执行环境变量，进入到machine环境：
+
+```
+[root@docker ~]# docker-machine env default
+[root@docker ~]# eval $(docker-machine env default)
+```
+
+3、查看创建的machine：
+
+```
+[root@docker ~]# docker-machine ls
+NAME      ACTIVE   DRIVER    STATE     URL                         SWARM   DOCKER        ERRORS
+default   -        generic   Running   tcp://192.168.56.102:2376           v17.09.0-ce  
+```
+
+可以看见在192.168.101.14环境上为远程主机192.168.56.102创建的machine
+
+4、创建容器：
+
+```
+[root@docker ~]# docker run -d --name=nginx nginx（本地没有nginx镜像）
+b1f08986f6d5dbb1ede699e915bde734bab278fbe70f93af06ec2267fae2fef3
+[root@docker ~]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+b1f08986f6d5        nginx               "nginx -g 'daemon ..."   4 seconds ago       Up 3 seconds        80/tcp              nginx
+```
+
+5、ssh到machine：
+
+```
+[root@docker ~]# docker-machine ssh default
+Last login: Sat Nov  4 18:51:49 2017 from 192.168.56.1
+[root@default ~]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+b1f08986f6d5        nginx               "nginx -g 'daemon ..."   23 seconds ago      Up 22 seconds       80/tcp              nginx
+```
+
+现在查看远程主机是否创建了容器：
+
+```
+[root@localhost ~]# docker ps -a
+could not read CA certificate "/root/.docker/machine/machines/default/ca.pem": open /root/.docker/machine/machines/default/ca.pem: no such file or directory
+```
+
+报错原因：
+
+由于刚刚在192.168.56.102为自己设置了machine，保留了之前machine的环境变量，虽然现在删除了，但是设置了环境变量，将刚刚设置的环境变量取消：
+
+```
+[root@localhost ~]# unset DOCKER_TLS_VERIFY
+[root@localhost ~]# unset DOCKER_CERT_PATH
+[root@localhost ~]# unset DOCKER_MACHINE_NAME
+[root@localhost ~]# unset DOCKER_HOST
+```
+
+然后重新查看：
+
+```
+[root@localhost ~]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+b1f08986f6d5        nginx               "nginx -g 'daemon ..."   8 minutes ago       Up 8 minutes        80/tcp              nginx
+```
+
+可以发现，为远程主机创建容器成功
+
+现在192.168.101.14上面存在镜像centos_nginx:v4，而远程主机192.168.56.102没有该镜像，现在创建容器，看是否远程主机能够创建成功？
+
+```
+[root@docker ~]# docker pull registry.cn-hangzhou.aliyuncs.com/wadeson/jsonhc:v4
+[root@docker ~]# docker images
+REPOSITORY                                         TAG                 IMAGE ID            CREATED             SIZE
+nginx                                              latest              b72d63324dbb        13 hours ago        108MB
+registry.cn-hangzhou.aliyuncs.com/wadeson/jsonhc   v4                  6c5128aaff05        2 days ago          464MB
+```
+
+然后在远程主机查看：
+
+```
+[root@localhost ~]# docker images
+REPOSITORY                                         TAG                 IMAGE ID            CREATED             SIZE
+nginx                                              latest              b72d63324dbb        13 hours ago        108MB
+registry.cn-hangzhou.aliyuncs.com/wadeson/jsonhc   v4                  6c5128aaff05        2 days ago          464MB
+```
+
+可以看见两主机的镜像同步，也是容器也是同步的
+
+vm下面的docker可以为virtualbox下面的docker创建容器
+
+而更多的是本地可以为云等其他环境创建容器，通过docker-machine
+
+ 
+
+在这之前192.168.101.14的images都不见了，那是因为设置machine环境变量：
+
+```
+unset DOCKER_TLS_VERIFY
+unset DOCKER_CERT_PATH
+unset DOCKER_MACHINE_NAME
+unset DOCKER_HOST
+```
+
+执行上面将machine的环境变量取消就可以返回原来的环境了：
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+[root@docker ~]# docker images
+REPOSITORY                                         TAG                 IMAGE ID            CREATED             SIZE
+centos_init                                        v1                  383ff3502443        26 hours ago        448MB
+centos_nginx                                       v8                  6f792dc07c35        2 days ago          464MB
+centos_nginx                                       v7                  9e875385d6be        2 days ago          464MB
+centos_nginx                                       v6                  959fdf4d4288        2 days ago          464MB
+centos_nginx                                       v5                  5c1131306686        2 days ago          464MB
+registry.cn-hangzhou.aliyuncs.com/wadeson/jsonhc   v4                  6c5128aaff05        2 days ago          464MB
+192.168.101.14:5000/centos_nginx                   v4                  6c5128aaff05        2 days ago          464MB
+centos_nginx                                       v4                  6c5128aaff05        2 days ago          464MB
+centos_nginx                                       v3                  0e49a2c0562f        2 days ago          464MB
+centos_nginx                                       v2                  2031faf8894a        2 days ago          464MB
+centos_nginx                                       v1                  78d18f16e757        3 days ago          464MB
+registry                                           latest              2ba7189700c8        9 days ago          33.3MB
+ubuntu                                             latest              747cb2d60bbe        3 weeks ago         122MB
+centos                                             latest              196e0ce0c9fb        7 weeks ago         197MB
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+而如果需要返回machine环境就继续执行machine环境变量就行，这种方式很好的隔离了本地和远程镜像和容器
+
+
+
+### 如何快速清理 docker 资源
+
+如果经常使用 docker，你会发现 docker 占用的资源膨胀很快，其中最明显也最容易被察觉的应该是对磁盘空间的占用。本文将介绍如何快速的清理 docker 占用的系统资源，具体点说就是删除那些无用的 镜像、容器、网络和数据卷。
+
+`查看 docker 占用的资源`
+
+在进行资源清理之前我们有必要搞清楚 docker 都占用了哪些系统的资源。这需要综合使用不同的命令来完成。
+**docker container ls**：默认只列出正在运行的容器，-a 选项会列出包括停止的所有容器。
+**docker image ls**：列出镜像信息，-a 选项会列出 intermediate 镜像(就是其它镜像依赖的层)。
+**docker volume ls**：列出数据卷。
+**docker network ls**：列出 network。
+**docker info**：显示系统级别的信息，比如容器和镜像的数量等。
+
+通过这些命令查看 docker 使用的资源情况后，相信你已经决定要清理 docker 占用的一些资源了！让我们先从那些未被使用的资源开始。
+
+`只删除那些未被使用的资源`
+
+Docker 提供了方便的 docker system prune 命令来删除那些已停止的容器、dangling 镜像、未被容器引用的 network 和构建过程中的 cache：
+
+```
+$ docker system prune
+```
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180613130828003-525835614.png)
+
+安全起见，这个命令默认不会删除那些未被任何容器引用的数据卷，如果需要同时删除这些数据卷，你需要显式的指定 --volumns 参数。比如你可能想要执行下面的命令：
+
+```
+$ docker system prune --all --force --volumns
+```
+
+这次不仅会删除数据卷，而且连确认的过程都没有了！注意，使用 --all 参数后会删除所有未被引用的镜像而不仅仅是 dangling 镜像。
+这里有必要解释一下何为 dangling images，其实可以简单的理解为未被任何镜像引用的镜像。比如在你重新构建了镜像后，那些之前构建的且不再被引用的镜像层就变成了 dangling images：
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180613130913846-62053387.png)
+
+在本地的镜像更新之后，就会出现类似图中红框内的 <none> 镜像。这表示旧的镜像已经不再被引用了，此时它们就变成了 dangling images。如果使用 -a 参数，你还会发现另外一种类型的 <none> 镜像，它们的 repository 和 tag 列都表现为 <none>：
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180613130946874-1564572085.png)
+
+这些镜像被称为 intermediate 镜像(就是其它镜像依赖的层)。
+
+我们还可在不同在子命令下执行 prune，这样删除的就是某类资源：
+
+```
+docker container prune # 删除所有退出状态的容器
+docker volume prune # 删除未被使用的数据卷
+docker image prune # 删除 dangling 或所有未被使用的镜像
+```
+
+`让 docker 回到安装时的状态`
+
+这里的 "安装时的状态" 指资源占用情况而不是 docker 的相关配置。这也是一种比较常见的用例，比如笔者就需要在一个干净的 docker 环境中自动化的还原出某天的一个生产环境(使用生产环境的备份数据)用于 bug 调查。让我们一起来看看都需要做些什么？
+回想我们前面介绍的 docker system prune --all --force --volumns 命令，如果在执行这个命令前系统中所有的容器都已停止，那么这个命令就会移除所有的资源！好，现在让我们想办法停掉系统中的所有容器。
+docker container stop 命令可以停止一个或多个容器，我们只需要把系统中所有在运行的容器罗列出来就可以了。由于 docker 并不介意我们再次停止一个已经停止了的容器，干脆简单粗暴点，直接列出所有的容器(包括已经停止的)！
+
+```
+$ docker container ls -a -q
+```
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180613131104642-45170848.png)
+
+-a 显示所有的容器，-q 只显示数字形式的容器 ID。
+然后把这里命令执行的结果作为 docker container stop 命令的参数：
+
+```
+$ docker container stop $(docker container ls -a -q)
+```
+
+完整的恢复 docker 环境的命令如下：
+
+```
+$ docker container stop $(docker container ls -a -q) && docker system prune --all --force --volumns
+```
+
+和前面的 prune 命令类似，也可以完全删除某一类资源：
+**删除容器**：docker container rm $(docker container ls -a -q)
+**删除镜像**：docker image rm $(docker image ls -a -q)
+**删除数据卷**：docker volume rm $(docker volume ls -q)
+**删除 network**：docker network rm $(docker network ls -q)
+
+`创建 shell 别名`
+
+上面的命令可以完成任务但是却很繁琐，我们可以通过 shell 的别名功能来简化这些命令的执行。
+
+```
+alias docker-clean-unused='docker system prune --all --force --volumes'
+alias docker-clean-all='docker stop $(docker container ls -a -q) && docker system prune --all --force --volumes'
+```
+
+把上面的命令写入到用户的 ~/.bashrc 文件中就可以了！
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180613131228852-299627938.png)
+
+执行一次清理任务：
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180613131304527-2111007780.png)
+
+`总结`
+
+经常清理系统资源不仅能够让系统运行的更流畅，也利于我们把精力集中在相关的重点资源上面。所以建议大家能够使用相关的资源清理命令，让 docker 保持清爽和高效。
+
+### 通过 UI 管理 docker
+
+安装 portainer
+
+```
+$ docker run -d -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock portainer/portainer
+```
+
+然后在浏览器中通过 9000 端口访问 protainer 站点就可以了！
+
+ **配置管理员信息**
+第一次访问 portainer 时需要设置管理员的账号信息，我们把管理员账号命名为 admin 并设置密码：
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180628150152934-868051380.png)
+
+**选择 portainer 管理的对象** 简单起见我们先配置 portainer 管理本机的 docker，选择下图中的 "Local" 并点击 "connect" 按钮： 
+
+![img](https://images2018.cnblogs.com/blog/952033/201806/952033-20180628150248969-602479751.png) 
 
 
 
@@ -1861,7 +2623,7 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | 创建并运行 container                                         | docker run                                                   | docker run chenhengjie123/xwalkdriver /bin/bash              |
 | 创建运行容器 后进入其 bash 控制台                            | docker run -t -i image /bin/bash                             | docker run -t -i ubuntu /bin/bash                            |
 | 创建并运行 container 并让其在后台运行，并端口映射            | docker run -p [port in container]:[port in physical system] -d [image][command] | docker run -p 5000:5000 -d training/webapp python app.py     |
-| 查看正在运行的所有 container 信息                            | docker ps                                                    | docker ps                                                    |
+| 查看正在运行的所有 container 信息                            | docker ps 等价于**docker container ls**                      | docker ps                                                    |
 | 查看最后创建的 container                                     | docker ps -l                                                 | docker ps -l                                                 |
 | 查看所有 container ，包括正在运行和已经关闭的                | docker ps -a                                                 | docker ps -a                                                 |
 | 输出指定 container 的 stdout 信息（用来看 log ，效果和 tail -f 类似，会实时输出。） | docker logs -f [container]                                   | docker logs -f nostalgic_morse                               |
@@ -1883,6 +2645,9 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | 退出登录                                                     | docker logout                                                | docker logout                                                |
 | 登录                                                         | docker login                                                 | docker login                                                 |
 | 此时，通过docker stats可以观察到此时的资源使用情况是固定不变的， | docker stats                                                 | docker stats                                                 |
+| docker network create -d bridge webnet                       | docker network create -d bridge webnet                       | docker network create -d bridge webnet                       |
+| 列出数据卷                                                   | **docker volume ls**                                         | **docker volume ls**                                         |
+| 列出 network                                                 | **docker network ls**                                        | **docker network ls**                                        |
 
 镜像操作：
 
@@ -1892,7 +2657,8 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | ------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
 | 从 container 创建 image         | docker commit [container][imageName]         | docker commit nostalgic_morse ouruser/sinatra:v2      |
 | 从 Dockerfile 创建 image        | docker build -t [imageName] [pathToFolder    | docker build ouruser/sinatra:v3 .                     |
-| 查看本地所有 image              | docker images                                | docker images                                         |
+| 查看本地所有 image              | docker images等价于**docker image ls**       | docker images                                         |
+|                                 | docker images\|grep node-demo                | docker images\|grep node-demo                         |
 | 在 registry 中搜索镜像          | docker search [query]                        | docker search ubuntu                                  |
 | 从 registry 中获取镜像          | docker pull [imageName]                      | docker pull ubuntu:14.04, docker pull training/webapp |
 | 给 image 打 tag                 | docker tag [imageId][imageName]              | docker tag 5db5f8471261 ouruser/sinatra:devel         |
@@ -1909,9 +2675,15 @@ docker-machine：
 | docker-machine ls                                 | 列出docker服务器         | docker-machine ls                                 |
 | docker-machine ip default                         | 查看服务器               | docker-machine ip default                         |
 | docker-machine rm default                         | 删除docker服务器         | docker-machine rm default                         |
-| docker-machine start default                      | 创建docker服务器         | docker-machine start default                      |
+| docker-machine start default                      | 启动docker服务器         | docker-machine start default                      |
+| docker-machine status                             | 查看虚拟机状态           | docker-machine status                             |
+| docker-machine restart                            | 重启虚拟机               | docker-machine restart                            |
+| docker-machine stop                               | 停止虚拟机               | docker-machine stop                               |
 | docker-machine create --driver virtualbox default | 创建docker服务器         | docker-machine create --driver virtualbox default |
 | docker-machine env default                        | 提示设置环境变量         | docker-machine env default                        |
+| docker-machine -v                                 | 查看版本信息             | docker-machine -v                                 |
+| docker-machine inspect                            | 检查机子信息             | docker-machine inspect                            |
+| docker-machine ssh krdevdb                        |                          | docker-machine ssh krdevdb                        |
 
 docker load与docker import
 
@@ -2003,41 +2775,21 @@ fig: https://github.com/docker/fig
 
 Openstack
 
- etcd: https://github.com/coreos/etcd
+
 
 http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F   （官方文档）
 
-https://segmentfault.com/a/1190000006260561
+https://www.cnblogs.com/51kata/p/5262301.html   ok
 
-https://www.cnblogs.com/51kata/p/5262301.html
+https://www.cnblogs.com/sparkdev/p/7066789.html  ok
 
-https://www.yiibai.com/docker/docker-java-example.html
+https://spring.io/guides/gs/spring-boot-docker/   docker-maven官网
 
-https://blog.csdn.net/chenming_hnu/article/category/6663742
-
-http://www.cnblogs.com/jsonhc/tag/docker/
-
-https://www.cnblogs.com/jsonhc/p/7767669.html
-
-http://www.docker.org.cn/page/resources.html
-
-https://www.cnblogs.com/sparkdev/p/7066789.html
-
-https://www.jianshu.com/p/efd70ad53602
-
-https://spring.io/guides/gs/spring-boot-docker/
-
-https://www.jianshu.com/p/c435ea4c0cc0
+https://www.jianshu.com/p/c435ea4c0cc0   （dockerfile引用pom动态参数@@）
 
 https://www.jianshu.com/p/3b91b8958c3e
 
-https://spring.io/guides/gs/spring-boot-docker/
-
-https://www.jb51.net/article/138187.htm
-
-https://www.jianshu.com/p/c435ea4c0cc0
-
-https://blog.csdn.net/chen798213337/article/details/51046175
+https://www.jb51.net/article/138187.htm   (springboot-docker-maven)
 
 http://www.cnblogs.com/frinder6/p/6694829.html?utm_source=itdadao&utm_medium=referral
 
@@ -2126,6 +2878,51 @@ RUN echo '<h1>Hello,Decoker!</h1>' > /usr/share/nginx/html/index.html
 - `CMD command param1 param2` 使用`/bin/sh -c`执行
 - `CMD ["param1", "param2"]` 提供给ENTRYPOINT的默认参数
 
+我们知道，通过docker run 创建并启动一个容器时，命令的最后可以指定容器启动后在容器内立即要执行的指令，如：
+
+docker run -i -t ubunu /bin/bash   //表示容器启动时立即在容器内打开一个shell终端
+
+docker run ubuntu /bin/ps    //表示容器启动后立即运行 /bin/ps命令，显示容器的当前进程。
+
+除了这种方式外，我们可以在dockerfile文件中通过CMD指令指定容器启动时要执行的命令。如：
+
+```
+#test
+FROM ubuntu
+MAINTAINER xxx
+RUN echo hello1 > test1.txt
+RUN echo hello2 > /test2.txt
+EXPOSE 80
+EXPOSE 81
+CMD ["/bin/bash"]
+```
+
+上面dockerfile文件中最后一行CMD指令的参数是指定容器启动时要执行的命令，这里是bin/bash命令。
+
+1、用docker run命令创建并启动容器（myimage  是用前面dockerfile创建的镜像的名称）：
+
+docker run -i -t myimage  
+
+上面命令是创建并启动容器，打开一个交互式shell。 而以前的写法是
+
+docker run -i -t myimage  /bin/bash
+
+这样就省去了在docker run中写命令了。
+
+2、即使dockerfile中有CMD指令，我们仍然可以在docker run命令中带上容器启动时执行的命令，这会覆盖dockerfile中的CMD指令指定的命令。如：
+
+docker run -i -t myimage /bin/ps
+
+上面命令，因为/bin/ps覆盖了CMD指令，启动容器时会打印容器内的当前进程，但容器会立即停止，因为/bin/bash被覆盖了，无法打开交互式shell界面。
+
+3、需要注意的是，dockerfile中可以有多条cmd命令，但只是最后一条有效。
+
+4、CMD命令的参数格式，一般写成 字符串数组的方式，如上面的例子。如：
+
+CMD  ["echo","hello world"]
+
+虽然也可写成CMD echo hello word 方式，但这样docker会在指定的命令前加  /bin/sh -c 执行，有时有可能会出问题。 所以推荐采用数据结构的方式来存放命令
+
 ##### EXPOSE
 
 格式为`EXPOSE <port> [<port>...]`，该指令用于告诉Docker容器要暴露的端口号，供互联系统使用。
@@ -2147,9 +2944,59 @@ ENV PG_MAJOR 9.3
 ENV PG_VERSION 9.35
 ```
 
+ENV指令用来在镜像构建过程中设置环境变量。我们来看一个Dockerfile的例子：
+
+[![复制代码](http://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+#test
+FROM ubuntu
+MAINTAINER hello
+ENV MYDIR /mydir
+RUN mkdir $MYDIR
+RUN echo hello world > $MYDIR/test.txt
+```
+
+[![复制代码](http://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+假设用上面的dockerfile构建了一个叫myimage的镜像。
+运行  docker run -i -t myimage /bin/bash
+
+我们发现新建的容器中有了 /mydir目录，并有了/mydir/test.txt文件，文件内容为 hello world
+
+1、通过ENV定义的环境变量，可以被后面的所有指令中使用，如上面的例子
+
+2、但是不能被CMD指令使用，也不能被docker run 的命令参数引用。这个需要注意
+
+3、通过ENV定义的环境变量，会永久的保存到该镜像创建的任何容器中。这样除了不能在上面说的启动命令中使用外，可以在后续容器的操作中使用。
+
+4、可以在docker run 命令中通过 -e标记来传递环境变量，这样容器运行时就可以使用该变量。如：
+
+docker run -i -t -e "TEST=hello" ubuntu /bin/bash
+
 ##### ADD
 
 格式为`ADD <src> <dest>`。该命令复制指定的`<src>`到`<dest>`，其中`<src`可以是Dockerfile所在目录的一个相对路径（文件或目录），也可以是网络上的资源路径或者是tar包。如果`<src>`是tar包的话，会在dest位置**自动解压**为目录。
+
+有如下注意事项：
+
+1、如果源路径是个文件，且目标路径是以 / 结尾， 则docker会把目标路径当作一个目录，会把源文件拷贝到该目录下。
+
+如果目标路径不存在，则会自动创建目标路径。
+
+2、如果源路径是个文件，且目标路径是不是以 / 结尾，则docker会把目标路径当作一个文件。
+
+如果目标路径不存在，会以目标路径为名创建一个文件，内容同源文件；
+
+如果目标文件是个存在的文件，会用源文件覆盖它，当然只是内容覆盖，文件名还是目标文件名。
+
+如果目标文件实际是个存在的目录，则会源文件拷贝到该目录下。 注意，这种情况下，最好显示的以 / 结尾，以避免混淆。
+
+3、如果源路径是个目录，且目标路径不存在，则docker会自动以目标路径创建一个目录，把源路径目录下的文件拷贝进来。
+
+如果目标路径是个已经存在的目录，则docker会把源路径目录下的文件拷贝到该目录下。
+
+4、如果源文件是个归档文件（压缩文件），则docker会自动帮解压。
 
 ##### COPY
 
@@ -2192,6 +3039,41 @@ docker cp  96f7f14e99ab:/www /tmp/
 - ENTRYPOINT ["executable", "param1", "param2"]
 - ENTRYPOINT command param1 param2
 
+本文介绍Dockerfile的 ENTRYPOINT指令的含义。
+
+先回顾下CMD指令的含义，CMD指令可以指定容器启动时要执行的命令，但它可以被docker run命令的参数覆盖掉。
+
+ENTRYPOINT 指令和CMD类似，它也可用户指定容器启动时要执行的命令，但如果dockerfile中也有CMD指令，CMD中的参数会被附加到ENTRYPOINT 指令的后面。 如果这时docker run命令带了参数，这个参数会覆盖掉CMD指令的参数，并也会附加到ENTRYPOINT 指令的后面。
+
+这样当容器启动后，会执行ENTRYPOINT 指令的参数部分。
+
+可以看出，相对来说ENTRYPOINT指令优先级更高。
+
+我们来看个例子，下面是Dockerfile的内容
+
+```
+#test
+FROM ubuntu
+MAINTAINER hello
+RUN echo hello1 > test1.txt
+RUN echo hello2 > /test2.txt
+EXPOSE 80
+ENTRYPOINT ["echo"]
+CMD ["defaultvalue"]
+```
+
+假设通过该Dockerfile构建的镜像名为 myimage。
+
+1、当运行 docker run myimage  输出的内容是 defaultvalue，可以看出CMD指令的参数得确是被添加到ENTRYPOINT指令的后面，然后被执行。
+
+2、当运行docker run myimage hello world  输出的内容是 hello world ，可以看出docker run命令的参数得确是被添加到ENTRYPOINT指令的后面，然后被执行，这时CMD指令被覆盖了。
+
+3、另外我们可以在docker run命令中通过 --entrypoint 覆盖dockerfile文件中的ENTRYPOINT设置，如：
+
+docker run --entrypoint="echo" myimage good  结果输出good
+
+ 注意，不管是哪种方式，创建容器后，通过 dokcer ps查看容器信息时，COMMOND列会显示最终生效的启动命令。
+
 ##### VOLUME
 
 格式为`VOLUME ["/data"]`，创建一个可以从本地主机或其它容器挂载的挂载点，一般用来存放数据库和需要保持的数据等。
@@ -2213,6 +3095,42 @@ RUN pwd
 ```
 
 则最后得到的路径是`/a/b`。
+
+Dockerfile中的WORKDIR指令用于指定容器的一个目录， 容器启动时执行的命令会在该目录下执行。
+
+相当于设置容器的工作目录了。我们来看一个dockerfile文件
+
+[![复制代码](http://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+#test
+FROM ubuntu
+MAINTAINER hello
+RUN mkdir /mydir
+RUN echo hello world > /mydir/test.txt
+WORKDIR /mydir
+CMD ["more" ,"test.txt"]
+```
+
+[![复制代码](http://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+假设根据该dockerfile构建的镜像名为 myimage
+
+1、运行 docker run myimage  输出 hello world
+
+2、运行 docker run myimage more test.txt  和上面输出一致
+
+可以看出，more的参数是 test.txt，但没有指定路径，却能成功，说明当前路径就是上面WORKDIR指令设置的。
+
+如果我们在上面的dockerfile中把WORKDIR指令去掉，创建的容器运行会报文件不存在错误。
+
+3、可以在 docker run命令中用 -w参数覆盖掉WORKDIR指令的设置，如：
+
+执行 docker run -w / myimage
+
+上面的-w参数将容器的工作目录设置成了根目录，而根目录下没有test.txt文件。
+
+所以结果显示：test.txt: No such file or directory
 
 ##### ONBUILD
 
@@ -2834,10 +3752,42 @@ CMD /usr/local/apache-tomcat-8.5.16/bin/catalina.sh run 等同于-->
 ENTRYPOINT ["/usr/share/tomcat7/bin/catalina.sh", "run" ]
 ```
 
+或者
+
+```
+FROM ubuntu:14.04
+MAINTAINER 13662241921 "4754063522@qq.com"
+# 设置当前工具目录
+# 该命令不会新增镜像层
+WORKDIR /home
+# 安装必要的工具
+RUN sudo apt-get update && \
+    apt-get install -y  wget && \
+    apt-get install -y tar && \
+    wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz && \
+    tar -xvzf jdk-8u131-linux-x64.tar.gz && \
+    wget http://mirrors.tuna.tsinghua.edu.cn/apache/tomcat/tomcat-8/v8.5.32/bin/apache-tomcat-8.5.32.tar.gz && \
+    tar -xvzf apache-tomcat-8.5.32.tar.gz && \ 
+    mv apache-tomcat-8.5.32/ tomcat && \
+    rm -f jdk-8u131-linux-x64.tar.gz && \
+    rm -f apache-tomcat-8.0.47.tar.gz && \    
+    apt-get clean all
+# 设置环境变量
+ENV JAVA_HOME /home/jdk1.8.0_131
+ENV CATALINA_HOME /home/tomcat
+ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/bin
+# 暴露tomcat 8080端口
+EXPOSE 8080
+ENTRYPOINT /home/tomcat/bin/startup.sh && tail -f /home/tomcat/logs/catalina.out
+# 创建容器启动tomcat
+CMD ["/home/tomcat/bin/startup.sh"]
+```
+
 然后执行：
 
 ```
 docker build -t tomcat-web .
+docker build --no-cache -t="tomcat-web" .
 ```
 
 启动tomcat：
@@ -3290,12 +4240,6 @@ default)Looks like something went wrong in step ´Checking if machine default ex
 自己用其他工具去下载对应的 boot2docker.iso 文件（下载链接：https://github.com/boot2docker/boot2docker/releases/download/v17.05.0-ce/boot2docker.iso）
 然后放置到对应的目录（我的是：C:\Users\zheng\.docker\machine\cache\boot2docker.iso）就可以了。
 
-
-
-
-
-
-
 本机安装一个docker ,远程主机安装一个docker ，这篇文章主要就是讲解如何用本地的docker client 访问远程主机的docker daemon
 
 默认情况下，[Docker](http://lib.csdn.net/base/docker)守护进程会生成一个socket（/var/run/docker.sock）文件来进行本地进程通信，而不会监听任何端口，因此只能在本地使用docker客户端或者使用Docker API进行操作。 
@@ -3382,6 +4326,7 @@ Ubuntu 15.04以后：
 ```
 $ sudo mkdir /etc/systemd/system/docker.service.d
 $ sudo vi /etc/systemd/system/docker.service.d/docker.conf  一说为：http-proxy.conf（经过验证都可以）
+$ sudo vi /etc/systemd/system/multi-user.target.wants/docker.service(待验证)
 ```
 
 2 创建文件内容 【远程机器】
@@ -3446,5 +4391,60 @@ EnvironmentFile=-/etc/sysconfig/docker
 
 
 
+#### 修改容器内容导致无法启动
 
- overlay2
+我们可能会碰到这样的一个问题，在容器执行过程中，修改了容器的内容（如配置文件信息），但因为修改出了问题。导致容器关闭后，无法启动。
+
+这事需要重新修改配置文件。 正常情况下可以通过 docker exec命令打开容器的一个shell终端进去修改。
+
+但这时容器已经无法启动了。这时该如何处理呢？ 这有两种方案：
+
+**方案一：创建新镜像**
+
+把这个问题容器用docker commit提交到一个新的镜像，然后用docker run -it 基于新镜像运行一个新的容器进去改变（修复）配置文件。
+
+再通过新的容器再提交一个新的镜像，然后在基于新的镜像重新启动容器（同最初的容器）。
+
+这个方法是可行的，但问题是步骤多，而且提交了新的镜像，对于后续维护增加了复杂性。
+
+**方案二：直接修改容器的文件**
+
+所有的容器数据都存在/var/lib/docker/aufs/diff/路径下。比如：
+
+```
+root@ubuntu:~# ls /var/lib/docker/aufs/diff/ -l
+total 176
+drwxr-xr-x  2 root root 4096 Mar  6 05:13 040bf8e0842564e26e62f3e3a30785bd9651c82c52ed99115cd5360ce979e680
+drwxr-xr-x  6 root root 4096 Mar  6 05:13 04f7e78a2c8ac9664503f4ea5a1d94bf27b94620987f241cfb9fd6631f761113
+drwxr-xr-x  2 root root 4096 Mar 11 01:07 0c666375883f81ba0fc3962368766e93710f59c072a4b80cdf5640323018ccdb
+drwxr-xr-x  4 root root 4096 Mar 11 07:53 0d7fc1722e459b242140ec45faec754d4967d72ea2ddf321f8606c837f8e8d4f
+drwxr-xr-x  6 root root 4096 Mar 11 07:53 0d7fc1722e459b242140ec45faec754d4967d72ea2ddf321f8606c837f8e8d4f-init
+drwxr-xr-x  3 root root 4096 Mar  6 05:13 0dc5e226a795507723362cc16046cf16650f8f70dc7bb721b799a5f2a40512ce
+drwxr-xr-x  2 root root 4096 Mar  6 05:13 0fd3b6e125673affc1f348cdb0c071782bde7d7ab4748bea3e30bc2d1d7ea7ab
+......................
+```
+
+一个容器的数据对应这其中的一个或多个目录 。其中目录名的前几位就是容器的ID，通过这知道容器和目录的对应关系。
+注意这个目录需要用root用户执行。
+
+具体的操作步骤如下：
+
+1、设置当前目录  cd /var/lib/docker/aufs/diff/
+
+2、查找要修改的配置文件所在容器中的位置
+
+find ./ -name 'nginx.conf'
+
+假设我们要修改的是 nginx.conf文件，可能的结果如：
+
+./eb531927ba243b59f0db78848809423f7debe148a9ef972088ea41be73c2aa81/etc/nginx/nginx.conf
+./4975acfb30f3f729ac08a9c1bd642f735298a47057fc7c414c7479696b80f36a/etc/nginx/nginx.conf
+./6fce3cb01e3c9b8cc4e1fc270c012b1d0b666fe49ad8b6bededb99e295c5da4c/etc/nginx/nginx.conf
+
+这时我们通过比较要修改容器的ID 与上面几个目录的前缀，就知道是要修改哪个配置文件了。
+
+如果我们进入类似 4975acfb30f3f729ac08a9c1bd642f735298a47057fc7c414c7479696b80f36a 目录，会发现这个目录下的内容和linux跟目录下的目录结构非常类似。我们可以找到相关的配置文件直接修改。
+
+说明：因为一个容器的文件系统包括不可修改的镜像层和可修改的读写层，这个目录下其实就是读写层的内容。
+
+3、修改完毕后用 docker start 容器名/ID  即可重新启动容器。
