@@ -1,5 +1,7 @@
 see：http://www.runoob.com/linux/linux-tutorial.html
 
+免密码登录：https://www.cnblogs.com/wulaoer/p/5486579.html
+
 #### Vim编辑器
 
 首先：卸载旧版本vi

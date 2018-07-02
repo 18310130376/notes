@@ -2527,6 +2527,70 @@ centos                                             latest              196e0ce0c
 
 而如果需要返回machine环境就继续执行machine环境变量就行，这种方式很好的隔离了本地和远程镜像和容器
 
+### docker machine 管理远程docker服务
+
+第一步：查看machine列表。以下docker-machine安装在我的开发环境windows下：
+
+```
+PS C:\Users\Administrator> docker-machine ls
+NAME   ACTIVE   DRIVER   STATE   URL   SWARM   DOCKER   ERRORS
+PS C:\Users\Administrator>
+```
+
+第二步：配置远程主机可以免交互认证登录，因为本地开发环境windows，需要用到Git Bash用来支持下面的命令
+
+产生公钥与私钥对：
+
+```
+ssh-keygen -t rsa  ##或 
+ssh-keygen
+```
+
+`ssh-copy-id **将key写到远程机器的 ~/ .ssh/authorized_key.文件中`**ssh-copy-id命令**可以把本地主机的公钥复制到远程主机的authorized_keys文件上，ssh-copy-id命令也会给远程主机的用户主目录（home）和`~/.ssh`, 和`~/.ssh/authorized_keys`设置合适的权限  
+
+```
+ssh-copy-id root@192.168.135.131
+ssh-copy-id -i 475402366.pub root@192.168.135.131  #-i：指定公钥文件(先pwd，cd到公钥文件夹下)
+```
+
+```
+service sshd restart
+ssh root@192.168.135.131    #此时如果上面一切正常则不会提示输入密码的
+
+服务器文件列表：
+root@wukang-virtual-machine:~/.ssh# ls
+authorized_keys
+root@wukang-virtual-machine:~/.ssh# pwd
+/root/.ssh
+```
+
+以上如果还是需要登录密码则：
+
+```
+
+#①文件权限
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+sudo chmod 700 /home/当前用户
+
+service sshd restart
+service ssh status
+sudo /etc/init.d/ssh restart
+#②配置项
+sudo vi /etc/ssh/sshd_config：
+AuthorizedKeysFile	.ssh/authorized_keys
+RSAAuthentication yes （无用）
+PubKeyAuthentication yes
+PasswordAuthentication yes   #当完成全部设置，以密钥方式登录成功后，可以禁用密码登录：PasswordAuthentication no
+PermitEmptyPasswords yes
+StrictModes no
+PermitRootLogin yes
+#③查看日志
+如果还不行，可以用ssh -vvv 目标机器ip 查看详情，根据输出内容具体问题具体分析了
+ssh -vvv 192.168.135.131
+tail -fn 300 /var/log/auth.log
+```
+
 
 
 ### 如何快速清理 docker 资源
