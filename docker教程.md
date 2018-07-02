@@ -330,8 +330,8 @@ sudo usermod  -aG docker USER_NAME
 ```
 chkconfig docker on
 sudo service docker restart
-sudo service docker start
-sudo systemctl start docker
+sudo service docker start   # service 命令的用法
+sudo systemctl start docker #systemctl 命令的用法
 ```
 
 每次重启docker服务后，可以通过查看docker版本信息确保服务已正常运行
@@ -1408,7 +1408,6 @@ Docker Root Dir: /mnt/new_volume/docker
 
 - 数据卷容器：使用特定容器维护数据卷
 
-  
 
   **一、通过docker run命令** 
 
@@ -2062,6 +2061,50 @@ sudo ifconfig docker0
 >
 >4：bridge模式，使用--net=bridge指定（docker默认）
 
+
+
+### 容器指定自定义网段静态IP地址
+
+**摘要：**Docker容器运行的时候默认会自动分配一个默认网桥所在网段的IP地址。但很多时候我们可能需要让容器运行在预先指定的静态IP地址上，因为早期的版本不支持静态IP，因此网上大部分方法都是借助pipework等去实现，然而在最新的版本中，Docker已经内嵌支持在启动时指定静态IP了。
+
+Docker守护进程启动以后会创建默认网桥docker0，其IP网段通常为172.17.0.1。在启动Container的时候，Docker将从这个网段自动分配一个IP地址作为容器的IP地址。最新版(1.10.3)的Docker内嵌支持在启动容器的时候为其指定静态的IP地址。这里分为三步：
+
+**第一步：安装最新版的Docker**
+
+备注：操作系统自带的docker的版本太低，不支持静态IP，因此需要自定义安装。
+
+root@localhost:~# apt-get update
+
+root@localhost:~# apt-get install curl
+
+root@localhost:~# curl -fsSL https://get.docker.com/ | sh
+
+root@localhost:~# docker -v
+
+Docker version 1.10.3, build 20f81dd
+
+**第二步：创建自定义网络**
+
+备注：这里选取了172.18.0.0网段，也可以指定其他任意空闲的网段
+
+docker network create --subnet=172.18.0.0/16 shadownet
+
+注：shadown为自定义网桥的名字，可自己任意取名。
+
+**第三步：在你自定义的网段选取任意IP地址作为你要启动的container的静态IP地址**
+
+备注：这里在第二步中创建的网段中选取了172.18.0.10作为静态IP地址。这里以启动shadowsocks为例。
+
+docker run -d -p 2001:2001 --net shadownet --ip 172.18.0.10 oddrationale/docker-shadowsocks -s 0.0.0.0 -p 2001 -k 123456 -m aes-256-cfb
+
+**其他**
+
+备注1：这里是固定IP地址的一个应用场景的延续，仅作记录用，可忽略不看。
+
+备注2：如果需要将指定IP地址的容器出去的请求的源地址改为宿主机上的其他可路由IP地址，可用iptables来实现。比如将静态IP地址172.18.0.10出去的请求的源地址改成公网IP104.232.36.109(前提是本机存在这个IP地址)，可执行如下命令：
+
+iptables -t nat -I POSTROUTING -o eth0 -d  0.0.0.0/0 -s 172.18.0.10  -j SNAT --to-source 104.232.36.109
+
 ### Docker Compose 项目
 
 http://www.ityouknow.com/docker/2018/03/22/docker-compose.html
@@ -2627,12 +2670,15 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | 查看最后创建的 container                                     | docker ps -l                                                 | docker ps -l                                                 |
 | 查看所有 container ，包括正在运行和已经关闭的                | docker ps -a                                                 | docker ps -a                                                 |
 | 输出指定 container 的 stdout 信息（用来看 log ，效果和 tail -f 类似，会实时输出。） | docker logs -f [container]                                   | docker logs -f nostalgic_morse                               |
+|                                                              | docker container logs [containerID]                          |                                                              |
 | 获取 container 指定端口映射关系                              | docker port [container][port]                                | docker port nostalgic_morse 5000                             |
 | 查看 container容器内部运行的进程                             | docker top [container]                                       | docker top nostalgic_morse                                   |
 | 查看 container 详细信息JSON格式                              | docker inspect [container]                                   | sudo docker inspect -f  "{{ .Name }}" aed84ee21bde           |
 | 停止 continer                                                | docker stop [container]                                      | docker stop nostalgic_morse                                  |
+|                                                              | docker container stop [container]                            |                                                              |
 | 强制停止 container                                           | docker kill [container]                                      | docker kill nostalgic_morse                                  |
 | 启动一个已经停止的 container                                 | docker start [container]                                     | docker start nostalgic_morse                                 |
+|                                                              | docker container start [containerID]                         |                                                              |
 | 重启 container (若 container 处于关闭状态，则直接启动)       | docker restart [container]                                   | docker restart nostalgic_morse                               |
 | 删除 container（ 容器是停止状态）                            | docker rm [container]                                        | docker rm nostalgic_morse                                    |
 | 容器卷挂载                                                   | docker run -d -P --name web -v <宿主机目录>:<容器目录> training/webapp python app.py | docker run -d -P --name web -v /webapp training/webapp python app.py |
@@ -2648,6 +2694,7 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | docker network create -d bridge webnet                       | docker network create -d bridge webnet                       | docker network create -d bridge webnet                       |
 | 列出数据卷                                                   | **docker volume ls**                                         | **docker volume ls**                                         |
 | 列出 network                                                 | **docker network ls**                                        | **docker network ls**                                        |
+| 将文件拷贝到本机                                             | docker container cp [containID]:[/path/to/file] .            | docker container cp [containID]:[/path/to/file] .            |
 
 镜像操作：
 
@@ -2658,12 +2705,14 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | 从 container 创建 image         | docker commit [container][imageName]         | docker commit nostalgic_morse ouruser/sinatra:v2      |
 | 从 Dockerfile 创建 image        | docker build -t [imageName] [pathToFolder    | docker build ouruser/sinatra:v3 .                     |
 | 查看本地所有 image              | docker images等价于**docker image ls**       | docker images                                         |
-|                                 | docker images\|grep node-demo                | docker images\|grep node-demo                         |
+| 模糊匹配                        | `docker images  47*`                         | `docker images 47*`                                   |
+|                                 | docker images -a \|grep none                 | docker images\|grep node-demo                         |
 | 在 registry 中搜索镜像          | docker search [query]                        | docker search ubuntu                                  |
 | 从 registry 中获取镜像          | docker pull [imageName]                      | docker pull ubuntu:14.04, docker pull training/webapp |
 | 给 image 打 tag                 | docker tag [imageId][imageName]              | docker tag 5db5f8471261 ouruser/sinatra:devel         |
 | 把本地 image 上传到 registry 中 | docker push [imageName]                      | docker push ouruser/sinatra                           |
 | 删除本地 image                  | docker rmi [image]                           | docker rmi training/sinatra                           |
+| 删除所有image                   | docker rm $(docker ps -a -q)                 | docker rm $(docker ps -a -q)                          |
 | 载入镜像                        | docker load < ubuntu_14.04.tar               | docker load < ubuntu_14.04.tar                        |
 | 存出镜像                        | docker save -o ubuntu_14.04.tar ubuntu:14.04 | docker save -o ubuntu_14.04.tar ubuntu:14.04          |
 
@@ -2677,13 +2726,13 @@ docker-machine：
 | docker-machine rm default                         | 删除docker服务器         | docker-machine rm default                         |
 | docker-machine start default                      | 启动docker服务器         | docker-machine start default                      |
 | docker-machine status                             | 查看虚拟机状态           | docker-machine status                             |
-| docker-machine restart                            | 重启虚拟机               | docker-machine restart                            |
+| docker-machine restart default                    | 重启虚拟机               | docker-machine restart default                    |
 | docker-machine stop                               | 停止虚拟机               | docker-machine stop                               |
 | docker-machine create --driver virtualbox default | 创建docker服务器         | docker-machine create --driver virtualbox default |
 | docker-machine env default                        | 提示设置环境变量         | docker-machine env default                        |
 | docker-machine -v                                 | 查看版本信息             | docker-machine -v                                 |
 | docker-machine inspect                            | 检查机子信息             | docker-machine inspect                            |
-| docker-machine ssh krdevdb                        |                          | docker-machine ssh krdevdb                        |
+| docker-machine ssh default                        | 连接到default的docker    | docker-machine ssh dfault                         |
 
 docker load与docker import
 
@@ -2791,41 +2840,33 @@ https://www.jianshu.com/p/3b91b8958c3e
 
 https://www.jb51.net/article/138187.htm   (springboot-docker-maven)
 
-http://www.cnblogs.com/frinder6/p/6694829.html?utm_source=itdadao&utm_medium=referral
 
-http://blog.51cto.com/xiangcun168/1958904
 
-https://www.jianshu.com/p/d809971b1fc1
+http://www.ituring.com.cn/article/497750  （docker-maven）
 
-https://www.cnblogs.com/flying607/p/8574645.html
-
-https://blog.csdn.net/suresand/article/details/79982378
-
-https://blog.csdn.net/lvyuan1234/article/details/69255944
-
-http://www.ituring.com.cn/article/497750
-
-https://www.cnblogs.com/xingqi/p/9013350.html
-
-https://www.jianshu.com/p/c435ea4c0cc0
-
-http://www.54chen.com/architecture/maven-nexus-notes.html
-
-http://www.54chen.com/architecture/maven-nexus-notes.html
-
-https://docs.docker.com/config/daemon/systemd/#httphttps-proxy
-
-http://www.cnblogs.com/hanyifeng/p/5860731.html#3965281
+https://docs.docker.com/config/daemon/systemd/#httphttps-proxy (官方)
 
 docker学习
 
-https://www.cnblogs.com/kevingrace/p/6238195.html
+https://www.cnblogs.com/kevingrace/p/6238195.html （日常操作）
 
 ### 构建
 
 #### Dockerfile
 
 Dockerfile`注意Dockerfile的D需要大写 `是一个文本格式的配置文件，用户可以使用Dockerfile快速创建自定义的镜像。
+
+首先，在项目的根目录下，新建一个文本文件`.dockerignore`，写入下面的内容
+
+```
+.git
+node_modules
+npm-debug.log
+```
+
+上面代码表示，这三个路径要排除，不要打包进入 image 文件。如果你没有路径要排除，这个文件可以不新建。
+
+
 
 #### 基本结构
 
@@ -4057,7 +4098,8 @@ pom.xml
                    <!--  <dockerHost>https://192.168.99.100:2376</dockerHost>
                     <dockerCertPath>C:\Users\789\.docker\machine\machines\default</dockerCertPath> -->
                     <pushImage>true</pushImage>
-                   <!--  <registryUrl>registry.cn-hangzhou.aliyuncs.com</registryUrl> -->
+                     <!--mvn clean package docker:build -DpushImage -->
+                     <!--  <registryUrl>registry.cn-hangzhou.aliyuncs.com</registryUrl> -->
                     <serverId>docker-hub</serverId>
                    <!--<serverId>docker-hub</serverId>--> 
                     <resources>
@@ -4108,18 +4150,27 @@ mvn --encrypt-master-password 123asdadfafdadf
 </settingsSecurity>
 ```
 
-3 最终生成docker加密后的密码填写入项目pom同级settings.xml
+3 最终生成docker加密后的密码填写入项目pom同级settings.xml（`.m2下和settings-security.xml统计目录也要有`）
 
 ```
 mvn --encrypt-password 你的邮箱密码
 {RxLx1asdfiafrjIHfXZDadfwveda23avsdv=}
+
+vim ~/.m2/settings.xml
+<server>
+     <id>internal</id>
+     <username>54chen</username>
+     <password>{RxLx1asdfiafrjIHfXZDadfwveda23avsdv=}</password>
+</server>
 ```
 
 4 运行命令
 
 ```
 mvn package docker:build
-
+因为pom里配置了<pushImage>true</pushImage> 将会push到docker远程仓库
+或者在运行maven命令时指定参数：
+mvn clean package docker:build -DpushImage
 ```
 
 
@@ -4207,6 +4258,59 @@ Canot connect to the Docker daemon. Is 'docker -d' running on this host?
 DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 # service docker restart
 ```
+
+
+
+**3、在Windows 中 利用 Maven 为该Docker服务端构筑docker 镜像（该Windows中无须安装Docker）：**
+
+pom.xml配置插件：
+
+```
+<build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <executable>true</executable>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.4.13</version>
+                <configuration>
+                    <imageName>liuyx/test:0.1</imageName>
+　　　　　　　　　　　　<!-- 本以为在此设置 前文服务端的地址和端口 可以生效，但是始终会报一个tcp protocol is not supported，鄙人才疏学浅，终究不知为什么，我们还是在别的地方设置吧 -->
+                    <!--<dockerHost>tcp://xxx.xxx.xxx.xxx:2375</dockerHost>-->
+                    <!-- 设置Dockerfile路径，设置了就会忽略baseImage和entryPoint等Dockerfile中应出现的东西，转而去执行Dockerfile-->
+                    <!--<dockerDirectory>src/main/docker</dockerDirectory>-->
+
+                    <skipDockerBuild>false</skipDockerBuild>
+                    <baseImage>java8</baseImage>
+                    <entryPoint>["java","-jar","/${project.build.finalName}.jar"]</entryPoint>
+                    <resources>
+                        <resource>
+                            <targetPath>/</targetPath>
+                            <directory>${project.build.directory}</directory>
+                            <include>${project.build.finalName}.jar</include>
+                        </resource>
+                    </resources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+```
+
+构建命令：
+
+```
+#在此，先设置当前的环境变量“DOCKER_HOST”为前文提到的docker服务端的ip和端口，当然也可以直接去系统环境变量设置
+set DOCKER_HOST=tcp://xxx.xxx.xxx.xxx:2375
+mvn clean package -X docker:build
+```
+
 
 
 #### Docker学习笔记 — 开启Docker远程访问
@@ -4391,6 +4495,52 @@ EnvironmentFile=-/etc/sysconfig/docker
 
 
 
+在centos7.2下
+
+**[root@localhost frinder]# vi /usr/lib/systemd/system/docker.service**
+**在：ExecStart=/usr/bin/dockerd-current 后面追加：-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock**
+
+[root@localhost frinder]# cat /usr/lib/systemd/system/docker.service
+[Unit]
+Description=Docker Application Container Engine
+Documentation=http://docs.docker.com
+After=network.target
+Wants=docker-storage-setup.service
+Requires=docker-cleanup.timer
+
+[Service]
+Type=notify
+NotifyAccess=all
+EnvironmentFile=-/etc/sysconfig/docker
+EnvironmentFile=-/etc/sysconfig/docker-storage
+EnvironmentFile=-/etc/sysconfig/docker-network
+Environment=GOTRACEBACK=crash
+Environment=DOCKER_HTTP_HOST_COMPAT=1
+Environment=PATH=/usr/libexec/docker:/usr/bin:/usr/sbin
+ExecStart=/usr/bin/dockerd-current -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock \
+--add-runtime docker-runc=/usr/libexec/docker/docker-runc-current \
+--default-runtime=docker-runc \
+--exec-opt native.cgroupdriver=systemd \
+--userland-proxy-path=/usr/libexec/docker/docker-proxy-current \
+$OPTIONS \
+$DOCKER_STORAGE_OPTIONS \
+$DOCKER_NETWORK_OPTIONS \
+$ADD_REGISTRY \
+$BLOCK_REGISTRY \
+$INSECURE_REGISTRY
+ExecReload=/bin/kill -s HUP $MAINPID
+LimitNOFILE=1048576
+LimitNPROC=1048576
+LimitCORE=infinity
+TimeoutStartSec=0
+Restart=on-abnormal
+MountFlags=slave
+
+[Install]
+WantedBy=multi-user.target
+[root@localhost frinder]# systemctl daemon-reload 
+[root@localhost frinder]# systemctl restart docker.service
+
 #### 修改容器内容导致无法启动
 
 我们可能会碰到这样的一个问题，在容器执行过程中，修改了容器的内容（如配置文件信息），但因为修改出了问题。导致容器关闭后，无法启动。
@@ -4448,3 +4598,259 @@ find ./ -name 'nginx.conf'
 说明：因为一个容器的文件系统包括不可修改的镜像层和可修改的读写层，这个目录下其实就是读写层的内容。
 
 3、修改完毕后用 docker start 容器名/ID  即可重新启动容器。
+
+
+
+#### Docker 要点记录
+
+1：比如 我想设置 F:\config 为 挂载一个本地目录   写法是   docker run -d -v /F/config
+
+2：容器内部访问问题
+
+​      如果是通过  服务名称访问    注意服务名称 不能有  特殊字符  如 & _ 等  
+
+3：boot2docker  创建的docker虚拟机 默认密码
+
+​      用户名和密码是: docker/tcuser
+
+4：关于 boot2docker  docker虚拟机 环境变量的问题
+
+　 sudo vi /var/lib/boot2docker/profile   直接添加到最后就行 了
+
+5：查看容器的root用户密码
+
+因为docker容器启动时的root用户的密码是随机分配的。所以，通过这种方式就可以得到redmine容器的root用户的密码了。
+
+```
+docker logs <容器名orID> 2>&1 | grep '^User: ' | tail -n1
+```
+
+6：查看容器日志
+
+```
+docker logs -f <容器名orID>
+```
+
+7：一个容器连接到另一个容器
+
+```
+docker run -i -t --name sonar -d -link mmysql:db   tpires/sonar-server
+```
+
+8：运行一个新容器，同时为它命名、端口映射、文件夹映射。以redmine镜像为例
+
+​      容器连接到mmysql容器，并将mmysql容器重命名为db。这样，sonar容器就可以使用db的相关的环境变量了。
+
+```
+docker run --name redmine -p 9003:80 -p 9023:22 -d -v /var/redmine/files:/redmine/files -v /var/redmine/mysql:/var/lib/mysql sameersbn/redmine
+```
+
+9：从container中拷贝文件出来
+
+```
+sudo docker cp 7bb0e258aefe:/etc/debian_version .
+```
+
+拷贝7bb0e258aefe中的/etc/debian_version到当前目录下。
+`注意`：只要7bb0e258aefe没有被删除，文件命名空间就还在，可以放心的把exit状态的container的文件拷贝出来
+
+10：CMD [“executable”,“param1”,”param2”] 使用exec 执行，推荐方式
+
+11：`RUN`命令与`CMD`命令的区别
+
+  简单说，`RUN`命令在 image 文件的构建阶段执行，执行结果都会打包进入 image 文件；`CMD`命令则是在容器启动后      执行。另外，一个 Dockerfile 可以包含多个`RUN`命令，但是只能有一个`CMD`命令。
+
+注意，指定了`CMD`命令以后，`docker container run`命令就不能附加命令了（比如前面的`/bin/bash`），否则它会覆盖`CMD`命令。
+
+
+
+#### 基于 Docker 打造前端持续集成开发环境
+
+本文将以一个标准的 Vue 项目为例，完全抛弃传统的前端项目开发部署方式，基于 Docker 容器技术打造一个精简的前端持续集成的开发环境。
+
+**前置知识：**
+
+1. CI（持续集成）：[阮一峰老师的关于 CI 的介绍](https://link.juejin.im/?target=http%3A%2F%2Fwww.ruanyifeng.com%2Fblog%2F2015%2F09%2Fcontinuous-integration.html)
+
+
+2. Docker： [Docker 快速入门](https://link.juejin.im/?target=http%3A%2F%2Fguide.daocloud.io%2Fdcs%2Fdocker-9152673.html)
+
+**目标：**
+
+1. 代码无需在本地构建
+
+
+2. 只需将代码推上 Github ，自动构建 -> 部署
+
+
+3. 版本易管理，可轻松回退版本
+
+现在开始进入主题
+
+**第一步： 初始化 Vue 项目（使用vue官方脚手架 vue-cli）**
+
+1. 初始化 vue 项目：vue init webpack vue-docker-demo
+2. 在项目根目录下编 Dockerfile
+
+[![01](http://blog.daocloud.io/wp-content/uploads/2017/11/01.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/01.jpg)
+
+Dockerfile 内容如下（如果是构建其他项目，比如 angular4，只需安装 angular-cli，将构建参数改成 ng build 即可，大同小异）
+
+```
+FROM node:6.10.3-slim
+RUN apt-get update \    && apt-get install -y nginx
+WORKDIR /app
+COPY . /app/
+EXPOSE 80
+RUN  npm install \     && npm run build \     && cp -r dist/* /var/www/html \     && rm -rf /app
+CMD ["nginx","-g","daemon off;"]
+```
+
+\3. 初始化 git， 连接并将代码推送到 Github 仓库，
+
+[![02](http://blog.daocloud.io/wp-content/uploads/2017/11/02.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/02.jpg)
+
+**第二步：使用 DaoCloud 搭建 Devops 流程**
+
+（也可以使用其他公有云服务，差别不大，本文将以简单易操作并且对个人开发者免费的 DaoCloud 为例）
+
+\1. 注册一个 DaoCloud 账号
+
+\2. 用户中心 -> 代码托管，授权可访问你的 Github 仓库
+
+[![03](http://blog.daocloud.io/wp-content/uploads/2017/11/03.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/03.jpg)
+
+\2. 在 Devops 项目中新建一个**项目**，并选择 Github 中对应刚才新创建的项目
+
+[![04](http://blog.daocloud.io/wp-content/uploads/2017/11/04.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/04.jpg)
+
+\3. 先手动构建一个镜像版本，便于下面用这个镜像版本创建一个**应用**
+
+[![05](http://blog.daocloud.io/wp-content/uploads/2017/11/05.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/05.jpg)
+
+[![06](http://blog.daocloud.io/wp-content/uploads/2017/11/06.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/06.jpg)
+
+\4. 连接自有主机（没有自有主机的，也可以使用云端测试环境）
+
+tips：可以去购买 vultr 等主机，按照指示流程完成主机接入，大概很简单的三四步操作，注意在完成主机连接后，需要手动在主机上启动 docker（service docker start）
+
+[![07](http://blog.daocloud.io/wp-content/uploads/2017/11/07.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/07.jpg)[![08](http://blog.daocloud.io/wp-content/uploads/2017/11/08.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/08.jpg)
+
+太酷了，我们已经将我们的主机接入了 DaoCloud，接下来就来完成最有意思的一步。
+
+\5. 创建一个**应用**
+
+进入【镜像仓库】选择刚才手动构建出来的镜像，并部署最新版本到自由主机或者云端测试环境
+
+[![09](http://blog.daocloud.io/wp-content/uploads/2017/11/09.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/09.jpg)[![10](http://blog.daocloud.io/wp-content/uploads/2017/11/10.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/10.jpg)
+
+稍等片刻，便可以点击“立即部署”
+
+[![11](http://blog.daocloud.io/wp-content/uploads/2017/11/11.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/11.jpg)
+
+等待完成镜像拉取，待容器列表中的容器起来后，通过地址查看我们部署的 vue 应用
+
+[![12](http://blog.daocloud.io/wp-content/uploads/2017/11/12.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/12.jpg)[![13](http://blog.daocloud.io/wp-content/uploads/2017/11/13.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/13.jpg)
+
+ 
+
+太棒了，我们已经可以访问到我们刚才部署的 vue 应用了，也表示我们已经将我们的镜像部署到我们的自有主机上去了，此时进入主机查看容器运行情况，可以看到有一个正在运行中的容器，正是我们刚刚部署的，一切都是完美的。
+
+[![14](http://blog.daocloud.io/wp-content/uploads/2017/11/14.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/14.jpg)
+
+完成到这里，我们可以说已经完成了 99% 的工作，但是还非常重要的最后 1%，那就是真正的自定义持续集成流程，让一切都自动化起来，现在让我们回到刚才 Devops 项目的【流程定义】中去
+
+6.定义自动构建，自动发布任务
+
+回到 Devops 项目里对自动化流程进行定义
+
+[![15](http://blog.daocloud.io/wp-content/uploads/2017/11/15.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/15.jpg)
+
+首先我们来定义一下**自动构建任务**，我们设定规则是只有在有新 tag 时才执行构建任务，构建时查找根目录下的 Dockerfile，并以此构建镜像
+
+[![16](http://blog.daocloud.io/wp-content/uploads/2017/11/16.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/16.jpg)[![17](http://blog.daocloud.io/wp-content/uploads/2017/11/17.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/17.jpg)
+
+其次，我们再来定义**自动发布任务**，当构建任务完成时自动触发自动发布任务，并发布到自有主机的应用上去
+
+[![18](http://blog.daocloud.io/wp-content/uploads/2017/11/18.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/18.jpg)[![19](http://blog.daocloud.io/wp-content/uploads/2017/11/19.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/19.jpg)
+
+[![20](http://blog.daocloud.io/wp-content/uploads/2017/11/20.jpg)](http://blog.daocloud.io/wp-content/uploads/2017/11/20.jpg)
+
+至此，我们已经完成了，所有流程控制工作，去测试一下整个流程是否能走通？
+
+**第三步： 测试整个流程**
+
+回到我们本地，修改一下文本内容，提交，并推送到远端，并且打下我们的第一个版本tag 1.0.0，并将 tag 推送到远端
+
+![img](https://user-gold-cdn.xitu.io/2017/11/21/15fdf37bbbd53c46?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+可以看到，与此同时，我们打 tag 的操作触发了我们定义的 CI 流程
+
+![img](https://user-gold-cdn.xitu.io/2017/11/21/15fdf3b45cf43110?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+稍等片刻，可以看到我们的应用更新了，对应的版本就是我们刚刚推上去的 1.0.0
+
+![img](https://user-gold-cdn.xitu.io/2017/11/21/15fdf3d9fcb73808?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+我们还可以对应用的版本进行切换，回退等操作
+
+![img](https://user-gold-cdn.xitu.io/2017/11/21/15fdf3ea7bd79a0f?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+至此，我们在只编写了一个 Dockerfile 配置文件，没有编写脚本的情况下，成功地搭建了一套前端的持续集成开发环境，之后我们只需要专心编写我们的业务代码就好了，打一个 Tag 便可以轻松地完成自动部署上线。
+
+当然，这只是非常简单的一个部署在单节点的裸应用，它没有涉及到 nginx 配置，负载均衡，后端服务，日志收集，数据存储，灰度发布，集群管理等生产环境的所需要求，如果有兴趣，请持续关注我的 Docker 系列文章，以上这些都会在我接下来的文章中一一解答。
+
+
+
+#### 在Docker中运行SSH进程服务
+
+以下是用`Dockerfile`设置sshd服务容器，您可以使用连接并检查其他容器的卷,或者可以快速访问测试容器。
+
+```
+    # sshd
+    #
+    # VERSION               0.0.1
+
+    FROM     ubuntu:12.04
+    MAINTAINER Thatcher R. Peskens "thatcher@dotcloud.com"
+
+    # make sure the package repository is up to date
+    RUN apt-get update
+
+    RUN apt-get install -y openssh-server
+    RUN mkdir /var/run/sshd
+    RUN echo 'root:screencast' |chpasswd
+
+    EXPOSE 22
+    CMD    ["/usr/sbin/sshd", "-D"]
+```
+
+使用如下命令构建镜像：
+
+```
+    $ sudo docker build --rm -t eg_sshd .
+```
+
+然后运行它，你可以使用`docker port`来找出容器端口22映射到主机的端口
+
+```
+    $ sudo docker run -d -P --name test_sshd eg_sshd
+    $ sudo docker port test_sshd 22
+    0.0.0.0:49154
+```
+
+现在你可以使用ssh登陆Docker进程的主机IP地址，端口是49154(IP地址可以使用ifconfig获取)：
+
+```
+    $ ssh root@192.168.1.2 -p 49154
+    # The password is ``screencast``.
+    $$
+```
+
+最后，清理停止的容器，并且删除容器，然后删除镜像。
+
+```
+    $ sudo docker stop test_sshd
+    $ sudo docker rm test_sshd
+    $ sudo docker rmi eg_sshd
+```
