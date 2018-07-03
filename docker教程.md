@@ -4938,3 +4938,12 @@ tips：可以去购买 vultr 等主机，按照指示流程完成主机接入，
     $ sudo docker rm test_sshd
     $ sudo docker rmi eg_sshd
 ```
+
+
+docker-machine create   --driver generic   --generic-ip-address=192.168.135.131   --generic-ssh-key id_rsa  --generic-ssh-user=root --generic-ssh-port 22 docker
+
+docker三剑客：
+
+https://www.cnblogs.com/qingzheng/category/1033826.html
+
+https://www.thegeekstuff.com/2016/02/docker-machine-create-generic/
