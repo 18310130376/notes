@@ -321,6 +321,11 @@ docker -v
 
 为了避免每次使用docker命令都需要特殊身份，可以将当前用户加入到docker用户组(docker用户组在docker安装时自动创建的)
 
+Docker 1.7版本和Docker CE的配置文件的位置是不同的
+
+- Docker 1.7版本 `/etc/sysconfig/docker`
+- Docker CE版本使用 `/etc/docker/daemon.json`
+
 ```
 sudo usermod  -aG docker USER_NAME
 ```
@@ -2529,6 +2534,12 @@ centos                                             latest              196e0ce0c
 
 ### docker machine 管理远程docker服务
 
+
+
+https://www.cnblogs.com/jsonhc/p/7784466.html
+
+https://www.cnblogs.com/52fhy/p/8413029.html
+
 第一步：查看machine列表。以下docker-machine安装在我的开发环境windows下：
 
 ```
@@ -2589,6 +2600,15 @@ PermitRootLogin yes
 如果还不行，可以用ssh -vvv 目标机器ip 查看详情，根据输出内容具体问题具体分析了
 ssh -vvv 192.168.135.131
 tail -fn 300 /var/log/auth.log
+④ 客户端的文件也要位于用户.ssh目录下，且名字最好为id_rsa.pub和id_rsa
+```
+
+
+
+第三步：远程主机上执行该命令，添加 Defaults   visiblepw 一行
+
+```
+vim /etc/sudoers
 ```
 
 

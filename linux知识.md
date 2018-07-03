@@ -381,5 +381,24 @@ ll='ls -l'
 - `Alt + .`：同!$，输出上一个命令的最后一个参数（选项or单词）。
 
 
-
 https://www.cnblogs.com/toughlife/p/5633510.html
+
+
+
+#### centos
+
+1 ： ifconfig出现command not found
+
+在虚拟机中以最小化方式安装CentOS7，后无法上网，因为CentOS7默认网卡未激活。 
+
+而且在sbin目录中没有ifconfig文件，这是因为CentOS7已经不使用 ifconfig命令了，已经用ip addr命令代替； 
+
+并且网卡名称也不是eth0了，而是改成eno16777736了。 
+
+解决ifconfig不可用：ip addr 即查看分配网卡情况。 
+
+激活网卡：在文件 `/etc/sysconfig/network-scripts/ifcfg-eno16777736` 中 
+
+进入编辑模式，将 `ONBOOT=no 改为 ONBOOT=yes`，就OK
+
+保存后重启网卡： `service network restart` 
