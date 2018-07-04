@@ -87,6 +87,27 @@ sudo apt-get install vim
 >
 >第三步：修改/etc/hosts文件 
 
+#### SSH
+
+```
+sudo stop ssh
+apt-get -- purge remove openssh-server   //sudo yum remove sshd
+apt-get update
+apt-get upgrade
+
+sudo apt-get install openssh-client    
+sudo apt-get install openssh-server  // sudo yum install openssh-server
+sudo /etc/init.d/ssh start / restart
+sudo service sshd start  / restart
+ssh服务默认的端口是22，可以更改端口，使用如下命令打开ssh配置文件：
+sudo gedit /etc/ssh/sshd_config
+sudo service sshd stop
+sudo service sshd status 
+关闭防火墙命令：# /etc/init.d/iptables stop
+```
+
+
+
 #### 文件操作
 
 ```
@@ -387,7 +408,7 @@ https://www.cnblogs.com/toughlife/p/5633510.html
 
 #### centos
 
-1 ： ifconfig出现command not found
+1 ： ifconfig出现command not found 或是ip addr没有显示IP
 
 在虚拟机中以最小化方式安装CentOS7，后无法上网，因为CentOS7默认网卡未激活。 
 
@@ -402,3 +423,23 @@ https://www.cnblogs.com/toughlife/p/5633510.html
 进入编辑模式，将 `ONBOOT=no 改为 ONBOOT=yes`，就OK
 
 保存后重启网卡： `service network restart` 
+
+#### 防火墙
+
+```
+#@root# : firewall-cmd --state  #查看状态
+running
+
+firewall-cmd --reload  #重启防火墙
+
+启动一个服务：systemctl start firewalld.service
+关闭一个服务：systemctl stop firewalld.service
+重启一个服务：systemctl restart firewalld.service
+显示一个服务的状态：systemctl status firewalld.service
+在开机时启用一个服务：systemctl enable firewalld.service
+在开机时禁用一个服务：systemctl disable firewalld.service
+查看服务是否开机启动：systemctl is-enabled firewalld.service
+查看已启动的服务列表：systemctl list-unit-files|grep enabled
+查看启动失败的服务列表：systemctl --failed
+```
+

@@ -2124,6 +2124,14 @@ Dockerfile 可以让用户管理一个单独的应用容器；而 Compose 则允
 
 see:https://www.cnblogs.com/jsonhc/p/7784466.html
 
+```
+如果docker没有运行在主机上，它将被自动安装.
+它会更新主机的软件包（apt-get update, yum update）.
+为了确保docker daemon的安全它会生成证书.
+docker daemon 将会重启，因此所有正在运行的容器将会停止.
+主机的hostname将被更改为machine name.
+```
+
 Docker Machine 最主要有两个作用：
 
 - 使用 Docker Machine 方便在不同的环境中使用 Docker ，比如：Win/Mac
@@ -2287,9 +2295,7 @@ Docker is up and running!
 To see how to connect your Docker Client to the Docker Engine running on this virtual machine, run: docker-machine env vm
 ```
 
-[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
-
-于是终于创建machine成功了
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)于是终于创建machine成功了
 
 查看docker-machine：
 
@@ -2620,7 +2626,45 @@ vim /etc/sudoers
 第四步：
 
 ```
-docker-machine create --driver generic --generic-ip-address=192.168.48.128 --generic-ssh-key id_rsa  --generic-ssh-user=root wk01
+docker-machine create --driver generic --generic-ip-address=192.168.135.133 --generic-ssh-key id_rsa  --generic-ssh-user=root wk01
+
+docker-machine create --driver generic --generic-ip-address=192.168.135.133 --generic-ssh-user=root wk01
+```
+
+
+
+```
+$ docker-machine create --driver generic --generic-ip-address=192.168.135.133 --generic-ssh-key id_rsa  --generic-ssh-user=root wk01
+Running pre-create checks...
+Creating machine...
+(wk01) Importing SSH key...
+Waiting for machine to be running, this may take a few minutes...
+Detecting operating system of created instance...
+Waiting for SSH to be available...
+Detecting the provisioner...
+Provisioning with centos...
+Error creating machine: Error running provisioning: error installing docker:
+
+```
+
+```
+$ docker-machine create --driver generic --generic-ip-address=192.168.135.133 --generic-ssh-key id_rsa  --generic-ssh-user=root wk02                      Running pre-create checks...
+Creating machine...
+(wk02) Importing SSH key...
+Waiting for machine to be running, this may take a few minutes...
+Detecting operating system of created instance...
+Waiting for SSH to be available...
+Detecting the provisioner...
+Provisioning with centos...
+Error creating machine: Error running provisioning: something went wrong running an SSH command
+command : sudo systemctl -f restart docker
+err     : exit status 5
+output  : Failed to restart docker.service: Unit not found.
+
+############
+解决方案：
+find / -name "docker*"
+删除和docker相关的文件
 ```
 
 第五步：
@@ -2723,8 +2767,6 @@ newgrp - docker
 注意，最后一步是必须的，否则因为 groups 命令获取到的是缓存的组信息，刚添加的组信息未能生效，所以 docker images 执行时同样有错
 ```
 
-
-
 ```
 docker-machine -D ssh wk02
 ```
@@ -2732,8 +2774,6 @@ docker-machine -D ssh wk02
 ```
 docker --tlsverify -H tcp://192.168.48.128:2376 images
 它会使用  ~/.docker下的证书来验证连接. 如果使用的是其他的类型, 可以通过--tls* 来查询docker --help的帮助文档
-
-
 sudo docker -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock -d &
 ```
 
@@ -2743,8 +2783,6 @@ sudo docker -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock -d &
 docker -H tcp://192.168.48.128:2376 images
 curl 192.168.48.128:2376/info
 ```
-
-
 
 ### 如何快速清理 docker 资源
 
@@ -5107,3 +5145,12 @@ docker三剑客：
 https://www.cnblogs.com/qingzheng/category/1033826.html
 
 https://www.thegeekstuff.com/2016/02/docker-machine-create-generic/
+
+docker跨主机网络
+
+http://www.cnblogs.com/lkun/p/7845379.html
+
+http://blog.51cto.com/wzlinux
+
+https://www.cnblogs.com/qingzheng/p/7126926.html
+
