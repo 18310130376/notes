@@ -2017,7 +2017,7 @@ sudo docker daemon
 
 **三、让远程api可以访问docker守护进程**
 
-sudo docker daemon -H tcp://0.0.0.0:2375
+`sudo docker daemon -H tcp://0.0.0.0:2375`
 
 这需要每次都带参数，而且无法通过服务的方式启动。
 
@@ -2534,11 +2534,19 @@ centos                                             latest              196e0ce0c
 
 ### docker machine 管理远程docker服务
 
-
-
 https://www.cnblogs.com/jsonhc/p/7784466.html
 
 https://www.cnblogs.com/52fhy/p/8413029.html
+
+http://blog.51cto.com/hostman/2097376
+
+https://www.jianshu.com/p/7ba1a93e6de4
+
+http://www.cnblogs.com/onlyworld/p/5105849.html
+
+https://www.oschina.net/translate/remote-access-to-docker-with-tls
+
+配置服务端开启远程连接：参照:`访问远程机器docker`
 
 第一步：查看machine列表。以下docker-machine安装在我的开发环境windows下：
 
@@ -2603,12 +2611,137 @@ tail -fn 300 /var/log/auth.log
 ④ 客户端的文件也要位于用户.ssh目录下，且名字最好为id_rsa.pub和id_rsa
 ```
 
-
-
 第三步：远程主机上执行该命令，添加 Defaults   visiblepw 一行
 
 ```
 vim /etc/sudoers
+```
+
+第四步：
+
+```
+docker-machine create --driver generic --generic-ip-address=192.168.48.128 --generic-ssh-key id_rsa  --generic-ssh-user=root wk01
+```
+
+第五步：
+
+Error creating machine: Error checking the host: Error checking and/or regenerating the certs: There was an error validating certificates for host "192.168.48.128:2376": dial tcp 192.168.48.128:2376: i/o timeout
+You can attempt to regenerate them using 'docker-machine regenerate-certs [name]'.
+Be advised that this will trigger a Docker daemon restart which will stop running containers.
+
+```
+docker-machine regenerate-certs dockerStd01
+docker-machine regenerate-certs -f dockerStd01
+
+docker-machine -D ssh dockerStd01
+```
+
+```
+去修改 ~/.docker/machine/machines/<NAME>/config.json，将其中的 TlsVerify 改为 false
+```
+
+第六步：
+
+```
+docker-machine restart dockerStd01
+output  : sudo: sorry, you must have a tty to run sudo
+
+vi /etc/sudoers (最好用visudo命令)
+注释掉 Default requiretty 一行
+#Default requiretty
+```
+
+```
+output  : Connection to 192.168.48.128 closed by remote host.
+
+1:
+vi  /etc/ssh/sshd_config
+# MaxSessions 10
+去掉前面的"#" 并把数字改大，最后重启sshd service sshd restart 然后重新连接即可
+2:每次正常退出SSH连接
+每次执行完命令后用输入"exit" 退出, 防止连接数过多.
+systemctl restart sshd
+
+ Connection to 192.168.48.128 closed by remote host.
+```
+
+第七步：
+
+```
+[root@dockerStd01 ~]# docker images
+Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+vi /usr/lib/systemd/system/docker.service
+
+```
+
+第八步：
+
+```
+$ docker-machine ssh dockerStd01
+Last login: Wed Jul  4 08:51:57 2018 from 192.168.48.1
+[root@dockerStd01 ~]#
+```
+
+第九步 查看服务状态
+
+```
+ Redirecting to /bin/systemctl status docker.service
+● docker.service
+   Loaded: loaded (/etc/systemd/system/docker.service; static; vendor preset: disabled)
+   Active: active (running) since Wed 2018-07-04 10:01:26 EDT; 6min ago
+ Main PID: 3099 (dockerd)
+   CGroup: /system.slice/docker.service
+           ├─3099 dockerd -H tcp://0.0.0.0:5000 -H unix:///var/run/docker.sock --storage-driver devicemapper --tlsverify --tlscacert /etc/docker/ca.pem --tlscert /etc/docker/server.pem --tlskey /etc/d...
+           └─3106 docker-containerd -l unix:///var/run/docker/libcontainerd/docker-containerd.sock --metrics-interval=0 --start-timeout 2m --state-dir /var/run/docker/libcontainerd/containerd --shim d...
+
+Jul 04 10:01:27 dockerStd01 docker[3099]: time="2018-07-04T10:01:27.934582037-04:00" level=info msg="API listen on /var/run/docker.sock"
+Jul 04 10:01:27 dockerStd01 docker[3099]: time="2018-07-04T10:01:27.934674496-04:00" level=info msg="API listen on [::]:5000"
+Jul 04 10:01:36 dockerStd01 dockerd[3099]: http: TLS handshake error from 192.168.48.128:60080: tls: first record does not look like a TLS handshake
+Jul 04 10:01:36 dockerStd01 dockerd[3099]: http: TLS handshake error from 192.168.48.128:60082: tls: first record does not look like a TLS handshake
+Jul 04 10:02:22 dockerStd01 dockerd[3099]: http: TLS handshake error from 192.168.48.128:60084: tls: 
+```
+
+第十步  `此问题还未解决`
+
+```
+FATA[0000] Get 
+http:///var/run/docker.sock/v1.18/images/json: dial unix /var/run/docker.sock: 
+permission denied. Are you trying to connect to a TLS-enabled daemon without TLS?
+
+ubuntu@VM-84-201-ubuntu:/usr/anyesu/docker$ docker -H tcp://127.0.0.1:2375 version
+Get http://127.0.0.1:2375/v1.29/version: malformed HTTP response "\x15\x03\x01\x00\x02\x02".
+* Are you trying to connect to a TLS-enabled daemon without TLS?
+
+//如果还没有 docker group 就添加一个
+sudo groupadd docker
+//将用户加入该 group 内。然后退出并重新登录就生效啦。
+sudo gpasswd -a ${USER} docker
+//重启 docker 服务
+sudo service docker restart
+//切换当前会话到新 group
+newgrp - docker
+注意，最后一步是必须的，否则因为 groups 命令获取到的是缓存的组信息，刚添加的组信息未能生效，所以 docker images 执行时同样有错
+```
+
+
+
+```
+docker-machine -D ssh wk02
+```
+
+```
+docker --tlsverify -H tcp://192.168.48.128:2376 images
+它会使用  ~/.docker下的证书来验证连接. 如果使用的是其他的类型, 可以通过--tls* 来查询docker --help的帮助文档
+
+
+sudo docker -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock -d &
+```
+
+第十一步：在客户端：
+
+```
+docker -H tcp://192.168.48.128:2376 images
+curl 192.168.48.128:2376/info
 ```
 
 
@@ -2779,6 +2912,7 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | 列出数据卷                                                   | **docker volume ls**                                         | **docker volume ls**                                         |
 | 列出 network                                                 | **docker network ls**                                        | **docker network ls**                                        |
 | 将文件拷贝到本机                                             | docker container cp [containID]:[/path/to/file] .            | docker container cp [containID]:[/path/to/file] .            |
+| 查看服务状态                                                 | service docker status                                        | service docker status                                        |
 
 镜像操作：
 
@@ -2858,11 +2992,11 @@ docker load与docker import
 >
 >C:\Users\789>docker-machine env default
 >SET DOCKER_TLS_VERIFY=1
->SET DOCKER_HOST=tcp://192.168.99.100:2376
->SET DOCKER_CERT_PATH=C:\Users\789\.docker\machine\machines\default
->SET DOCKER_MACHINE_NAME=default
+>SET DOCKER_HOST=tcp://192.168.48.128:2376
+>SET DOCKER_CERT_PATH=C:\Users\789\.docker\machine\machines\wu02
+>SET DOCKER_MACHINE_NAME=wu02
 >REM Run this command to configure your shell:
->REM     FOR /f "tokens=*" %i IN ('docker-machine env default') DO %i
+>REM     FOR /f "tokens=*" %i IN ('docker-machine env wu02') DO %i
 >
 >复制上面的SET指令或者eval "$(docker-machine env default)" 就可以了。
 >
@@ -4501,13 +4635,11 @@ export DOCKER_HOST=""
 ```
 
 
-
-
 刚在新的Centos上安装Docker-CE,后运行`docker run hello-world`报错`Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?`
 
 #### 访问远程机器docker
 
-Ubuntu 15.04以后：
+##### Ubuntu 15.04以后：
 
 1 创建/etc/systemd/system/docker.service.d目录 【远程机器】
 
@@ -4577,53 +4709,65 @@ $ grep EnvironmentFile /usr/lib/systemd/system/docker.service
 EnvironmentFile=-/etc/sysconfig/docker
 ```
 
+##### `在centos7.2下`
+
+```
+在：ExecStart=/usr/bin/dockerd-current 后面追加：-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
+
+[root@wk02 system]# pwd
+/usr/lib/systemd/system
+[root@wk02 system]# vi /usr/lib/systemd/system/docker.service
+
+# for containers run by docker
+ExecStaer=/usr/bin/dcokerd    //保留
+ExecStart=         //新增
+ExecStart=/usr/bin/dockerd tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock  //新增
+```
+
+```
+systemctl daemon-reload 
+systemctl restart docker.service
+```
+
+客户端：
+
+```
+docker -H tcp://192.168.48.128:2376 images
+curl 192.168.48.128:2376/info
+
+如果在服务器上可以执行，远程客户端ping通但是出错，则
+关闭防火墙：systemctl stop firewalld.service
+
+附客户端错误如下：
+An error occurred trying to connect: Get http://192.168.48.128:2376/v1.22/images/json: dial tcp 192.168.48.128:2376: connectex: A connection atte                          mpt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+```
+
+防火墙：
+
+```
+#@root# : firewall-cmd --state  #查看状态
+running
+
+firewall-cmd --reload  #重启防火墙
+
+启动一个服务：systemctl start firewalld.service
+关闭一个服务：systemctl stop firewalld.service
+重启一个服务：systemctl restart firewalld.service
+显示一个服务的状态：systemctl status firewalld.service
+在开机时启用一个服务：systemctl enable firewalld.service
+在开机时禁用一个服务：systemctl disable firewalld.service
+查看服务是否开机启动：systemctl is-enabled firewalld.service
+查看已启动的服务列表：systemctl list-unit-files|grep enabled
+查看启动失败的服务列表：systemctl --failed
+```
 
 
-在centos7.2下
 
-**[root@localhost frinder]# vi /usr/lib/systemd/system/docker.service**
-**在：ExecStart=/usr/bin/dockerd-current 后面追加：-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock**
+#### 访问远程机器docker (tls)
 
-[root@localhost frinder]# cat /usr/lib/systemd/system/docker.service
-[Unit]
-Description=Docker Application Container Engine
-Documentation=http://docs.docker.com
-After=network.target
-Wants=docker-storage-setup.service
-Requires=docker-cleanup.timer
 
-[Service]
-Type=notify
-NotifyAccess=all
-EnvironmentFile=-/etc/sysconfig/docker
-EnvironmentFile=-/etc/sysconfig/docker-storage
-EnvironmentFile=-/etc/sysconfig/docker-network
-Environment=GOTRACEBACK=crash
-Environment=DOCKER_HTTP_HOST_COMPAT=1
-Environment=PATH=/usr/libexec/docker:/usr/bin:/usr/sbin
-ExecStart=/usr/bin/dockerd-current -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock \
---add-runtime docker-runc=/usr/libexec/docker/docker-runc-current \
---default-runtime=docker-runc \
---exec-opt native.cgroupdriver=systemd \
---userland-proxy-path=/usr/libexec/docker/docker-proxy-current \
-$OPTIONS \
-$DOCKER_STORAGE_OPTIONS \
-$DOCKER_NETWORK_OPTIONS \
-$ADD_REGISTRY \
-$BLOCK_REGISTRY \
-$INSECURE_REGISTRY
-ExecReload=/bin/kill -s HUP $MAINPID
-LimitNOFILE=1048576
-LimitNPROC=1048576
-LimitCORE=infinity
-TimeoutStartSec=0
-Restart=on-abnormal
-MountFlags=slave
 
-[Install]
-WantedBy=multi-user.target
-[root@localhost frinder]# systemctl daemon-reload 
-[root@localhost frinder]# systemctl restart docker.service
+
 
 #### 修改容器内容导致无法启动
 
@@ -4745,6 +4889,22 @@ sudo docker cp 7bb0e258aefe:/etc/debian_version .
   简单说，`RUN`命令在 image 文件的构建阶段执行，执行结果都会打包进入 image 文件；`CMD`命令则是在容器启动后      执行。另外，一个 Dockerfile 可以包含多个`RUN`命令，但是只能有一个`CMD`命令。
 
 注意，指定了`CMD`命令以后，`docker container run`命令就不能附加命令了（比如前面的`/bin/bash`），否则它会覆盖`CMD`命令。
+
+12: `Are you trying to connect to a TLS-enabled daemon without TLS`
+
+```
+Are you trying to connect to a TLS-enabled daemon without TLS
+默认安装完 docker 后，每次执行 docker 都需要运行 sudo 命令，非常浪费时间影响效率。如果不跟 sudo，直接执行 docker images 命令会有如下问题：
+FATA[0000] Get http:///var/run/docker.sock/v1.18/images/json: dial unix /var/run/docker.sock: permission denied. Are you trying to connect to a TLS-enabled daemon without TLS?
+于是考虑如何免 sudo 使用 docker，经过查找资料，发现只要把用户加入 docker 用户组即可，具体用法如下。
+免 sudo 使用 docker
+如果还没有 docker group 就添加一个：
+sudo groupadd docker
+将用户加入该 group 内。然后退出并重新登录就生效啦。
+sudo gpasswd -a ${USER} docker
+重启 docker 服务
+sudo service docker restart
+```
 
 
 
