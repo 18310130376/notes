@@ -319,7 +319,9 @@ docker -v
 
 #### 配置docker服务
 
-为了避免每次使用docker命令都需要特殊身份，可以将当前用户加入到docker用户组(docker用户组在docker安装时自动创建的)
+为了避免每次使用docker命令都需要特殊身份，可以将当前用户加入到docker用户组(docker用户组在docker安装时自动创建的)。启动docker时，使用sudo 启动，用的是root权限，普通用户是没有权限访问/var/run/docker.sock。 
+
+该进程所属docker组 
 
 Docker 1.7版本和Docker CE的配置文件的位置是不同的
 
@@ -327,7 +329,10 @@ Docker 1.7版本和Docker CE的配置文件的位置是不同的
 - Docker CE版本使用 `/etc/docker/daemon.json`
 
 ```
+sudo groupadd docker
+sudo gpasswd -a ${USER} docker 或
 sudo usermod  -aG docker USER_NAME
+newgrp - docker
 ```
 
 修改后退出重新登录即可。docker服务重启：
@@ -2139,7 +2144,7 @@ Docker Machine 最主要有两个作用：
 
 Docker Machine 是一个用于配置和管理你的宿主机（上面具有 Docker Engine 的主机）的工具。通常，你在你的本地系统上安装 Docker Machine。Docker Machine有自己的命令行客户端 docker-machine 和 Docker Engine 客户端 docker。你可以使用 Machine 在一个或多个虚拟系统上安装 Docker Engine。 
 
-Docker Machine 安装很简单 
+#### Docker Machine 安装
 
 ```
 curl -L https://github.com/docker/machine/releases/download/v0.14.0/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine && \
@@ -2148,6 +2153,13 @@ install /tmp/docker-machine /usr/local/bin/docker-machine
 #完成后，查看版本信息。
 docker-machine -v
 docker-machine version 0.14.0, build 89b8332
+```
+
+开启machine通讯端口
+
+```
+[root@node1 ~]# firewall-cmd --add-port=2376/tcp --permanent
+[root@node1 ~]# firewall-cmd --reload
 ```
 
 查看是否存在可用的主机 
@@ -2538,7 +2550,7 @@ centos                                             latest              196e0ce0c
 
 而如果需要返回machine环境就继续执行machine环境变量就行，这种方式很好的隔离了本地和远程镜像和容器
 
-### docker machine 管理远程docker服务
+#### docker machine 管理远程docker服务
 
 https://www.cnblogs.com/jsonhc/p/7784466.html
 
@@ -2546,7 +2558,7 @@ https://www.cnblogs.com/52fhy/p/8413029.html
 
 http://blog.51cto.com/hostman/2097376
 
-https://www.jianshu.com/p/7ba1a93e6de4
+
 
 http://www.cnblogs.com/onlyworld/p/5105849.html
 
@@ -2610,6 +2622,21 @@ PasswordAuthentication yes   #当完成全部设置，以密钥方式登录成�
 PermitEmptyPasswords yes
 StrictModes no
 PermitRootLogin yes
+
+如果用具有sudo权限的普通用户
+以mike为例
+配置为免密码sudo
+$ visudo
+mike ALL=(ALL) NOPASSWD : ALL
+
+快捷方式：
+$ sudo -i 
+#修改此项为允许root登录
+$ sed -i -e "s/PermitRootLogin without-password/PermitRootLogin yes/g" /etc/ssh/sshd_config
+#重启SSH
+$ service ssh restart
+
+
 #③查看日志
 如果还不行，可以用ssh -vvv 目标机器ip 查看详情，根据输出内容具体问题具体分析了
 ssh -vvv 192.168.135.131
@@ -2620,15 +2647,40 @@ tail -fn 300 /var/log/auth.log
 第三步：远程主机上执行该命令，添加 Defaults   visiblepw 一行
 
 ```
+visudo或
 vim /etc/sudoers
 ```
 
 第四步：
 
+注意：Docker Machine安装docker环境中会因网络或其他情况造成安装失败(国内连官网速度很慢),可按下面的方法使用国内镜像源进行安装。
+
 ```
-docker-machine create --driver generic --generic-ip-address=192.168.135.133 --generic-ssh-key id_rsa  --generic-ssh-user=root wk01
+docker-machine create --driver generic --generic-ip-address=192.168.48.128 --generic-ssh-key id_rsa  --generic-ssh-user=root wk01
 
 docker-machine create --driver generic --generic-ip-address=192.168.135.133 --generic-ssh-user=root wk01
+```
+
+使用daoclound镜像安装
+
+```
+docker-machine create -d generic --generic-ip-address=192.168.119.105 --generic-ssh-user=mike --engine-registry-mirror http://xxxxxx.m.daocloud.io  docker-ubuntu-web
+```
+
+
+
+**修改已存在docker主机**
+
+以主机名为docker-ubuntu-web的为例
+
+修改`~/.docker/machine/machines/docker-ubuntu-web/config.json`文件，编辑RegistryMirror字段，插入你的镜像地址，然后再重启你就会在`/var/lib/boot2docker/profile`看见一个`--registry-mirror http://xxxxxx.m.daocloud.io`了。
+
+```
+$ vim  ~/.docker/machine/machines/docker-ubuntu-web/config.json
+
+"RegistryMirror": [
+    "http://xxxxxx.m.daocloud.io"
+]
 ```
 
 
@@ -2665,6 +2717,17 @@ output  : Failed to restart docker.service: Unit not found.
 解决方案：
 find / -name "docker*"
 删除和docker相关的文件
+```
+
+
+
+在不使用驱动的情况新增一个主机
+
+我们可以在不使用驱动的情况往Docker增加一台主机，只需要一个URL。它可以使用一个已有机器的别名，所以我们就不需要每次在运行docker命令时输入完整的URL了。
+
+```
+$ docker-machine create -d none --url=tcp://192.168.48.129:2376 docker129
+$ docker-machine regenerate-certs docker129
 ```
 
 第五步：
@@ -2777,12 +2840,162 @@ docker --tlsverify -H tcp://192.168.48.128:2376 images
 sudo docker -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock -d &
 ```
 
+
+
+注意root@wk02是否和你需要操作的machine是同一个。wk02为docker-machine创建的机器名
+
+```
+[root@wk02 run]# docker info
+could not read CA certificate "/root/.docker/ca.pem": open /root/.docker/ca.pem: no such file or directory
+[root@wk02 run]# systemctl stop firewalld.service
+[root@wk02 run]# docker info
+could not read CA certificate "/root/.docker/ca.pem": open /root/.docker/ca.pem: no such file or directory
+[root@wk02 run]# docker -H tcp://192.168.48.128:2376 images
+could not read CA certificate "/root/.docker/ca.pem": open /root/.docker/ca.pem: no such file or directory
+```
+
+```
+//如果还没有 docker group 就添加一个
+sudo groupadd docker
+//将用户加入该 group 内。然后退出并重新登录就生效啦。
+sudo gpasswd -a ${USER} docker
+//重启 docker 服务
+sudo service docker restart
+//切换当前会话到新 group
+newgrp - docker
+注意，最后一步是必须的，否则因为 groups 命令获取到的是缓存的组信息，刚添加的组信息未能生效，所以 docker images 执行时同样有错
+```
+
+
+
 第十一步：在客户端：
 
 ```
 docker -H tcp://192.168.48.128:2376 images
 curl 192.168.48.128:2376/info
 ```
+
+第十二步：上面操作完成后
+
+```
+PS C:\Users\789> docker-machine ls
+NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
+wk02      *        generic      Running   tcp://192.168.48.128:2376           Unknown   Unable to query docker version: Get https://192.168.48.128:2376/v1.15/version: tls: oversize
+d record received with length 20527
+```
+
+发现ps -ef | grep docker的启动参数是在vi /etc/systemd/system/docker.service.d/docker.conf生效的
+
+```
+[root@wk02 docker.service.d]# pwd
+/etc/systemd/system/docker.service.d
+[root@wk02 docker.service.d]# ps -ef | grep docker
+root       4167      1  0 15:50 ?        00:00:00 dockerd --tls=false -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock --storage-driver devicemapper --label provider=generic
+root       4173   4167  0 15:50 ?        00:00:00 docker-containerd -l unix:///var/run/docker/libcontainerd/docker-containerd.sock --metrics-interval=0 --start-timeout 2m --state-dir /var/run/docker/libcontainerd/containerd --shim docker-containerd-shim --runtime docker-runc
+root       4289   3437  0 15:52 pts/0    00:00:00 grep --color=auto docker
+[root@wk02 docker.service.d]#
+
+$ sudo mkdir /etc/systemd/system/docker.service.d
+$ sudo vi /etc/systemd/system/docker.service.d/docker.conf
+
+[Service]
+ExecStart=
+ExecStart=/usr/bin/docker daemon --tls=false  -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock --storage-driver devicemapper --label provider=generic
+```
+
+
+
+以上步骤完成，但是问题是：（未解决）
+
+```
+PS C:\Users\789> docker-machine ls
+NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER    ERRORS
+default   -        virtualbox   Error                                         Unknown   machine does not exist
+wk02      *        generic      Running   tcp://192.168.48.128:2376           Unknown   Unable to query docker version: Get https://192.168.48.128:2376/v1.15/version: tls: oversize
+d record received with length 20527
+```
+
+#### 使用tls方式
+
+
+
+### DaoCloud镜像加速
+
+微信登录的，用户名475402366   wnn123456
+
+https://dashboard.daocloud.io/packages/explore
+
+由于国内访问直接访问Docker hub网速比较慢，拉取镜像的时间就会比较长。一般我们会使用镜像加速或者直接从国内的一些平台镜像仓库上拉取。 
+
+我比较常用的是网易的镜像中心和daocloud镜像市场。 
+
+网易镜像中心：[https://c.163.com/hub#/m/home/ ](https://c.163.com/hub#/m/home/)
+
+daocloud镜像市场：<https://hub.daocloud.io/>
+
+
+
+一：在daocloud拉取镜像
+
+1. 在 terminal 中登录 `docker login dashboard.daocloud.io`
+
+```
+docker login dashboard.daocloud.io
+
+docker pull daocloud.io/library/tomcat:7.0-alpine
+
+```
+
+2：加速器
+
+在centos7上这个配置文件已经被更改为 /etc/docker/daemon.json 。可以在这个配置中添加相应的registry-mirrors路径
+
+方式一： 
+
+```
+ vi /etc/docker/daemon.json 
+ {
+ "registry-mirrors": ["http://dc2671f3.m.daocloud.io"],
+ "live-restore": true
+}
+ 
+```
+
+方式二：（下面命令在daocloud中点击加速器查看，设置完成在/etc/docker/daemon.json 可以看到）
+
+```
+curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://dc2671f3.m.daocloud.io
+```
+
+更改后重启
+
+```
+systemctl daemon-reload
+service docker restart / systemctl restart docker
+```
+
+验证
+
+```
+ps aux | grep docker
+docker info
+```
+
+方式三： 通过命令可以看出配置文件的默认位置
+
+```
+systemctl cat docker
+在配置文件ExecStart追加
+ExecStart=/usr/bin/dockerd|ExecStart=/usr/bin/dockerd --registry-mirror=http://dc2671f3.m.daocloud.io
+```
+
+最终，看是否从新的加速地址拉取
+
+```
+docker pull tomcat:7
+```
+
+
 
 ### 如何快速清理 docker 资源
 
@@ -2974,21 +3187,37 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 
 docker-machine：
 
-| 操作                                              | 命令                     | 示例                                              |
-| ------------------------------------------------- | ------------------------ | ------------------------------------------------- |
-| docker-machine ssh  machineName                   | 会进入docker服务器的目录 | docker-machine ssh default                        |
-| docker-machine ls                                 | 列出docker服务器         | docker-machine ls                                 |
-| docker-machine ip default                         | 查看服务器               | docker-machine ip default                         |
-| docker-machine rm default                         | 删除docker服务器         | docker-machine rm default                         |
-| docker-machine start default                      | 启动docker服务器         | docker-machine start default                      |
-| docker-machine status                             | 查看虚拟机状态           | docker-machine status                             |
-| docker-machine restart default                    | 重启虚拟机               | docker-machine restart default                    |
-| docker-machine stop                               | 停止虚拟机               | docker-machine stop                               |
-| docker-machine create --driver virtualbox default | 创建docker服务器         | docker-machine create --driver virtualbox default |
-| docker-machine env default                        | 提示设置环境变量         | docker-machine env default                        |
-| docker-machine -v                                 | 查看版本信息             | docker-machine -v                                 |
-| docker-machine inspect                            | 检查机子信息             | docker-machine inspect                            |
-| docker-machine ssh default                        | 连接到default的docker    | docker-machine ssh dfault                         |
+| 操作                                                         | 命令                                                         | 示例                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| docker-machine ssh  machineName                              | 会进入docker服务器的目录                                     | docker-machine ssh default                                   |
+| docker-machine ls                                            | 列出docker服务器                                             | docker-machine ls                                            |
+| docker-machine ip default                                    | 查看服务器                                                   | docker-machine ip default                                    |
+| docker-machine rm default                                    | 删除docker服务器                                             | docker-machine rm default                                    |
+| docker-machine start default                                 | 启动docker服务器                                             | docker-machine start default                                 |
+| docker-machine status                                        | 查看虚拟机状态                                               | docker-machine status                                        |
+| docker-machine restart default                               | 重启虚拟机                                                   | docker-machine restart default                               |
+| docker-machine stop                                          | 停止虚拟机                                                   | docker-machine stop                                          |
+| docker-machine create --driver virtualbox default            | 创建docker服务器                                             | docker-machine create --driver virtualbox default            |
+| docker-machine env default                                   | 提示设置环境变量                                             | docker-machine env default                                   |
+| docker-machine -v                                            | 查看版本信息                                                 | docker-machine -v                                            |
+| docker-machine inspect                                       | 检查机子信息                                                 | docker-machine inspect                                       |
+| docker-machine ssh default                                   | 连接到default的docker                                        | docker-machine ssh dfault                                    |
+| **docker-machine upgrade [HOSTNAME]**                        | **docker-machine upgrade** 更新 machine 的 docker 到最新版本，可以批量执行： |                                                              |
+| **docker-machine config** **[HOSTNAME]**                     | **docker-machine config** 查看 machine 的 docker daemon 配置 |                                                              |
+| **docker-machine scp** 可以在不同 machine 之间拷贝文件，比如： | docker-machine scp docker02:/tmp/a  docker03:/tmp/b          |                                                              |
+| docker -H tcp://127.0.0.1:2375 run -it ubuntu:14.04 /bin/bash | docker -H tcp://127.0.0.1:2375 run -it ubuntu:14.04 /bin/bash | docker -H tcp://127.0.0.1:2375 run -it ubuntu:14.04 /bin/bash |
+
+docker服务
+
+|                      |                     |                      |
+| -------------------- | ------------------- | -------------------- |
+| sudo docker daemon & | 启动docker 守护进程 | sudo docker daemon & |
+| sudo docker info     | 配置信息            | sudo docker info     |
+|                      |                     |                      |
+
+
+
+
 
 docker load与docker import
 
@@ -4689,12 +4918,22 @@ $ sudo vi /etc/systemd/system/multi-user.target.wants/docker.service(待验证)
 
 2 创建文件内容 【远程机器】
 
+方式1：
+
 ```
 [Service]
-
 ExecStart=
-
 ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock  (--insecure-registry=192.168.1.104:5000)
+```
+
+方式2：
+
+修改daemon配置：/etc/docker/daemon.json，添加如下行：
+
+```
+{"hosts": ["fd://", "tcp://0.0.0.0:2375"]}（需要花括号，如果有多行设置，每行都需要花括号，设置了fd：//自动便是unix socket
+
+systemctl restart docker.service(Ubuntu16.04)
 ```
 
 3 刷新docker守护进程 【远程机器】
@@ -4749,23 +4988,40 @@ EnvironmentFile=-/etc/sysconfig/docker
 
 ##### `在centos7.2下`
 
-```
-在：ExecStart=/usr/bin/dockerd-current 后面追加：-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
+/etc/docker/daemon.json会被docker.service的配置文件覆盖，直接添加daemon.json不起作用。可以有如下几种设置：
 
-[root@wk02 system]# pwd
-/usr/lib/systemd/system
-[root@wk02 system]# vi /usr/lib/systemd/system/docker.service
+1、直接编辑配置文件：Centos中docker daemon配置文件在/lib/systemd/system/docker.service，找到以下字段，在后面添加如下，注意，此处不能用"fd：//",否则报错
 
-# for containers run by docker
-ExecStaer=/usr/bin/dcokerd    //保留
-ExecStart=         //新增
-ExecStart=/usr/bin/dockerd tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock  //新增
-```
+overlay2根据systemctl status docker.service -l 提示写的（配置错了会提示）
 
 ```
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2376 -s overlay2
+
 systemctl daemon-reload 
 systemctl restart docker.service
 ```
+
+2、systemctl edit docker.service，或者编辑vim /etc/systemd/system/docker.service.d/override.conf（必须这样，少一行都不行，unix：//也不能按官方写fd://） overlay2根据systemctl status docker.service -l 提示写的（配置错了会提示）
+
+```
+[Service] 
+ExecStart= 
+ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2375 -s overlay2
+
+systemctl daemon-reload 
+systemctl restart docker.service
+```
+
+3：验证 ps aux|grep dockerd：
+
+```
+oot@localhost docker]# ps aux|grep dockerd
+root       4834  0.1  2.8 566720 28288 ?        Ssl  10:59   0:00 /usr/bin/dockerd-current -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2376 -s overlay2
+```
+
+
 
 客户端：
 
@@ -5154,3 +5410,8 @@ http://blog.51cto.com/wzlinux
 
 https://www.cnblogs.com/qingzheng/p/7126926.html
 
+http://blog.51cto.com/hashlinux/1772507
+
+docker要点：
+
+https://www.jb51.net/list/list_256_1.htm
