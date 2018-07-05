@@ -1,5 +1,13 @@
 ### docker安装
 
+20180706任务：私有仓库，machine的tls
+
+20180707任务：linux笔记归档
+
+
+
+
+
 Docker 要求 Ubuntu 系统的内核版本高于 3.10   . 
 
 通过 uname -r 命令查看你当前的内核版本
@@ -1234,7 +1242,9 @@ docker search nginx
 
 之后在docker hub的’‘自动创建“页面中跟踪每次创建的状态。
 
-### **docker私有仓库** 
+### Docker Registry私有仓库 
+
+https://www.cnblogs.com/sparkdev/p/6890995.html
 
 **适用于：Docker 1.8**      **环境：****Centos7**
 
@@ -2141,6 +2151,7 @@ Docker Machine 最主要有两个作用：
 
 - 使用 Docker Machine 方便在不同的环境中使用 Docker ，比如：Win/Mac
 - 使用 Docker Machine 方便在云环境下批量部署 Docker环境，比如：私有云，公有云批量安装Docker环境
+- 生成证书保护 Docker 服务的安全 
 
 Docker Machine 是一个用于配置和管理你的宿主机（上面具有 Docker Engine 的主机）的工具。通常，你在你的本地系统上安装 Docker Machine。Docker Machine有自己的命令行客户端 docker-machine 和 Docker Engine 客户端 docker。你可以使用 Machine 在一个或多个虚拟系统上安装 Docker Engine。 
 
@@ -2379,10 +2390,6 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 
 利用docker-machine能够安装docker和创建容器
 
- 
-
- 
-
 上面是本地为自己创建machine，现在为远程的docker主机创建docker-machine：
 
 环境：centos7，192.168.101.14，vmware下面安装的docker以及docker-machine，为192.168.56.102这台docker主机创建machine：
@@ -2558,13 +2565,30 @@ https://www.cnblogs.com/52fhy/p/8413029.html
 
 http://blog.51cto.com/hostman/2097376
 
-
-
 http://www.cnblogs.com/onlyworld/p/5105849.html
 
 https://www.oschina.net/translate/remote-access-to-docker-with-tls
 
 配置服务端开启远程连接：参照:`访问远程机器docker`
+
+在使用 docker-machine 进行远程安装前我们需要做一些准备工作：
+
+ **1.    在目标主机上创建一个用户并加入sudo 组** 
+
+**2.    为该用户设置 sudo 操作不需要输入密码**
+
+ **3.    把本地用户的 ssh public key 添加到目标主机上** 
+
+```
+$ sudo adduser nick
+$ sudo usermod -a -G sudo nick
+然后设置 sudo 操作不需要输入密码：
+$ sudo visudo
+把下面一行内容添加到文档的最后并保存文件：
+nick   ALL=(ALL:ALL) NOPASSWD: ALL
+最后把本地用户的 ssh public key 添加到目标主机上：
+$ ssh-copy-id -i ~/.ssh/id_rsa.pub nick@xxx.xxx.xxx.xxx
+```
 
 第一步：查看machine列表。以下docker-machine安装在我的开发环境windows下：
 
@@ -2628,15 +2652,12 @@ PermitRootLogin yes
 配置为免密码sudo
 $ visudo
 mike ALL=(ALL) NOPASSWD : ALL
-
 快捷方式：
 $ sudo -i 
 #修改此项为允许root登录
 $ sed -i -e "s/PermitRootLogin without-password/PermitRootLogin yes/g" /etc/ssh/sshd_config
 #重启SSH
 $ service ssh restart
-
-
 #③查看日志
 如果还不行，可以用ssh -vvv 目标机器ip 查看详情，根据输出内容具体问题具体分析了
 ssh -vvv 192.168.135.131
@@ -2667,7 +2688,11 @@ docker-machine create --driver generic --generic-ip-address=192.168.135.133 --ge
 docker-machine create -d generic --generic-ip-address=192.168.119.105 --generic-ssh-user=mike --engine-registry-mirror http://xxxxxx.m.daocloud.io  docker-ubuntu-web
 ```
 
-
+> 通过 docker-machine 安装的 Docker 在 /etc/systemd/system 目录下多出了一个 Docker 相关的目录：docker.service.d。这个目录中只有一个文件 10-machine.conf 
+>
+> 这个配置文件至关重要，因为它会覆盖 Docker 默认安装时的配置文件
+>
+> 在下面的 使用tls部分会讲到。 
 
 **修改已存在docker主机**
 
@@ -2760,7 +2785,6 @@ vi /etc/sudoers (最好用visudo命令)
 
 ```
 output  : Connection to 192.168.48.128 closed by remote host.
-
 1:
 vi  /etc/ssh/sshd_config
 # MaxSessions 10
@@ -2768,17 +2792,15 @@ vi  /etc/ssh/sshd_config
 2:每次正常退出SSH连接
 每次执行完命令后用输入"exit" 退出, 防止连接数过多.
 systemctl restart sshd
-
- Connection to 192.168.48.128 closed by remote host.
+Connection to 192.168.48.128 closed by remote host.
 ```
 
-第七步：
+第七步：用户docker组权限，服务未开启，防火墙，未配置远程连接等原因
 
 ```
 [root@dockerStd01 ~]# docker images
 Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
 vi /usr/lib/systemd/system/docker.service
-
 ```
 
 第八步：
@@ -2917,7 +2939,21 @@ d record received with length 20527
 
 #### 使用tls方式
 
+https://www.cnblogs.com/sparkdev/p/7066789.html
 
+前面讲到通过 docker-machine 安装的 Docker 在 /etc/systemd/system 目录下多出了一个 Docker 相关的目录：docker.service.d。这个目录中只有一个文件 10-machine.conf ，这个配置文件至关重要，因为它会覆盖 Docker 默认安装时的配置文件
+
+![img](https://images2015.cnblogs.com/blog/952033/201706/952033-20170622191138757-859230272.png) 
+
+上面的文件中有四个配置，文件中四个以 --tls 开头的参数，分别是 --tlsverify、--tlscacert、--tlscert和 –tlskey。其中的 --tlsverify 告诉 Docker daemon 需要通过 TLS 来验证远程客户端。其它三个参数分别指定了一个 pem 格式文件的路径，按照它们指定的文件路径去查看一下 ，对比一下手动安装的 Docker，会发现 /etc/docker 目录下并没有这三个文件。毫无疑问它们是 Docker Machine 生成的，主要是为了启用 Docker daemon 的 TLS 验证功能 
+
+在安装了 Docker Machine 的主机上 查看 /home/nick/.docker/machines/krdevdb 目录，发现了一些同名的文件(ca.pem、server-key.pem 和 server.pem)，和主机 drdevdb 上的文件对比一下，发现它们是一样的 
+
+![img](https://images2015.cnblogs.com/blog/952033/201706/952033-20170622191243476-599827138.png) 
+
+除了我们关注过的 DOCKER_HOST，还有另外三个环境变量。其中的 DOCKER_TLS_VERIFY 告诉 Docker 客户端需要启用 TLS 验证。DOCKER_CERT_PATH 则指定了 TLS 验证所依赖文件的目录，这个目录正是我们前面查看的 /home/nick/.docker/machines/krdevdb 目录。
+
+行文至此，困扰我们的安全问题终于得到了解释：Docker Machine 在执行 create 命令的过程中，生成了一系列保证安全性的秘钥和数字证书(*.pem)文件。这些文件在本地和远程 Docker 主机上各存一份，本地的用于配置 Docker 客户端，远程主机上的用于配置 Docker daemon，让两边都设置 TLS 验证的标记，依此实现安全的通信
 
 ### DaoCloud镜像加速
 
@@ -3214,6 +3250,70 @@ docker服务
 | sudo docker daemon & | 启动docker 守护进程 | sudo docker daemon & |
 | sudo docker info     | 配置信息            | sudo docker info     |
 |                      |                     |                      |
+
+docker占用磁盘空间
+
+|                                      |                                                              |
+| ------------------------------------ | ------------------------------------------------------------ |
+| docker system prune                  | 清除没有依赖的镜像和停止运行的容器，没有使用的容器卷与网络（强制用-f） |
+| docker image prune                   | 清除没有依赖的镜像（强制清除用-f）                           |
+| docker container prune               | 清除停止运行的容器（强制清除用-f）                           |
+| docker network prune                 | 清除没有使用的网络（强制清除用-f）                           |
+| docker volume prune                  | 清除没有使用的容器卷（强制清除用-f）                         |
+| `docker system ``df`                 | **查看docker占用docker空间情况**                             |
+| docker run --restart=always my_image | **创建自启动容器**                                           |
+|                                      | **容器健康检查**                                             |
+
+```
+# 启动容器时候指定（timeout执行命令超时时间，health-interval执行检查间隔时间）
+docker run -d --health-cmd "curl -f http://localhost/123 || exit 1" --health-interval=5s --timeout=3s my_image
+ 
+# Dockerfile指定（timeout执行命令超时时间，interval执行检查间隔时间）
+HEALTHCHECK --interval=60s --timeout=10s CMD curl -f http://127.0.0.1/ || exit 1
+```
+
+
+
+```
+创建集群
+
+docker swarm init --advertise-addr {本机地址}
+
+获取加入集群命令（管理员节点）
+
+docker swarm join-token manager
+
+获取加入集群命令（普通节点）
+
+docker swarm join-token worker
+
+显示节点列表
+
+docker node ls
+
+显示已有服务
+
+docker service ls
+
+显示某个服务下容器
+
+docker service ps {服务名字}
+
+创建一个服务
+docker service create --replicas {实例数量} --name {服务名字} -p {主机端口}:{容器内部端口} my_image {启动指令}
+删除一个服务
+docker service rm {服务名字}
+修改实例数量
+docker service scale {服务名字}={服务数量}
+修改实例使用镜像
+docker service update --image {镜像名字} {服务名字}
+修改实例内存限制
+docker service update --limit-memory {内存使用} {服务名字} 
+修改实例cpu限制
+docker service update --limit-cpu {内存使用} {服务名字}
+```
+
+
 
 
 
@@ -5008,20 +5108,27 @@ systemctl restart docker.service
 ```
 [Service] 
 ExecStart= 
-ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2375 -s overlay2
+ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2376 -s overlay2
 
 systemctl daemon-reload 
 systemctl restart docker.service
 ```
 
-3：验证 ps aux|grep dockerd：
+3、安装 Docker 时默认添加的 Docker daemon 启动配置 : /etc/systemd/system/multi-user.target.wants/docker.service 
+
+```
+ExecStart=/usr/bin/dockerd-current -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2376 \
+          --add-runtime docker-runc=/usr/libexec/docker/docker-runc-current \
+         ......
+         ......
+```
+
+4：验证 ps aux|grep dockerd：
 
 ```
 oot@localhost docker]# ps aux|grep dockerd
 root       4834  0.1  2.8 566720 28288 ?        Ssl  10:59   0:00 /usr/bin/dockerd-current -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2376 -s overlay2
 ```
-
-
 
 客户端：
 
@@ -5059,9 +5166,9 @@ firewall-cmd --reload  #重启防火墙
 
 #### 访问远程机器docker (tls)
 
+为了解决安全问题
 
-
-
+ 我们的 Docker daemon 监听了 tcp 端口，糟糕的是此时我们没有做任何的保护措施。因此任何 Docker 客户端都可以通过 tcp 端口与我们的 Docker daemon 交互，这显然是无法接受的。解决方案是同时启用 Docker daemon 和 Docker 客户端的 TLS 证书认证机制。这样 Docker daemon 和 Docker 客户端之间的通信会被加密，并且只有安装了特定证书的客户端才能够与对应的 Docker daemon 交互 
 
 #### 修改容器内容导致无法启动
 
@@ -5415,3 +5522,5 @@ http://blog.51cto.com/hashlinux/1772507
 docker要点：
 
 https://www.jb51.net/list/list_256_1.htm
+
+https://www.cnblogs.com/sparkdev/p/9238796.html

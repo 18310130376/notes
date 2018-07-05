@@ -315,6 +315,12 @@ sudo ifconfig eth0 down
 sudo ifconfig eth0 up 
 ```
 
+监听端口
+
+```
+ss -tunl | grep 2376
+```
+
 #### 系统维护
 
 更新资源
@@ -427,10 +433,12 @@ https://www.cnblogs.com/toughlife/p/5633510.html
 #### 防火墙
 
 ```
+yum install firewalld 安装firewalld防火墙
+
 #@root# : firewall-cmd --state  #查看状态
 running
 
-firewall-cmd --reload  #重启防火墙
+firewall-cmd --reload  #修改完需要重启防火墙
 
 启动一个服务：systemctl start firewalld.service
 关闭一个服务：systemctl stop firewalld.service
@@ -441,5 +449,23 @@ firewall-cmd --reload  #重启防火墙
 查看服务是否开机启动：systemctl is-enabled firewalld.service
 查看已启动的服务列表：systemctl list-unit-files|grep enabled
 查看启动失败的服务列表：systemctl --failed
+
+查看开启的端口和服务
+irewall-cmd --permanent --zone=public --list-services //服务空格隔开 例如 dhcpv6-client https ss
+
+firewall-cmd --permanent --zone=public --list-ports //端口空格隔开 例如 8080-8081/tcp 8388/tcp 80/tcp
+
+设置某个ip 访问某个服务
+firewall-cmd --permanent --zone=public --add-rich-rule="rule family="ipv4" source address="192.168.0.4/24" service name="http" accept"
+ip 192.168.0.4/24 访问 http
+
+删除规则
+firewall-cmd --permanent --zone=public --remove-rich-rule="rule family="ipv4" source address="192.168.0.4/24" service name="http" accept"
+
+检查是否生效
+iptables -L -n | grep 21
+ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:21 ctstate NEW
+
+firewall-cmd --list-all
 ```
 
