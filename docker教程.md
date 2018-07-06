@@ -52,6 +52,19 @@ sudo apt-get update && apt-get install docker
 
 ```
 sudo apt-get remove docker docker-engine docker-ce docker.io
+删除下面文件：
+find / -name  dockerd
+find / -name  docker
+find / -name  docker.service
+find / -name  docker.service.d
+rm -rf /var/lib/docker
+yum list installed | grep docker
+yum -y remove docker-engine.x86_64
+rm -rf /etc/docker/
+systemctl cat docker 查看文件位置，删除干净
+关闭防火墙：systemctl stop firewalld.service
+
+yum list installed | grep docker
 ```
 
 更新apt包索引：
@@ -315,11 +328,35 @@ OPTIONS=--selinux-enabled -H fd:// -g="/data/docker"
 
 注：修改配置文件后重启docker服务才生效。-g="/data/docker"是将Docker的默认根路径从/var/lib/docker改成/data/docker, 比如所有的Docker images都会放到这个目录下。
 
-#### centos安装
+#### centos安装、卸载
 
 ```
+卸载
+
+1.查询安装过的包
+yum list installed | grep docker
+docker-engine.x86_64                 17.03.0.ce-1.el7.centos         @dockerrepo
+2.删除安装的软件包
+yum -y remove docker-engine.x86_64
+3.删除镜像/容器等
+rm -rf /var/lib/docker
+4.删除其他文件
+sudo yum remove docker docker-engine docker-ce docker.io
+删除下面文件：
+find / -name  dockerd
+find / -name  docker
+rm -rf /**/*docker*
+find / -name  docker.service
+find / -name  docker.service.d
+rm -rf /var/lib/docker
+rm -rf /etc/docker/
+systemctl cat docker 查看文件位置，删除干净
+
+关闭防火墙：systemctl stop firewalld.service
+
 yum update
 yum install docker
+systemctl daemon-reload
 systemctl start docker
 systemctl enable docker //开机自启动
 docker -v
@@ -2158,7 +2195,7 @@ Docker Machine 是一个用于配置和管理你的宿主机（上面具有 Dock
 #### Docker Machine 安装
 
 ```
-curl -L https://github.com/docker/machine/releases/download/v0.14.0/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine && \
+curl -L https://github.com/docker/machine/releases/download/v0.9.0/docker-machine-`uname -s`-`uname -m` >/tmp/docker-machine && \
 install /tmp/docker-machine /usr/local/bin/docker-machine
 
 #完成后，查看版本信息。
@@ -2173,12 +2210,217 @@ docker-machine version 0.14.0, build 89b8332
 [root@node1 ~]# firewall-cmd --reload
 ```
 
-查看是否存在可用的主机 
+为了得到更好的体验，我们可以安装 bash completion script，这样在 bash 能够通过 `tab` 键补全 `docker-mahine` 的子命令和参数。安装方法是从<https://github.com/docker/machine/tree/master/contrib/completion/bash>下载 completion script
+
+![http://7xo6kd.com1.z0.glb.clouddn.com/upload-ueditor-image-20170723-1500770399284085678.png](http://7xo6kd.com1.z0.glb.clouddn.com/upload-ueditor-image-20170723-1500770600450070221.jpg)
+
+将其放置到 `/etc/bash_completion.d` 目录下。然后将如下代码添加到`$HOME/.bashrc`：
+
+PS1='[\u@\h \W$(__docker_machine_ps1)]\$ '
+
+
+
+查看主机的数量和状态 ，查看那个一个主机被激活，在没有使用某一个主机的环境时候，docker-machine ls 中的active都是-值 （当前docker-machine所在的机器环境变量配置的DOCKER_HOST的machine的ACTIVE为*）
 
 ```
-$  docker-machine ls
-NAME   ACTIVE   DRIVER   STATE   URL   SWARM   DOCKER   ERRORS
+$ docker-machine ls
+NAME   ACTIVE   DRIVER    STATE     URL                         SWARM   DOCKER        ERRORS
+wk01   *        generic   Running   tcp://192.168.48.128:2376           v18.05.0-ce
+wk02   -        generic   Running   tcp://192.168.48.129:2376           v18.05.0-ce
 ```
+
+ 查看 machine 的 docker daemon 配置
+
+```
+$ docker-machine config wk02
+--tlsverify
+--tlscacert="C:\\Users\\789\\.docker\\machine\\machines\\wk02\\ca.pem"
+--tlscert="C:\\Users\\789\\.docker\\machine\\machines\\wk02\\cert.pem"
+--tlskey="C:\\Users\\789\\.docker\\machine\\machines\\wk02\\key.pem"
+-H=tcp://192.168.48.129:2376
+```
+
+设置环境变量来告诉docker-machine进行那一台机器的操作（当前docker-machine机器环境变量配置的DOCKER_HOST）
+
+```
+$ env | grep DOCKER
+DOCKER_HOST=tcp://192.168.48.129:2376
+DOCKER_TOOLBOX_INSTALL_PATH=D:\software\dockertools
+```
+
+查看主机的详细信息
+
+```
+$ docker-machine inspect wk02
+{
+    "ConfigVersion": 3,
+    "Driver": {
+        "IPAddress": "192.168.48.129",
+        "MachineName": "wk02",
+        "SSHUser": "root",
+        "SSHPort": 22,
+        "SSHKeyPath": "C:\\Users\\789\\.docker\\machine\\machines\\wk02\\id_rsa",
+        "StorePath": "C:\\Users\\789\\.docker\\machine",
+        "SwarmMaster": false,
+        "EnginePort": 2376,
+        "SSHKey": "id_rsa"
+    },
+    "DriverName": "generic",
+    "HostOptions": {
+        "Memory": 0,
+        "Disk": 0,
+        "EngineOptions": {
+            "Ipv6": false,
+            "SelinuxEnabled": false,
+            "TlsVerify": true,
+            "InstallURL": "https://get.docker.com"
+        },
+        "SwarmOptions": {
+            "IsSwarm": false,
+            "Agent": false,
+            "Master": false,
+            "Host": "tcp://0.0.0.0:3376",
+            "Image": "swarm:latest",
+            "Strategy": "spread",
+            "Heartbeat": 0,
+            "Overcommit": 0,
+            "IsExperimental": false
+        },
+        "AuthOptions": {
+            "CertDir": "C:\\Users\\789\\.docker\\machine\\certs",
+            "CaCertPath": "C:\\Users\\789\\.docker\\machine\\certs\\ca.pem",
+            "CaPrivateKeyPath": "C:\\Users\\789\\.docker\\machine\\certs\\ca-key.pem",
+            "ServerCertPath": "C:\\Users\\789\\.docker\\machine\\machines\\wk02\\server.pem",
+            "ServerKeyPath": "C:\\Users\\789\\.docker\\machine\\machines\\wk02\\server-key.pem",
+            "ClientKeyPath": "C:\\Users\\789\\.docker\\machine\\certs\\key.pem",
+            "ClientCertPath": "C:\\Users\\789\\.docker\\machine\\certs\\cert.pem",
+            "StorePath": "C:\\Users\\789\\.docker\\machine\\machines\\wk02"
+        }
+    },
+    "Name": "wk02"
+}
+```
+
+查看IP
+
+```
+$ docker-machine ip wk02
+192.168.48.129
+```
+
+杀掉主机
+
+```
+$ docker-machine kill wk02
+Killing "wk02"...
+generic driver does not support kill
+```
+
+通过SSH链接一台主机
+
+```
+$ docker-machine ssh wk02
+Last login: Fri Jul  6 10:05:01 2018 from 192.168.48.1
+[root@wk02 ~]#
+```
+
+查看主机状态
+
+```
+$ docker-machine status wk02
+Running
+```
+
+查看主机环境变量
+
+```
+$ docker-machine env wk02
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://192.168.48.129:2376"
+export DOCKER_CERT_PATH="C:\Users\789\.docker\machine\machines\wk02"
+export DOCKER_MACHINE_NAME="wk02"
+export COMPOSE_CONVERT_WINDOWS_PATHS="true"
+# Run this command to configure your shell:
+# eval $("D:\software\dockertools\docker-machine.exe" env wk02)
+```
+
+查看主机的容器 镜像（先开启远程访问，此方法没有直接ssh方便，还有一种是每次在docker-machine上配置需要访问的机器的DOCKER_HOST环境变量，配置后直接docker pull等命令直接执行）
+
+```
+docker -H tcp://192.168.48.128:2376 images
+docker -H tcp://192.168.48.128:2376 ps
+```
+
+
+
+获取主机的url
+
+```
+$ docker-machine url wk02
+tcp://192.168.48.129:2376
+```
+
+将文件从本地主机复制到机器，从机器到机器，或从机器复制到本地主机.
+
+```
+$ docker-machine ssh wk01 pwd
+$ /root
+$ docker-machine ssh wk01 'echo A file created remotely! >foo.txt'
+$ docker-machine scp wk01:/root/foo.txt .
+
+docker-machine scp wk01:/root/a wk02:/root/b
+
+$ docker-machine ssh wk01 'mkdir wk01'
+$ docker-machine ssh wk01  mkdir wk02
+```
+
+列出文件列表
+
+```
+$ docker-machine ssh wk01 ls
+anaconda-ks.cfg
+wk01
+```
+
+upgrade 更新主机Docker版本为最新
+
+```
+docker-machine upgrade wk01 wk02
+```
+
+stop/start/restart 是对 machine 的操作系统操作，而 **不是** stop/start/restart docker daemon。
+
+stop 停止一个主机
+
+```start 启动一个主机
+docker-machine stop wk02
+```
+
+启动一个主机
+
+```
+docker-machine start wk02
+```
+
+重启主机
+
+```
+docker-machine restart wk02
+```
+
+删除一个主机
+
+```
+docker-machine rm wk02
+```
+
+为某个主机重新TLS认证信息
+
+```
+docker-machine regenerate-certs -f wk02
+```
+
+
 
 创建一个主机
 
@@ -2674,12 +2916,12 @@ vim /etc/sudoers
 
 第四步：
 
-注意：Docker Machine安装docker环境中会因网络或其他情况造成安装失败(国内连官网速度很慢),可按下面的方法使用国内镜像源进行安装。
+注意：Docker Machine安装docker环境中会因网络或其他情况造成安装失败(国内连官网速度很慢),可按下面的方法使用国内镜像源进行安装。-generic-ssh-key不指定则使用默认位置下的（用户目录下.ssh名为id_rsa的文件）
 
 ```
-docker-machine create --driver generic --generic-ip-address=192.168.48.128 --generic-ssh-key id_rsa  --generic-ssh-user=root wk01
+docker-machine create --driver generic --generic-ip-address=192.168.48.129 --generic-ssh-key id_rsa  --generic-ssh-user=root wk02
 
-docker-machine create --driver generic --generic-ip-address=192.168.135.133 --generic-ssh-user=root wk01
+docker-machine create --driver generic --generic-ip-address=192.168.48.128 --generic-ssh-user=root wk01
 ```
 
 使用daoclound镜像安装
@@ -2795,7 +3037,23 @@ systemctl restart sshd
 Connection to 192.168.48.128 closed by remote host.
 ```
 
-第七步：用户docker组权限，服务未开启，防火墙，未配置远程连接等原因
+第七步：用户docker组权限，服务未开启，防火墙，未配置远程连接等原因。如果已经安装过则需要卸载干净
+
+```
+删除下面文件：
+find / -name  dockerd
+find / -name  docker
+find / -name  docker.service
+find / -name  docker.service.d
+rm -rf /etc/docker/
+systemctl cat docker 查看文件位置，删除干净
+yum list installed | grep docker
+关闭防火墙：systemctl stop firewalld.service
+
+
+Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+Error getting SSH command to check if the daemon is up: something went wrong running an SSH command
+```
 
 ```
 [root@dockerStd01 ~]# docker images
@@ -2830,7 +3088,7 @@ Jul 04 10:01:36 dockerStd01 dockerd[3099]: http: TLS handshake error from 192.16
 Jul 04 10:02:22 dockerStd01 dockerd[3099]: http: TLS handshake error from 192.168.48.128:60084: tls: 
 ```
 
-第十步  `此问题还未解决`
+第十步  `此问题还未解决`（已解决，安全问题，执行命令时需要设置环境变量具体证书位置）
 
 ```
 FATA[0000] Get 
@@ -2840,6 +3098,24 @@ permission denied. Are you trying to connect to a TLS-enabled daemon without TLS
 ubuntu@VM-84-201-ubuntu:/usr/anyesu/docker$ docker -H tcp://127.0.0.1:2375 version
 Get http://127.0.0.1:2375/v1.29/version: malformed HTTP response "\x15\x03\x01\x00\x02\x02".
 * Are you trying to connect to a TLS-enabled daemon without TLS?
+
+C:\Users\789>docker-machine env wk01
+SET DOCKER_TLS_VERIFY=1
+SET DOCKER_HOST=tcp://192.168.48.128:2376
+SET DOCKER_CERT_PATH=C:\Users\789\.docker\machine\machines\wk01
+SET DOCKER_MACHINE_NAME=wk01
+SET COMPOSE_CONVERT_WINDOWS_PATHS=true
+REM Run this command to configure your shell:
+REM     @FOR /f "tokens=*" %i IN ('docker-machine env wk01') DO @%i
+C:\Users\789>SET DOCKER_TLS_VERIFY=1
+C:\Users\789>SET DOCKER_HOST=tcp://192.168.48.128:2376
+C:\Users\789>SET DOCKER_CERT_PATH=C:\Users\789\.docker\machine\machines\wk01
+C:\Users\789>SET DOCKER_MACHINE_NAME=wk01
+C:\Users\789>SET COMPOSE_CONVERT_WINDOWS_PATHS=true
+C:\Users\789> @FOR /f "tokens=*" %i IN ('docker-machine env wk01') DO @%i
+C:\Users\789>docker -H tcp://192.168.48.128:2376 images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+
 
 //如果还没有 docker group 就添加一个
 sudo groupadd docker
@@ -2941,7 +3217,20 @@ d record received with length 20527
 
 https://www.cnblogs.com/sparkdev/p/7066789.html
 
-前面讲到通过 docker-machine 安装的 Docker 在 /etc/systemd/system 目录下多出了一个 Docker 相关的目录：docker.service.d。这个目录中只有一个文件 10-machine.conf ，这个配置文件至关重要，因为它会覆盖 Docker 默认安装时的配置文件
+前面讲到通过 docker-machine 安装的 Docker 在 /etc/systemd/system 目录下多出了一个 Docker 相关的目录：docker.service.d。这个目录中只有一个文件 10-machine.conf ，这个配置文件至关重要，因为它会覆盖 Docker 默认安装时的配置文件。docker daemon 的具体配置 /etc/systemd/system/docker.service
+
+```
+[root@wk02 docker.service.d]# pwd
+/etc/systemd/system/docker.service.d
+[root@wk02 docker.service.d]# ls
+10-machine.conf
+[root@wk02 docker.service.d]#
+```
+
+1. `-H tcp://0.0.0.0:2376` 使 docker daemon 接受远程连接。
+2. `--tls*` 对远程连接启用安全认证和加密。
+
+
 
 ![img](https://images2015.cnblogs.com/blog/952033/201706/952033-20170622191138757-859230272.png) 
 
@@ -4375,7 +4664,7 @@ ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/lib:$CATALINA_HOME/bin
 EXPOSE 8080 
 # startup web application services by self 
 CMD /usr/local/apache-tomcat-8.5.16/bin/catalina.sh run 等同于-->
-ENTRYPOINT ["/usr/share/tomcat7/bin/catalina.sh", "run" ]
+ENTRYPOINT ["/usr/share/tomcat7/bin/catalina.sh", "run" ] //容器启动自动会启动tomcat
 ```
 
 或者
@@ -5524,3 +5813,19 @@ docker要点：
 https://www.jb51.net/list/list_256_1.htm
 
 https://www.cnblogs.com/sparkdev/p/9238796.html
+
+每天五分钟docker（下面几个）
+
+https://www.cnblogs.com/CloudMan6/p/7248188.html
+
+https://docs.docker.com/machine/install-machine/#install-machine-directly
+
+https://cloud.tencent.com/developer/chapter/11533
+
+https://www.jb51.net/list/list_256_14.htm
+
+http://www.cnblogs.com/zhxshseu/tag/Docker/
+
+http://www.zslin.com/?cateId=2
+
+http://blog.51cto.com/hostman/2097376

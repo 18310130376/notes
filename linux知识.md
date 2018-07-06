@@ -469,3 +469,17 @@ ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:21 ctstate
 firewall-cmd --list-all
 ```
 
+
+
+#### 文件双机备份
+
+图片上传双机互备（rsync+inotify）
+
+
+
+#### 命令TAB补全
+
+```
+yum install -y bash -completion
+```
+
