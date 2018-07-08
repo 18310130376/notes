@@ -3509,6 +3509,7 @@ see：http://www.dockerinfo.net/image%E9%95%9C%E5%83%8F
 | 删除所有image                   | docker rm $(docker ps -a -q)                 | docker rm $(docker ps -a -q)                          |
 | 载入镜像                        | docker load < ubuntu_14.04.tar               | docker load < ubuntu_14.04.tar                        |
 | 存出镜像                        | docker save -o ubuntu_14.04.tar ubuntu:14.04 | docker save -o ubuntu_14.04.tar ubuntu:14.04          |
+|                                 | docker images \| grep logo                   | docker images \| grep logo                            |
 
 docker-machine：
 
@@ -4670,7 +4671,7 @@ ENTRYPOINT ["/usr/share/tomcat7/bin/catalina.sh", "run" ] //容器启动自动�
 或者
 
 ```
-FROM ubuntu:14.04
+FROM jessie
 MAINTAINER 13662241921 "4754063522@qq.com"
 # 设置当前工具目录
 # 该命令不会新增镜像层
@@ -4685,7 +4686,7 @@ RUN sudo apt-get update && \
     tar -xvzf apache-tomcat-8.5.32.tar.gz && \ 
     mv apache-tomcat-8.5.32/ tomcat && \
     rm -f jdk-8u131-linux-x64.tar.gz && \
-    rm -f apache-tomcat-8.0.47.tar.gz && \    
+    rm -f apache-tomcat-8.5.32.tar.gz && \    
     apt-get clean all
 # 设置环境变量
 ENV JAVA_HOME /home/jdk1.8.0_131
@@ -5375,7 +5376,7 @@ $ grep EnvironmentFile /usr/lib/systemd/system/docker.service
 EnvironmentFile=-/etc/sysconfig/docker
 ```
 
-##### `在centos7.2下`
+##### 在centos7.2下
 
 /etc/docker/daemon.json会被docker.service的配置文件覆盖，直接添加daemon.json不起作用。可以有如下几种设置：
 
@@ -5829,3 +5830,7 @@ http://www.cnblogs.com/zhxshseu/tag/Docker/
 http://www.zslin.com/?cateId=2
 
 http://blog.51cto.com/hostman/2097376
+
+http://www.cnblogs.com/styshoo/p/6431748.html
+
+http://www.cnblogs.com/52fhy/p/5638571.html

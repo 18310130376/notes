@@ -74,3 +74,46 @@ mvn package docker:build -DpushImage
 
 
 #### 项目部署到远程tomcat
+
+
+
+#### buildArgs 
+
+[docker-maven-plugin](https://github.com/spotify/docker-maven-plugin)是spotify出品的一款针对spring boot项目的docker插件，可将spring boot项目打包到docker镜像中。
+
+如果在编译docker镜像时需要设置build arg，只需要在maven的配置文件pom.xml中，configuration下增加buildArgs。标签的key和值对应build arg的key和值，如下所示，docker镜像编译过程中，会有一个build arg名为ARG_TIME_ZONE，而其值则为OS的环境变量TIME_ZONE。
+
+```
+<build>
+    <plugins>
+      <plugin>
+        <groupId>com.spotify</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>0.4.13</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>build</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <imageName>${docker.registry.name}/${project.artifactId}:latest</imageName>
+          <dockerDirectory>src/main/docker</dockerDirectory>
+          <buildArgs>
+            <ARG_TIME_ZONE>${env.TIME_ZONE}</ARG_TIME_ZONE>
+          </buildArgs>
+          <resources>
+            <resource>
+              <targetPath>/</targetPath>
+              <directory>${project.build.directory}</directory>
+              <include>${project.build.finalName}.jar</include>
+            </resource>
+          </resources>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+```
+
