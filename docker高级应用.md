@@ -37,6 +37,9 @@ $ chmod +x /usr/local/bin/docker-compose
 ```
 # docker-compose --version
 docker-compose version 1.8.1, build 878cff1
+
+提示说执行被拒绝。 所以要给文件添加执行权限。
+$ sudo chmod +x /usr/local/bin/docker-compose
 ```
 
 升级
@@ -1398,3 +1401,93 @@ stdin_open: true
 tty: true
 ```
 
+
+
+##### Swarm
+
+https://www.cnblogs.com/franknihao/p/8490416.html
+
+http://www.cnblogs.com/xishuai/p/docker-swarm.html
+
+https://www.cnblogs.com/drawnkid/p/8487337.html
+
+https://www.jianshu.com/p/9eb9995884a5
+
+###### 开启Docker API服务 
+
+如要使用swarm，则必须让Docker开放其HTTP的API。默认情况下这个API没有开启，而开启此API需要在启动时加入-H参数。修改lib/systemd/system/docker.service文件中的参数，并且用systemctl来管理启动docker服务。
+
+上述这个文件的ExecStart很明显是指出了docker的启动参数，在第一行的后面直接加上：
+
+```
+-H tcp://0.0.0.0:2376
+```
+
+```
+systemctl daemon-reload
+```
+
+​    然后再重启/启动Docker服务，此时通过netstat -ntlp可以看到一个新开的2376端口，此乃默认的 DockerHTTPAPI的端口。如果是一个集群则注意集群中所有相关的主机都记得要启动带这个端口的Docker服务。
+
+从 Docker 1.12.0 版本开始，Docker Swarm 已经包含在 Docker 引擎中（`docker swarm`），并且已经内置了服务发现工具，我们就不需要像之前一样，再配置 Etcd 或者 [Consul](https://www.ibm.com/developerworks/cn/opensource/os-cn-consul-docker-swarm/index.html) 来进行服务发现配置了。 
+
+
+
+###### 命令
+
+|                    |                                                              |
+| ------------------ | ------------------------------------------------------------ |
+| create             | docker service create –replicas 5 –name myhelloworld alpine ping docker.com |
+| 查看创建出来的服务 | docker service ls                                            |
+|                    | docker service update                                        |
+|                    | docker service inspect                                       |
+|                    | docker service ps  my_web                                    |
+|                    | docker service rm my_web                                     |
+| 扩展一个或多个服务 | docker service scale webtier_nginx=5                         |
+
+
+
+
+
+###### docker service logs
+
+针对docker swarm模式，获取容器日志的命令。
+
+一般，依次执行下列命令，得到某服务的容器名
+
+```
+docker service ls
+docker service ps [服务名]12
+```
+
+然后就可以通过容器名，获取其日志了
+
+```
+docker service logs [容器名]1
+```
+
+###### docker service logs显示日志为空
+
+要让 docker service logs 正常工作，需要设置docker一些配置
+
+```
+vi /etc/docker/daemon.json1
+```
+
+给该文件添加：
+
+```
+{
+    "log-driver": "json-file",
+    "log-opts": {
+        "labels": "production_status,geo",
+        "env": "os,customer"
+    }
+}1234567
+```
+
+然后重启docker
+
+```
+service docker restart
+```

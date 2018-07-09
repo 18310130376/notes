@@ -419,9 +419,11 @@ ll='ls -l'
 - `Ctrl + p` ：历史中的上一条命令，同↑
 - `Ctrl + n` ：历史中的下一条命令，同↓
 - `Alt + .`：同!$，输出上一个命令的最后一个参数（选项or单词）。
-
+- shift+insert 粘贴到终端
 
 https://www.cnblogs.com/toughlife/p/5633510.html
+
+
 
 
 

@@ -4,6 +4,12 @@ https://www.cnblogs.com/homeword/p/7118803.html?utm_source=itdadao&utm_medium=re
 
 https://www.w3cschool.cn/maven/eljx1hts.html
 
+
+
+new：
+
+https://www.cnblogs.com/YatHo/category/1022056.html
+
 #### maven安装
 
 1 下载地址：
