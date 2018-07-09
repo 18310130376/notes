@@ -2,6 +2,19 @@ see：http://www.runoob.com/linux/linux-tutorial.html
 
 免密码登录：https://www.cnblogs.com/wulaoer/p/5486579.html
 
+
+
+#### 系统
+
+```
+[root@centos-linux ~]# uname -s  
+Linux  
+[root@centos-linux ~]# uname -m  
+x86_64  
+```
+
+
+
 #### Vim编辑器
 
 首先：卸载旧版本vi
@@ -483,3 +496,8 @@ firewall-cmd --list-all
 yum install -y bash -completion
 ```
 
+
+
+#### SSH批量免密码登录
+
+https://www.cnblogs.com/kevingrace/category/924885.html

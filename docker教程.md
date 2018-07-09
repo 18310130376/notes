@@ -4612,29 +4612,157 @@ nginx
 
 #### 安装mysql
 
+方式一：
+
 ```
 $ mkdir -p ~/mysql/data ~/mysql/logs ~/mysql/conf
 ```
 
->data目录将映射为mysql容器配置的数据文件存放路径logs目录将映射为mysql容器的日志目录conf目录里的配置文件将映射为mysql容器的配置文件
+```
+data目录将映射为mysql容器配置的数据文件存放路径logs目录将映射为mysql容器的日志目录conf目录里的配置文件将映射为mysql容器的配置文件
+```
 
 ```
 docker run -p 3306:3306 --name mymysql -v $PWD/conf:/etc/mysql/conf.d -v $PWD/logs:/logs -v $PWD/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql
 ```
 
->`pwd`=$PWD 可用echo $PWD验证
->
->命令说明：
->
->-p 3306:3306：将容器的 3306 端口映射到主机的 3306 端口。
->
->-v $PWD/conf:/etc/mysql/conf.d：将主机当前目录下的 conf/my.cnf 挂载到容器的 /etc/mysql/my.cnf。
->
->-v $PWD/logs:/logs：将主机当前目录下的 logs 目录挂载到容器的 /logs。
->
->-v $PWD/data:/var/lib/mysql ：将主机当前目录下的data目录挂载到容器的 /var/lib/mysql 。       
->
->-e MYSQL_ROOT_PASSWORD=123456：初始化 root 用户的密码。
+```
+pwd=PWD 可用echo PWD验证
+命令说明：
+-p 3306:3306：将容器的 3306 端口映射到主机的 3306 端口。
+
+-v $PWD/conf:/etc/mysql/conf.d：将主机当前目录下的 conf/my.cnf 挂载到容器的 /etc/mysql/my.cnf。
+
+-v $PWD/logs:/logs：将主机当前目录下的 logs 目录挂载到容器的 /logs。
+
+-v $PWD/data:/var/lib/mysql ：将主机当前目录下的data目录挂载到容器的 /var/lib/mysql 。       
+
+-e MYSQL_ROOT_PASSWORD=123456：初始化 root 用户的密码。
+```
+
+方式二:
+
+**1.搜索MySQL镜像**
+
+```
+$ docker search mysql
+INDEX       NAME                              DESCRIPTION                                     STARS     OFFICIAL   AUTOMATED
+docker.io   docker.io/mysql                   MySQL is a widely used, open-source relati...   6008      [OK]       
+docker.io   docker.io/mariadb                 MariaDB is a community-developed fork of M...   1891      [OK]       
+docker.io   docker.io/mysql/mysql-server      Optimized MySQL Server Docker images. Crea...   427                  [OK]
+docker.io   docker.io/percona                  Percona Server is a fork of the MySQL rela...   335       [OK]       
+```
+
+**2.下载MySQL镜像**
+
+```
+$ docker pull docker.io/mysql
+$ docker images
+REPOSITORY                       TAG                 IMAGE ID            CREATED             SIZE
+docker.io/mysql                  latest              5195076672a7        4 weeks ago         371.4 MB
+```
+
+**3.运行容器**
+
+```
+$ docker run -d --name liying-mysql -e MYSQL_ROOT_PASSWORD=attack docker.io/mysql
+$ docker exec -it liying-mysql /bin/bash ##进入容器
+```
+
+**4.进入mysql** （注意 -p表示输入密码，密码和-p是连在一起的）
+
+```
+root@3d21d8918d31:/# mysql -u root -pattack
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 2
+Server version: 5.7.21 MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.00 sec)
+```
+
+以上就创建了一个mysql的docker容器，可以看到版本为5.7.21。但是这样创建的容器有两个问题，一是容器删除后，数据就丢失了，二是要访问数据库，必须进入到容器里面才可以。
+
+**5.持久化数据，映射开放mysql端口**
+a、创建宿主机数据存放目录
+$ mkdir -p /opt/data/mysql
+
+b、启动容器
+$ docker run -d -v /opt/data/mysql/:/var/lib/mysql -p 3306:3306 --name liying-mysql -e MYSQL_ROOT_PASSWORD=attack docker.io/mysql
+$ docker logs liying-mysql ##查看日志 
+$ docker ps #查看容器
+c、查看端口
+$ lsof -i:3306
+
+d、查看宿主机上的mysql数据
+
+[![复制代码](http://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+$ cd /opt/data/mysql
+$ ll
+总用量 188484
+-rw-r-----. 1 systemd-bus-proxy input       56 4月  17 11:53 auto.cnf
+-rw-------. 1 systemd-bus-proxy input     1679 4月  17 11:53 ca-key.pem
+-rw-r--r--. 1 systemd-bus-proxy input     1107 4月  17 11:53 ca.pem
+-rw-r--r--. 1 systemd-bus-proxy input     1107 4月  17 11:53 client-cert.pem
+-rw-------. 1 systemd-bus-proxy input     1679 4月  17 11:53 client-key.pem
+-rw-r-----. 1 systemd-bus-proxy input     1335 4月  17 11:54 ib_buffer_pool
+-rw-r-----. 1 systemd-bus-proxy input 79691776 4月  17 11:54 ibdata1
+-rw-r-----. 1 systemd-bus-proxy input 50331648 4月  17 11:54 ib_logfile0
+-rw-r-----. 1 systemd-bus-proxy input 50331648 4月  17 11:53 ib_logfile1
+-rw-r-----. 1 systemd-bus-proxy input 12582912 4月  17 11:54 ibtmp1
+drwxr-x---. 2 systemd-bus-proxy input     4096 4月  17 11:53 mysql
+drwxr-x---. 2 systemd-bus-proxy input     8192 4月  17 11:53 performance_schema
+-rw-------. 1 systemd-bus-proxy input     1679 4月  17 11:53 private_key.pem
+-rw-r--r--. 1 systemd-bus-proxy input      451 4月  17 11:53 public_key.pem
+-rw-r--r--. 1 systemd-bus-proxy input     1107 4月  17 11:53 server-cert.pem
+-rw-------. 1 systemd-bus-proxy input     1679 4月  17 11:53 server-key.pem
+drwxr-x---. 2 systemd-bus-proxy input     8192 4月  17 11:53 sys
+```
+
+[![复制代码](http://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+**-p 3306:3306->把容器的mysql端口3306映射到宿主机的3306端口，这样想访问mysql就可以直接访问宿主机的3306端口。**
+**-v /opt/data/mysql:/var/lib/mysql->把宿主机/opt/data/mysql/目录映射到容器的/var/lib/mysql目录**
+
+**注意事项：**
+在使用-v选项映射目录时，宿主机需关闭SElinux:
+$ setenforce 0
+
+**6、Navicat for MySQL客户端访问mysql**
+
+```
+面的方式（mysql5）
+ALTER USER 'root'@'localhost'  IDENTIFIED by 'attack' password expire never;//修改加密方式
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'attack';
+或者
+SET PASSWORD FOR 'root'@'localhost' = OLD_PASSWORD('attack');
+
+下面的方式（mysql5）
+mysql -u root -p mysql
+update user set Password=OLD_PASSWORD('attack') WHERE User='root'
+flush privileges;
+
+
+```
 
 #### 安装tomcat
 
@@ -4810,6 +4938,16 @@ tomcat-user.xml
 注：镜像是基于Tomcat8的远程管理角色权限，管理账号和密码是：tomcat/password。 
 
 执行maven命令：mvn clean tomcat7:deploy 。看是否部署成功。
+
+
+
+#### 构建Java web应用服务
+
+**1.构建一个Java应用服务，包含两个步骤：**
+a.一个镜像从URL拉取指定的WAR文件并保存到卷里
+b.一个含有Tomcat服务器的镜像运行这些下载的WAR文件
+
+
 
 #### 部署sprongBoot
 
@@ -5834,3 +5972,13 @@ http://blog.51cto.com/hostman/2097376
 http://www.cnblogs.com/styshoo/p/6431748.html
 
 http://www.cnblogs.com/52fhy/p/5638571.html
+
+http://www.cnblogs.com/linjiqin/p/8831041.html
+
+https://yeasy.gitbooks.io/docker_practice/content/basic_concept/repository.html
+
+http://hanqunfeng.iteye.com/blog/2331648  (最下方)
+
+https://www.cnblogs.com/kevingrace/category/839227.html
+
+http://hanqunfeng.iteye.com/blog/2331648
