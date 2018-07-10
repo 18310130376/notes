@@ -60,3 +60,8 @@ java -version
 wget http://apache.fayea.com/tomcat/tomcat-7/v7.0.75/bin/apache-tomcat-7.0.75.tar.gz
 ```
 
+
+
+
+
+https://www.cnblogs.com/wade-luffy/category/853135.html

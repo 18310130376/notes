@@ -60,3 +60,5 @@ vi .gitconfig
 #### 参考
 
 https://www.cnblogs.com/xishuai/category/558994.html
+
+http://www.cnblogs.com/wade-luffy/p/5760154.html

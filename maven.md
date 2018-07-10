@@ -377,3 +377,8 @@ Deployment Pollcy: 需要把策略改成“Allow redeploy”。
 **注意事项：**
 -DrepositoryId=nexus 对应的就是Maven中settings.xml的认证配的名字。
 
+
+
+#### 插件
+
+http://www.cnblogs.com/wade-luffy/p/7080280.html

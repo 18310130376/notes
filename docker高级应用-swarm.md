@@ -135,6 +135,20 @@ $ docker-machine restart manager1
 
 没办法，后来我只能删掉四个 Docker 主机，重新进行创建了。
 
+**错误处理:**
+
+> - 问题描述：
+>
+> 如果在添加Swarm集群节点时，出现错误“Error response from daemon: Timeout was reached before node was joined. The attempt to join the swarm will continue in the background. Use the `docker info` command to see the current swarm status of your node."
+>
+> - 原因分析：
+>
+> 由于Swarm集群中Manager节点中需要设置防火墙的访问权限，将集群管理端口加入防火墙的访问控制策略。
+>
+> - 解决办法：
+>
+> 在Manager节点主机的防火墙中加入端口的访问控制策略。
+
 ## Docker Service 部署单个集群服务
 
 在部署集群服务之前，我们需要做些准备工作，因为 Docker 主机中没有配置 Docker 镜像加速地址，所以在拉取官方镜像的时候，肯定会非常慢，除了配置 Docker 镜像加速地址之外，我们还可以使用 Docker 私有镜像仓库，来解决这个问题。
@@ -324,7 +338,222 @@ docker service scale nginx=4
 
 
 
+## 删除Swarm集群节点
 
+如果想在Docker Swarm集群中删除Docker的节点， 需要在须删除的Docker节点下执行命令：
+
+```
+[root@centos7-WorkerA ~]# docker swarm leave
+Node left the swarm.
+```
+
+在Docker Swarm集群中，在删除Docker集群节点后，集群中该节点仍然存在，但是状态显示为`Down`， 需要在Swarm的Manager节点执行以下命令， 删除已经移除的Worker节点：
+
+```
+[root@centos7-Master ~]# docker node rm --force 4ukr7ghj4iuvb89gu0g5ok1d
+4ukr7ghj4iuvb89gu0g5ok1d
+```
+
+## 更新Swarm集群节点
+
+如果需要对Docker Swarm节点进行更新，需要在manager节点上执行命令：
+
+```
+[root@centos7-Master ~]# docker swarm update 
+Swarm updated.
+```
+
+
+
+## 在Swarm中部署服务
+
+### 3.1 在Swarm中部署服务
+
+在centos7-Master也就是manager节点上运行如下命令来部署服务：
+
+```
+[root@centos7-Master ~]# docker service create --replicas 1 --name helloworld alpine ping docker.com
+50r6d8w4cwzi45s8865p9pdn4
+```
+
+**参数说明：**
+
+-  `--replicas`参数指定启动的服务由几个实例组成；
+-  `--name`参数指定启动服务的服务名；
+-  `alpine ping docker.com`指定了使用alpine镜像创建服务，实例启动时运行ping docker.com命令。
+
+这与docker run命令是一样的。
+
+使用`docker service ls`查看正在运行服务的列表：
+
+```
+[root@centos7-Master ~]# docker service ls
+ID            NAME        REPLICAS  IMAGE   COMMAND
+50r6d8w4cwzi  helloworld  1/1       alpine  ping docker.com
+```
+
+### 3.2 查询Swarm中服务的信息
+
+在部署了服务之后，登录到manager节点，运行下面的命令来显示服务的信息。参数`--pretty`使命令输出格式化为可读的格式，不加`--pretty`可以输出更详细的信息：
+
+```
+[root@centos7-Master ~]# docker service inspect --pretty helloworld
+ID:        50r6d8w4cwzi45s8865p9pdn4
+Name:        helloworld
+Mode:        Replicated
+Replicas:    1
+Placement:
+UpdateConfig:
+Parallelism:    1
+On failure:    pause
+ContainerSpec:
+Image:        alpine
+Args:        ping docker.com
+Resources:
+```
+
+使用命令`docker service ps <SERVICE-ID>`可以查询到哪个节点正在运行该服务：
+
+```
+[root@centos7-Master ~]$ docker service ps helloworld
+ID                         NAME          IMAGE   NODE            DESIRED        STATE  CURRENT STATE           ERROR
+541qk5jdrb71ypna9y5zw2l33  helloworld.1  alpine  centos7-Master  Running        Running 12 minutes ago  
+```
+
+### 3.3 在Swarm中动态扩展服务
+
+登录到manager节点，使用命令`docker service scale <SERVICE-ID>=<NUMBER-OF-TASKS>`来将服务扩展到指定的实例数：
+
+```
+[root@centos7 ~]# docker service scale helloworld=5
+helloworld scaled to 5
+```
+
+再次查询服务的状态列表：
+
+```
+[root@centos7-Master ~]$ docker service ps helloworld
+ID                         NAME          IMAGE   NODE             DESIRED  STATE  CURRENT STATE           ERROR
+541qk5jdrb71ypna9y5zw2l33  helloworld.1  alpine  centos7-Master    Running        Running 16 minutes ago  
+96s46qpl3qd94ntw3n2bt81m8  helloworld.2  alpine  centos7-WorkerB   Running        Running 17 seconds ago  
+6p1u8hj4y31i4pjmwh8zvvf2h  helloworld.3  alpine  centos7-WorkerA   Running        Running 8 seconds ago   
+02jn1fxkx8juwizk6fjgv9r9n  helloworld.4  alpine  centos7-WorkerA   Running        Running 9 seconds ago   
+btbrvtnjjmgyb8emwmznziho9  helloworld.5  alpine  centos7-Master    Running        Running 27 seconds ago  
+```
+
+可见Swarm集群创建了4个新的task来将整个服务的实例数扩展到5个。这些服务分布在不同的Swarm节点上。
+
+### 3.4 删除Swarm集群中的服务
+
+在manager节点上运行`docker service rm helloworld`便可以将服务删除。删除服务时，会将服务在各个节点上创建的容器一同删除，而并不是将容器停止。
+
+此外Swarm模式还提供了服务的滚动升级，将某个worker置为维护模式，及路由网等功能。在Docker将Swarm集成进Docker引擎后，可以使用原生的Docker CLI对容器集群进行各种操作，使集群的部署更加方便、快捷。
+
+### 3.5 更新Swarm集群中的服务版本
+
+在前面的步骤中， 我们扩展了一个服务的多个实例， 如上所示， 我们扩展了基于Tomcat Server 8.5.8的Docker镜像。 假如，现在我们需要使用Tomcat Server 8.6.0版本做为Docker容器版本来替换原有的Tomcat Server 8.5.8版本。
+
+1. 在Swarm集群中的Manager节点上执行操作，用于完成服务版本的更新。
+
+```
+[root@centos7-Master ~]# docker service update --image tomcat:8.6.0 tomcat-service
+tomcat-service
+```
+
+**服务版本更新计划将按以下步骤执行：**
+
+- 停止第一个任务
+- 计划对已停止任务的更新
+- 启动已更新任务的容器
+- 如果任务更新返回“RUNNING”状态，等待指定的延迟时间后，停止下一个任务
+- 如果在任务更新时，任务返回“FAILED”状态，将会暂停更新。
+
+重新启动一个暂停更新的服务， 可以使用`docker service update <SERVICE-ID>`命令， 例如：
+
+```
+[root@centos7-Master ~]# docker service update tomcat-service
+```
+
+1. 查看服务版本更新结果
+
+```
+[root@centos7-Master ~]# docker service ps tomcat-service
+```
+
+### 3.6 停用Swarm集群中的服务节点
+
+如果我们想要停止Swarm集群中某个服务的Worker节点， 我们可以使用`docker node update --availability drain <Node-ID>`来停止Worker节点上的服务。
+
+```
+[root@centos7-Master ~]# docker node update --availability drain centos7-WorkerA
+centos7-WorkerA
+```
+
+在停止Worker节点上的服务后， 我们可以通过`docker node inspect --pretty <Node-ID>`查看节点状态。
+
+```
+[root@centos7-Master ~]# docker node inspect --pretty centos7-WorkerA
+ID:                     ayxx0k8p3hq04zjuemq6p43rq
+Hostname:               centos7-WorkerA
+Joined at:              2016-12-26 07:07:13.422672934 +0000 utc
+Status:
+ State:                 Ready
+ Availability:          Drain
+Platform:
+ Operating System:      linux
+ Architecture:          x86_64
+Resources:
+ CPUs:                  4
+ Memory:                3.703 GiB
+Plugins:
+  Network:              bridge, host, null, overlay
+  Volume:               local
+Engine Version:         1.12.5
+```
+
+使用`docker service ps tomcat-service`查看当前Tomcat启动的集群信息。
+
+```
+[root@centos7-Master ~]# docker service ps tomcat-service
+ID                         NAME                  IMAGE                                         NODE           DESIRED STATE  CURRENT STATE              ERROR
+2vmq4yc9rnsx4etb10z0oah66  tomcat-service.1      192.168.202.14:5000/centos-tomcat858:centos7  centos7-Master  Running        Running about an hour ago  
+6hjjuw1jp4037yt48cievtxt5  tomcat-service.2      192.168.202.14:5000/centos-tomcat858:centos7  centos7-Master  Running        Running 3 minutes ago      
+cpzh34flx1i7e9sksfr1dr3xu   \_ tomcat-service.2  192.168.202.14:5000/centos-tomcat858:centos7  centos7-WorkerA  Shutdown       Shutdown 3 minutes ago     
+eaimtl1swkxrnqhs2h8clodrb  tomcat-service.3      192.168.202.14:5000/centos-tomcat858:centos7  centos7-Master  Running        Running 3 minutes ago      
+54pdp8oj1ww2mtrw3ac3m0lwb   \_ tomcat-service.3  192.168.202.14:5000/centos-tomcat858:centos7  centos7-WorkerA  Shutdown       Shutdown 3 minutes ago   
+```
+
+如果我们需要重新启用WorkerA的Swarm集群服务， 我们可以通过`docker node update --availability active <NODE-ID>`来实现对服务节点的启用。
+
+```
+[root@centos7-Master ~]# docker node update --availability active centos7-WorkerA
+centos7-WorkerA
+
+[root@centos7-Master ~]# docker node inspect --pretty centos7-WorkerA
+ID:                     ayxx0k8p3hq04zjuemq6p43rq
+Hostname:               centos7-WorkerA
+Joined at:              2016-12-26 07:07:13.422672934 +0000 utc
+Status:
+ State:                 Ready
+ Availability:          Active
+Platform:
+ Operating System:      linux
+ Architecture:          x86_64
+Resources:
+ CPUs:                  4
+ Memory:                3.703 GiB
+Plugins:
+  Network:              bridge, host, null, overlay
+  Volume:               local
+Engine Version:         1.12.5
+```
+
+当我们设置Swarm集群的Worker节点为可用时，它便能接收新的任务：
+
+- 当服务需要进行扩展时
+- 当对服务的版本进行更新时
+- 当我们对停用另外一个Swarm集群节点时
+- 当任务在另外一个活动状态节点出现失败时
 
 ## 5.  常用命令
 
@@ -353,12 +582,12 @@ docker service create --name nginx  --replicas 2 --publish 80:80 hub.test.com:50
 
 ### docker swarm 常用命令
 
-| 命令                            | 说明                 |
-| ------------------------------- | -------------------- |
-| docker swarm init               | 初始化集群           |
-| docker swarm join-token worker  | 查看工作节点的 token |
-| docker swarm join-token manager | 查看管理节点的 token |
-| docker swarm join               | 加入集群中           |
+| 命令                                                         | 说明                 |
+| ------------------------------------------------------------ | -------------------- |
+| docker swarm init                                            | 初始化集群           |
+| docker swarm join-token worker （Manager节点查看Token信息 ） | 查看工作节点的 token |
+| docker swarm join-token manager（Manager节点查看Token信息 ） | 查看管理节点的 token |
+| docker swarm join                                            | 加入集群中           |
 
 docker swarm init
 
@@ -381,6 +610,16 @@ docker swarm init --listen-addr 172.16.50.21:2377 --advertise-addr 172.16.50.21
 | docker node ps                            | 查看节点中的 Task 任务             |
 | docker node update --role manager worker1 | 工作节点变为manager                |
 | docker node update --role worker manager1 | manager点变为worker                |
+
+```
+[root@centos7-Master ~]# docker node ls
+ID                           HOSTNAME  STATUS  AVAILABILITY  MANAGER STATUS
+41atspd62he1vshs4jmhpyufj *  centos7   Ready   Active        Leader
+```
+
+node ID旁边那个*号表示现在连接到这个节点上。 
+
+
 
 ### docker service 常用命令
 
@@ -501,7 +740,5 @@ https://www.cnblogs.com/adolfmc/category/1027938.html
 汇总
 
 https://www.centos.bz/tag/docker/page/45/
-
-
 
 https://www.cnblogs.com/liuyansheng/p/8178341.html 
