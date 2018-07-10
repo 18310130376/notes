@@ -3246,7 +3246,9 @@ https://www.cnblogs.com/sparkdev/p/7066789.html
 
 ### DaoCloud镜像加速
 
-微信登录的，用户名475402366   wnn123456
+微信登录的，用户名******   wnn123456
+
+dockerhub  ，用户名****@qq.com   wnn123456
 
 https://dashboard.daocloud.io/packages/explore
 
@@ -3540,6 +3542,18 @@ docker服务
 | sudo docker daemon & | 启动docker 守护进程 | sudo docker daemon & |
 | sudo docker info     | 配置信息            | sudo docker info     |
 |                      |                     |                      |
+
+
+
+网络
+
+|      |                            |      |
+| ---- | -------------------------- | ---- |
+|      | docker network ls          |      |
+|      | netstat -tnlp\|grep docker |      |
+|      |                            |      |
+
+
 
 docker占用磁盘空间
 

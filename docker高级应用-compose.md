@@ -71,6 +71,24 @@ sudo rm /etc/bash_completion.d/docker-compose
 
 
 
+##### 常见问题：
+
+1：application.yml文件键值之间要用冒号：隔开，而且冒号和值之间有一个空格，否则就报上面的错误
+
+​     错误写法：
+
+​        enableWebDubug:true
+
+​    正确写法：
+
+​       enableWebDubug: true
+
+
+
+
+
+
+
 ##### 入门示例
 
 一般步骤
@@ -338,6 +356,7 @@ vi docker-compose.yml
 version: '2'  
 services:  
    db:  
+     container_name: mysql01 
      image: docker.io/mysql:latest  
      volumes:  
        - /mysql/datadir_tomcat:/var/lib/mysql  
@@ -349,7 +368,11 @@ services:
    tomcat01:  
      depends_on:  
        - db  
-     image: docker.io/tomcat:latest  
+     container_name: tomcat01  
+     image: docker.io/tomcat:latest 
+     environment:
+       TZ: Asia/Shanghai
+       JAVA_OPTS: -Xmx512m
      volumes:  
        - /tomcat01/webapps:/usr/local/tomcat/webapps  
      links:  
@@ -361,7 +384,11 @@ services:
    tomcat02:  
      depends_on:  
        - db  
-     image: docker.io/tomcat:latest  
+     container_name: tomcat01  
+     image: docker.io/tomcat:latest 
+     environment:
+       TZ: Asia/Shanghai
+       JAVA_OPTS: -Xmx512m
      volumes:  
        - /tomcat02/webapps:/usr/local/tomcat/webapps  
      links:  
@@ -703,29 +730,30 @@ tty: true
 
 ###### 命令行参考
 
-|                                        |                          |
-| -------------------------------------- | ------------------------ |
-| docker-compose stop wordpress          | 停止容器运行             |
-| docker-compose rm wordpress            | 删除老旧的容器           |
-| docker-compose start wordpress         | 启动新容器               |
-| docker-compose restart nginx           |                          |
-| docker-compose stop                    |                          |
-| docker-compose up                      |                          |
-| docker-compose logs nginx              |                          |
-| docker-compose logs -f --tail 10 nginx |                          |
-| docker-compose build                   | build 构建或重建服务     |
-| docker-compose kill                    | kill 杀掉容器            |
-| docker-compose logs                    | logs 显示容器的输出内容  |
-| docker-compose port                    | port 打印绑定的开放端口  |
-| docker-compose ps                      | ps 显示容器              |
-| docker-compose pull                    | pull 拉取服务镜像        |
-| docker-compose restart                 | restart 重启服务         |
-| docker-compose rm                      | rm 删除停止的容器        |
-| docker-compose run                     | run 运行一个一次性命令   |
-| docker-compose  scale                  | scale 设置服务的容器数目 |
-| docker-compose start                   | start 开启服务           |
-| docker-compose stop                    | stop 停止服务            |
-| docker-compose up                      | up 创建并启动容器        |
+|                                                              |                          |
+| ------------------------------------------------------------ | ------------------------ |
+| docker-compose stop wordpress                                | 停止容器运行             |
+| docker-compose rm wordpress                                  | 删除老旧的容器           |
+| docker-compose start wordpress                               | 启动新容器               |
+| docker-compose restart nginx                                 |                          |
+| docker-compose stop                                          |                          |
+| docker-compose up                                            |                          |
+| docker-compose logs nginx                                    |                          |
+| docker-compose logs -f --tail 10 nginx                       |                          |
+| docker-compose build                                         | build 构建或重建服务     |
+| docker-compose kill                                          | kill 杀掉容器            |
+| docker-compose logs                                          | logs 显示容器的输出内容  |
+| docker-compose port                                          | port 打印绑定的开放端口  |
+| docker-compose ps                                            | ps 显示容器              |
+| docker-compose -f docker-compose-tomcat.yml ps               |                          |
+| docker-compose pull                                          | pull 拉取服务镜像        |
+| docker-compose restart   \|\|     docker-compose -f docker-compose-tomcat-only.yml restart | restart 重启服务         |
+| docker-compose rm  \|\| docker-compose -f docker-compose-tomcat-only.yml rm | rm 删除停止的容器        |
+| docker-compose run container_name bash                       | run 运行一个一次性命令   |
+| docker-compose  scale                                        | scale 设置服务的容器数目 |
+| docker-compose start                                         | start 开启服务           |
+| docker-compose stop                                          | stop 停止服务            |
+| docker-compose up                                            | up 创建并启动容器        |
 
 
 
@@ -1399,95 +1427,4 @@ read_only: true
 shm_size: 64M
 stdin_open: true
 tty: true
-```
-
-
-
-##### Swarm
-
-https://www.cnblogs.com/franknihao/p/8490416.html
-
-http://www.cnblogs.com/xishuai/p/docker-swarm.html
-
-https://www.cnblogs.com/drawnkid/p/8487337.html
-
-https://www.jianshu.com/p/9eb9995884a5
-
-###### 开启Docker API服务 
-
-如要使用swarm，则必须让Docker开放其HTTP的API。默认情况下这个API没有开启，而开启此API需要在启动时加入-H参数。修改lib/systemd/system/docker.service文件中的参数，并且用systemctl来管理启动docker服务。
-
-上述这个文件的ExecStart很明显是指出了docker的启动参数，在第一行的后面直接加上：
-
-```
--H tcp://0.0.0.0:2376
-```
-
-```
-systemctl daemon-reload
-```
-
-​    然后再重启/启动Docker服务，此时通过netstat -ntlp可以看到一个新开的2376端口，此乃默认的 DockerHTTPAPI的端口。如果是一个集群则注意集群中所有相关的主机都记得要启动带这个端口的Docker服务。
-
-从 Docker 1.12.0 版本开始，Docker Swarm 已经包含在 Docker 引擎中（`docker swarm`），并且已经内置了服务发现工具，我们就不需要像之前一样，再配置 Etcd 或者 [Consul](https://www.ibm.com/developerworks/cn/opensource/os-cn-consul-docker-swarm/index.html) 来进行服务发现配置了。 
-
-
-
-###### 命令
-
-|                    |                                                              |
-| ------------------ | ------------------------------------------------------------ |
-| create             | docker service create –replicas 5 –name myhelloworld alpine ping docker.com |
-| 查看创建出来的服务 | docker service ls                                            |
-|                    | docker service update                                        |
-|                    | docker service inspect                                       |
-|                    | docker service ps  my_web                                    |
-|                    | docker service rm my_web                                     |
-| 扩展一个或多个服务 | docker service scale webtier_nginx=5                         |
-
-
-
-
-
-###### docker service logs
-
-针对docker swarm模式，获取容器日志的命令。
-
-一般，依次执行下列命令，得到某服务的容器名
-
-```
-docker service ls
-docker service ps [服务名]12
-```
-
-然后就可以通过容器名，获取其日志了
-
-```
-docker service logs [容器名]1
-```
-
-###### docker service logs显示日志为空
-
-要让 docker service logs 正常工作，需要设置docker一些配置
-
-```
-vi /etc/docker/daemon.json1
-```
-
-给该文件添加：
-
-```
-{
-    "log-driver": "json-file",
-    "log-opts": {
-        "labels": "production_status,geo",
-        "env": "os,customer"
-    }
-}1234567
-```
-
-然后重启docker
-
-```
-service docker restart
 ```
