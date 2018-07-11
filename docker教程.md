@@ -5032,6 +5032,18 @@ tomcat-user.xml
 
 
 
+#### 用Docker搭建WordPress博客
+
+```
+docker pull wordpress:latest
+docker pull mysql:latest
+docker run --name some-wordpress --link some-mysql:mysql -p 8080:80 -d wordpress
+
+安装时的数据库指定的是mysql容器的ip和端口
+```
+
+
+
 #### 构建Java web应用服务
 
 **1.构建一个Java应用服务，包含两个步骤：**
