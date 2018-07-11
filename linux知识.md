@@ -403,13 +403,13 @@ sudo ifconfig eth0 up
 
 ```
 ss -tunl | grep 2376
-
 ```
 
 端口使用情况
 
 ```
 netstat -ntulp |grep 8080
+netstat -nap | grep 端口号
 ```
 
 ```

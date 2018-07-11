@@ -57,6 +57,22 @@ vi .gitconfig
 保存后git pull首次还是需要输入用户名和密码，以后就不用输入了
 ```
 
+
+
+# Tortoisegit使用教程
+
+1.安装Git及Tortoisegit先上图，首先需要把123按顺序安装了
+
+Git下载地址：https://git-for-windows.github.io/
+
+Tortoisegit及语言包下载地址：http://tortoisegit.org/download/ 
+
+```
+Git-2.12.0-64-bit.exe
+TortoiseGit-2.4.0.2-64bit.msi
+TortoiseGit-LanguagePack-2.4.0.0-64bit-zh_CN.msi
+```
+
 # 参考
 
 https://www.cnblogs.com/xishuai/category/558994.html
