@@ -1,4 +1,4 @@
-#### 安装
+# 安装
 
 用git --version命令检查是否已经安装
 
@@ -57,7 +57,7 @@ vi .gitconfig
 保存后git pull首次还是需要输入用户名和密码，以后就不用输入了
 ```
 
-#### 参考
+# 参考
 
 https://www.cnblogs.com/xishuai/category/558994.html
 

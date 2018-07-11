@@ -412,6 +412,15 @@ ss -tunl | grep 2376
 netstat -ntulp |grep 8080
 ```
 
+```
+apt-get install net-tools
+### ifconfig
+apt-get install iputils-ping
+### ping
+apt-get install iproute2
+#### ip
+```
+
 #### 系统维护
 
 更新资源
