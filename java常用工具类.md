@@ -22,5 +22,10 @@
     //去掉最后一个字符
     lang = StringUtils.trimTrailingCharacter(lang,',');
 
-    FilenameUtils.getExtension(filename)
+    FilenameUtils.getExtension(filename)；
+    
+    StringUtils
+    IoUtils
+    StreamUtils
+    FileUtils
 ```
