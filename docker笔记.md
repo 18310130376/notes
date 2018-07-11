@@ -326,9 +326,9 @@ OPTIONS=--selinux-enabled -H fd:// -g="/data/docker"
 
 #### centos安装、卸载
 
-```
-卸载
+##### 卸载
 
+```
 1.查询安装过的包
 yum list installed | grep docker
 docker-engine.x86_64                 17.03.0.ce-1.el7.centos         @dockerrepo
@@ -347,11 +347,23 @@ find / -name  docker.service.d
 rm -rf /var/lib/docker
 rm -rf /etc/docker/
 systemctl cat docker 查看文件位置，删除干净
-
 关闭防火墙：systemctl stop firewalld.service
+```
 
+##### 安装
+
+```
 yum update
-yum install docker
+yum list docker-engine.x86_64 --showduplicates | sort -r
+
+docker-engine.x86_64               1.9.1-1.el7.centos                     docker
+docker-engine.x86_64               1.9.0-1.el7.centos                     docker
+docker-engine.x86_64               1.8.3-1.el7.centos                     docker
+docker-engine.x86_64               1.8.2-1.el7.centos                     docker
+docker-engine.x86_64               1.8.1-1.el7.centos                     docker
+docker-engine.x86_64               1.8.0-1.el7.centos                     docker
+
+yum -y install docker-engine-1.9.1-1
 systemctl daemon-reload
 systemctl start docker
 systemctl enable docker //开机自启动
