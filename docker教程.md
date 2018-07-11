@@ -4,10 +4,6 @@
 
 20180707任务：linux笔记归档
 
-
-
-
-
 Docker 要求 Ubuntu 系统的内核版本高于 3.10   . 
 
 通过 uname -r 命令查看你当前的内核版本
@@ -894,6 +890,10 @@ docker start 4e4dd842029a
 #### 新建并启动容器
 
 ```
+docker run nginx sh -c "ls && mkdir aaaa"   //执行多条命令用sh -c
+```
+
+```
 docker run ubuntu /bin/echo 'hello world'
 ```
 
@@ -950,6 +950,29 @@ docker restart
 docker run –restart=always –name leafage ubuntu /bin/bash 或
 docker run –restart=on-failure：5 –name leafage ubuntu /bin/bash 只有容器的退出代码为非0值的时候才会重启，最多重启5次
 ```
+
+
+
+#### 运行中的容器添加端口映射
+
+首先，获取容器IP
+
+```
+[root@wk01 springboot4Docker]# docker inspect fe930e79acae | grep IPAddress
+            "SecondaryIPAddresses": null,
+            "IPAddress": "172.17.0.3",
+                    "IPAddress": "172.17.0.3",
+```
+
+其次， iptable转发端口
+
+```
+iptables -t nat -A  DOCKER -p tcp --dport 80 -j DNAT --to-destination 172.17.0.3:8000
+```
+
+现在就可以通过  主机IP+80端口访问了
+
+
 
 #### 查看容器
 
@@ -3324,6 +3347,42 @@ docker pull tomcat:7
 
 
 
+### docker数据存储位置
+
+更改默认存储，避免系统盘爆满
+
+首先，停止docker服务
+
+```
+service docker stop # 关闭docker 或 /etc/init.d/docker stop
+```
+
+查看默认存储位置
+
+```
+docker inspect fe930e79acae
+```
+
+迁出数据到新的位置
+
+```
+mv /var/lib/docker /home/docker # 迁出docker的数据（home目录没有挂载在系统盘），至此，系统盘的问题解决
+```
+
+然后是设置docker是数据存储位置，编辑 /etc/sysconfig/docker 文件, 添加-g 参数的设置, 如下:
+
+```
+other_args="-g /home/docker"
+```
+
+注意，上面修改的文件位置，每个系统不一定相同。
+
+启动docker
+
+```
+service docker start
+```
+
 ### 如何快速清理 docker 资源
 
 如果经常使用 docker，你会发现 docker 占用的资源膨胀很快，其中最明显也最容易被察觉的应该是对磁盘空间的占用。本文将介绍如何快速的清理 docker 占用的系统资源，具体点说就是删除那些无用的 镜像、容器、网络和数据卷。
@@ -3535,6 +3594,12 @@ docker-machine：
 | **docker-machine scp** 可以在不同 machine 之间拷贝文件，比如： | docker-machine scp docker02:/tmp/a  docker03:/tmp/b          |                                                              |
 | docker -H tcp://127.0.0.1:2375 run -it ubuntu:14.04 /bin/bash | docker -H tcp://127.0.0.1:2375 run -it ubuntu:14.04 /bin/bash | docker -H tcp://127.0.0.1:2375 run -it ubuntu:14.04 /bin/bash |
 
+docker-machine -D create --driver generic --generic-ip-address=192.168.48.128 --generic-ssh-user=root wk01
+
+D表示以debug方式
+
+
+
 docker服务
 
 |                      |                     |                      |
@@ -3564,9 +3629,10 @@ docker占用磁盘空间
 | docker container prune               | 清除停止运行的容器（强制清除用-f）                           |
 | docker network prune                 | 清除没有使用的网络（强制清除用-f）                           |
 | docker volume prune                  | 清除没有使用的容器卷（强制清除用-f）                         |
-| `docker system ``df`                 | **查看docker占用docker空间情况**                             |
-| docker run --restart=always my_image | **创建自启动容器**                                           |
-|                                      | **容器健康检查**                                             |
+| docker system  df                    | 查看docker占用docker空间情况                                 |
+| docker stats                         | 查看容器占用资源情况                                         |
+| docker run --restart=always my_image | 创建自启动容器                                               |
+|                                      | 容器健康检查                                                 |
 
 ```
 # 启动容器时候指定（timeout执行命令超时时间，health-interval执行检查间隔时间）
@@ -3701,6 +3767,17 @@ docker load与docker import
 set DOCKER_HOST=tcp://127.0.0.1:2375
 set DOCKER_CERT_PATH=C:\Users\${user}\.boot2docker\certs\boot2docker-vm
 set DOCKER_TLS_VERIFY=1
+```
+
+
+
+### docker容器时间显示错误/date错误/时区错误
+
+在创建容器的Dockerfile文件中添加以上设置即可，再次创建容器
+
+```
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 ```
 
 
@@ -5181,14 +5258,26 @@ mvn --encrypt-master-password 123asdadfafdadf
 
 ```
 mvn --encrypt-password 你的邮箱密码
-{RxLx1asdfiafrjIHfXZDadfwveda23avsdv=}
+{7SxsAasNsUsHMNGho6gJOPPDqO8uoyrsyUD4EAPX5Ek=}
 
 vim ~/.m2/settings.xml
-<server>
-     <id>internal</id>
-     <username>54chen</username>
-     <password>{RxLx1asdfiafrjIHfXZDadfwveda23avsdv=}</password>
-</server>
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+<servers> 
+	<server>
+		<id>docker-hub</id>
+		<username>13662241921</username>
+		<password>{7SxsAasNsUsHMNGho6gJOPPDqO8uoyrsyUD4EAPX5Ek=}</password>
+		<configuration>
+		  <email>47540266@qq.com</email>
+		</configuration>
+   </server>	
+</servers>
+</settings>
+
 ```
 
 4 运行命令
@@ -5337,6 +5426,70 @@ pom.xml配置插件：
 set DOCKER_HOST=tcp://xxx.xxx.xxx.xxx:2375
 mvn clean package -X docker:build
 ```
+
+
+
+#### docker连接spring boot和mysql容器
+
+一：创建mysql Dockerfile
+
+```
+FROM centos:6.7
+MAINTAINER chenyufeng "yufengcode@gmail.com"  
+RUN yum install -y mysql-server mysql  
+RUN /etc/init.d/mysqld start &&\  
+    mysql -e "grant all privileges on *.* to 'root'@'%' identified by '123456' WITH GRANT OPTION ;"&&\  
+    mysql -e "grant all privileges on *.* to 'root'@'localhost' identified by '123456' WITH GRANT OPTION ;"&&\ 
+    mysql -u root -p123456 -e "show databases;"  
+EXPOSE 3306
+# 容器启动后执行以下命令，启动mysql；
+CMD ["/usr/bin/mysqld_safe"]
+```
+
+二：创建mysql镜像
+
+```
+docker build -t mysqldb .
+```
+
+三：启动mysql容器
+
+```
+docker run -d -p 3306:3306 --name docker-mysql mysqldb
+```
+
+四：docker连接spring boot和mysql容器
+
+首先在resources下新建application.properties文件来配置数据库
+
+```
+spring.datasource.url = jdbc:mysql://mysql:3306/spring
+spring.datasource.username = root
+spring.datasource.password = 123456
+spring.datasource.driverClassName = com.mysql.cj.jdbc.Driver
+```
+
+**注：这里的url会在稍后连接mysql容器后进行修改。**
+
+五：构建springboot镜像
+
+docker build -t  spring-boot-mysql-docker  .
+
+连接运行Spring Boot容器并连接到mysql数据库
+
+```
+docker run -d -p 8088:8080 --name spring-web --link docker-mysql:mysql spring-boot-mysql-docker
+```
+
+修改配置文件：
+
+```
+spring.datasource.url = jdbc:mysql://mysql:3306/spring
+```
+
+
+
+iptables -t nat -A  DOCKER -p tcp --dport 80 -j DNAT --to-destination 172.17.0.3:8000
 
 
 

@@ -582,12 +582,12 @@ docker service create --name nginx  --replicas 2 --publish 80:80 hub.test.com:50
 
 ### docker swarm 常用命令
 
-| 命令                                                         | 说明                 |
-| ------------------------------------------------------------ | -------------------- |
-| docker swarm init                                            | 初始化集群           |
-| docker swarm join-token worker （Manager节点查看Token信息 ） | 查看工作节点的 token |
-| docker swarm join-token manager（Manager节点查看Token信息 ） | 查看管理节点的 token |
-| docker swarm join                                            | 加入集群中           |
+| 命令                                            | 说明                           |
+| ----------------------------------------------- | ------------------------------ |
+| docker swarm init   --advertise-addr {本机地址} | 初始化集群                     |
+| docker swarm join-token worker                  | 获取加入集群命令（普通节点）   |
+| docker swarm join-token manager                 | 获取加入集群命令（管理员节点） |
+| docker swarm join                               | 加入集群中                     |
 
 docker swarm init
 
@@ -623,16 +623,18 @@ node ID旁边那个*号表示现在连接到这个节点上。
 
 ### docker service 常用命令
 
-| 命令                                                  | 说明                         |
-| ----------------------------------------------------- | ---------------------------- |
-| docker service create                                 | 部署服务                     |
-| docker service inspect tomcat  --pretty               | 查看服务详情                 |
-| docker service logs                                   | 产看某个服务日志             |
-| docker service ls                                     | 查看所有服务详情             |
-| docker service rm tomcat                              | 删除某个服务（`-f`强制删除） |
-| docker service scale tomcat=3                         | 设置某个服务个数             |
-| docker service update                                 | 更新某个服务                 |
-| docker-machine ssh manager1  docker service ps tomcat | 查看哪个节点在运行服务       |
+| 命令                                                         | 说明                         |
+| ------------------------------------------------------------ | ---------------------------- |
+| docker service create  --replicas {实例数量} --name {服务名字} -p {主机端口}:{容器内部端口} my_image {启动指令} | 创建一个服务                 |
+| docker service inspect tomcat  --pretty                      | 查看服务详情                 |
+| docker service logs                                          | 产看某个服务日志             |
+| docker service ls                                            | 查看所有服务详情             |
+| docker service rm tomcat                                     | 删除某个服务（`-f`强制删除） |
+| docker service scale tomcat=3                                | 设置某个服务个数             |
+| docker service update  --image {镜像名字} {服务名字}         | 更新某个服务                 |
+| docker service update --limit-memory {内存使用} {服务名字}   | 修改实例内存限制             |
+| docker service update --limit-cpu {内存使用} {服务名字}      | 修改实例cpu限制              |
+| docker service ps tomcat                                     | 查看哪个节点在运行服务       |
 
 docker service update –publish-add 80 my_web
 
