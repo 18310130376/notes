@@ -3792,6 +3792,20 @@ ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 ```
 
+或者
+
+```
+RUN cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \ 
+    echo 'Asia/Shanghai' >/etc/timezone
+    
+RUN echo "export LC_ALL=zh_CN.UTF-8"  >>  /etc/profile
+ENV LANG="zh_CN.UTF-8" 
+```
+
+
+
+
+
 
 
 ###  参考网址
