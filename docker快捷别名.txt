@@ -1,2 +1,4 @@
 alias rmi*='docker rmi $(docker images -a -q)'
 alias rm*='docker rm $(docker ps -a -q)'
+alias di='docker images'
+alias dps='docker ps'
