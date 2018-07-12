@@ -8,7 +8,7 @@ see:https://www.cnblogs.com/sunny3096/category/1034222.html
 
 后台启动并打印日志：
 
- nohup java  -Xms128m -Xmx512m -jar boot.jar Djava.security.egd=file:/dev/./urandom > 日志.log 2>&1 &
+nohup java  -Xms128m -Xmx512m -jar boot.jar Djava.security.egd=file:/dev/./urandom > 日志.log 2>&1 &
 
 解决tomcat启动慢的问题: Djava.security.egd=file:/dev/./urandom
 
