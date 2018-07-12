@@ -1,9 +1,10 @@
 FROM centos:7
 MAINTAINER "475402366@qq.com"  
 RUN yum install -y mysql-server mysql  
-RUN systemctl start mysqld &&\  
+RUN service mysqld start &&\  
     mysql -e "grant all privileges on *.* to 'root'@'%' identified by '123456' WITH GRANT OPTION ;"&&\  
     mysql -e "grant all privileges on *.* to 'root'@'localhost' identified by '123456' WITH GRANT OPTION ;"&&\ 
     mysql -u root -p123456 -e "show databases;"  
+RUN chkconfig mysqld on	
 EXPOSE 3306
-CMD ["/usr/sbin/init"]
+CMD ["/usr/bin/mysqld_safe"]
