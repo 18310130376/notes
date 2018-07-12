@@ -134,8 +134,6 @@ $ chkconfig sshd on
 
 
 
-
-
 #### 文件操作
 
 ```
@@ -171,8 +169,6 @@ tee -a file 输出到标准输出的同时，追加到文件file中。如果文�
 tee file1 file2 -  输出到标准输出两次，同时保存到file1和file2中。（标准输出的次数=-出现的次数+1）
 ```
 
-
-
 清空文件内容
 
 ```
@@ -180,7 +176,7 @@ $ : > filename
 $ > filename
 $ echo "" > filename
 $ echo > filename
-$ cat /dev/null > fil
+$ cat /dev/null > filename
 ```
 
 复制文件内容到另一个文件(a中的内容复制到b中，b中之前的内容会被清空)
@@ -194,6 +190,36 @@ cat a.json > b.json
 ```
 cd a\ bcd
 ```
+
+查找
+
+```
+sudo find / -name 0001.txt -print  (print不要也可以)
+sudo find / -name 'study' -type d  （study为目录）
+```
+
+清空日志内容
+
+```
+cat /dev/null > nohup.out 清空日志nohup.out文件内容
+```
+
+合并对个文件内容到一个新文件,新内容和cat文件顺序有关
+
+```
+cat a.text b.text > c.text
+```
+
+
+
+文件内容替换
+
+```
+cat a.text > b.text    //b的内容替换为a的内容，b之前的内容不会保留
+cat a.text >> b.text   //b的内容后追加a的内容
+```
+
+
 
 #### 目录操作
 
