@@ -210,14 +210,110 @@ cat /dev/null > nohup.out 清空日志nohup.out文件内容
 cat a.text b.text > c.text
 ```
 
-
-
 文件内容替换
 
 ```
 cat a.text > b.text    //b的内容替换为a的内容，b之前的内容不会保留
 cat a.text >> b.text   //b的内容后追加a的内容
 ```
+
+#### sed
+
+|                                                              |                                                              |                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------- |
+| 追加（行下）：a\命令                                         | 将 123 追加到 以test 开头的行后面                            | sed '/^test/a\123' file                                    |
+|                                                              | 在 file文件第2行之后插入 123                                 | sed -i '2a\123' file                                       |
+| 插入（行上）：i\命令                                         | 将 123 追加到以test开头的行前面                              | sed '/^test/i\123' file                                    |
+|                                                              | 在file文件第5行之前插入123                                   | sed -i '5i\123' file                                       |
+| 替换文本中的字符串 s命令                                     | 替换所有的book为books                                        | sed 's/book/books/' file                                   |
+| 替换每行第一个匹配到的                                       | 会匹配file文件中每一行的第一个book替换为books                | sed -i 's/book/books/g' file                               |
+| -表示针对file文件中的第三行，将其中的aaa替换为fff            | sed -i '3s/aaa/fff/' file                                    | sed -i '3s/aaa/fff/' file                                  |
+| 表示针对文件，找出包含xxx的行，并将其中的aaa替换为fff        | sed -i '/xxx/s/aaa/fff/g' file                               | sed -i '/xxx/s/aaa/fff/g' file                             |
+| 表示针对文件第1行，将其中的#号或是*号替换为fff               | sed -i '1s/[#*]/fff/gp' file                                 | sed -i '1s/[#*]/fff/gp' file                               |
+| 全面替换标记g                                                | 使用后缀 /g 标记会替换每一行中的所有匹配                     | sed 's/book/books/g' file                                  |
+| 第5行替换为xxxxx                                             | sed  -i  '5s/^.*$/xxxxx/'  file                              | sed  -i  '5s/^.*$/xxxxx/'  file                            |
+| 当需要从第N处匹配开始替换时，可以使用 /Ng                    | 替换第二个匹配到的                                           | echo sksksksksksk \| sed 's/sk/SK/2g'                      |
+| / 转义符                                                     | sed 's/\/bin/\/usr\/local\/bin/g'                            | sed 's/\/bin/\/usr\/local\/bin/g'                          |
+| 删除空白行                                                   | sed '/^$/d' file                                             | sed '/^$/d' file                                           |
+| 删除文件的第2行                                              | sed '2d' file                                                | sed '2d' file                                              |
+| 删除文件的第2行到末尾所有行                                  | sed '2,$d' file                                              | sed '2,$d' file                                            |
+| 删除文件最后一行                                             | sed '$d' file                                                | sed '$d' file                                              |
+| 删除文件中所有开头是test的行                                 | sed '/^test/'d file                                          | sed '/^test/'d file                                        |
+| 所有以192.168.0.1开头的行都会被替换成它自已加localhost：     | sed 's/^192.168.0.1/&localhost/' file 192.168.0.1localhost   | sed 's/^192.168.0.1/&localhost/' file 192.168.0.1localhost |
+| sed表达式可以使用单引号来引用，但是如果表达式内部包含变量字符串，就需要使用双引号。 | test=hello  echo hello WORLD \| sed "s/$test/HELLO"  输出：HELLO WORLD |                                                            |
+| 把1~10行内所有abcde转变为大写，注意，正则表达式元字符不能使用这个命令 | sed '1,10y/abcde/ABCDE/' file                                | sed '1,10y/abcde/ABCDE/' file                              |
+
+假设文档内容如下： 
+
+```
+[root@localhost ~]# cat /tmp/input.txt
+null
+000011112222
+ 
+test
+```
+
+**要求：在1111之前添加AAA,方法如下：** 
+
+sed -i 's/指定的字符/要插入的字符&/'  文件 
+
+```
+[root@localhost ~]# sed -i  's/1111/AAA&/' /tmp/input.txt                     
+[root@localhost ~]# cat /tmp/input.txt                   
+null
+0000AAA11112222
+ 
+test
+```
+
+**要求：在1111之后添加BBB，方法如下：** 
+
+sed -i 's/指定的字符/&要插入的字符/'  文件 
+
+```
+[root@localhost ~]# sed -i  's/1111/&BBB/' /tmp/input.txt    
+[root@localhost ~]# cat /tmp/input.txt                   
+null
+0000AAA1111BBB2222
+ 
+test
+```
+
+**要求：(1) 删除所有空行；(2) 一行中，如果包含"1111"，则在"1111"前面插入"AAA"，在"11111"后面插入"BBB"** 
+
+```
+[root@localhost ~]# sed '/^$/d;s/1111/AAA&/;s/1111/&BBB/' /tmp/input.txt   
+null
+0000BBB1111AAA2222
+test
+```
+
+ **要求：在每行的头添加字符，比如"HEAD"，命令如下：** 
+
+```
+[root@localhost ~]# sed -i 's/^/HEAD&/' /tmp/input.txt 
+[root@localhost ~]# cat /tmp/input.txt
+HEADnull
+HEAD000011112222
+HEAD
+HEADtest
+```
+
+  **要求：在每行的尾部添加字符，比如"tail"，命令如下：** 
+
+```
+[root@localhost ~]# sed -i 's/$/&tail/' /tmp/input.txt      
+[root@localhost ~]# cat /tmp/input.txt                
+HEADnulltail
+HEAD000011112222tail
+HEADtail
+HEADtesttail
+```
+
+说明：
+1."^"代表行首，"$"代表行尾
+
+2.'s/$/&tail/g'中的字符g代表每行出现的字符全部替换，如果想在特定字符处添加，g就有用了，否则只会替换每行第一个，而不继续往后找。
 
 
 
