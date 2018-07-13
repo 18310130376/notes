@@ -730,30 +730,34 @@ tty: true
 
 ###### 命令行参考
 
-|                                                              |                          |
-| ------------------------------------------------------------ | ------------------------ |
-| docker-compose stop wordpress                                | 停止容器运行             |
-| docker-compose rm wordpress                                  | 删除老旧的容器           |
-| docker-compose start wordpress                               | 启动新容器               |
-| docker-compose restart nginx                                 |                          |
-| docker-compose stop                                          |                          |
-| docker-compose up                                            |                          |
-| docker-compose logs nginx                                    |                          |
-| docker-compose logs -f --tail 10 nginx                       |                          |
-| docker-compose build                                         | build 构建或重建服务     |
-| docker-compose kill                                          | kill 杀掉容器            |
-| docker-compose logs                                          | logs 显示容器的输出内容  |
-| docker-compose port                                          | port 打印绑定的开放端口  |
-| docker-compose ps                                            | ps 显示容器              |
-| docker-compose -f docker-compose-tomcat.yml ps               |                          |
-| docker-compose pull                                          | pull 拉取服务镜像        |
-| docker-compose restart   \|\|     docker-compose -f docker-compose-tomcat-only.yml restart | restart 重启服务         |
-| docker-compose rm  \|\| docker-compose -f docker-compose-tomcat-only.yml rm | rm 删除停止的容器        |
-| docker-compose run container_name bash                       | run 运行一个一次性命令   |
-| docker-compose  scale                                        | scale 设置服务的容器数目 |
-| docker-compose start                                         | start 开启服务           |
-| docker-compose stop                                          | stop 停止服务            |
-| docker-compose up                                            | up 创建并启动容器        |
+|                                                              |                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| docker-compose stop wordpress                                | 停止容器运行                                                 |
+| docker-compose rm wordpress                                  | 删除老旧的容器                                               |
+| docker-compose start wordpress                               | 启动新容器                                                   |
+| docker-compose restart nginx                                 |                                                              |
+| docker-compose up  【 -d nginx】                             | 构建建启动nignx容器                                          |
+| docker-compose logs nginx                                    |                                                              |
+| docker-compose logs -f --tail 10 nginx                       |                                                              |
+| docker-compose build                                         | build 构建或重建服务                                         |
+| docker-compose kill                                          | kill 杀掉容器                                                |
+| docker-compose logs                                          | logs 显示容器的输出内容                                      |
+| docker-compose port                                          | port 打印绑定的开放端口                                      |
+| docker-compose ps                                            | ps 显示容器                                                  |
+| docker-compose -f docker-compose-tomcat.yml ps               |                                                              |
+| docker-compose pull                                          | pull 拉取服务镜像                                            |
+| docker-compose restart   \|\|     docker-compose -f docker-compose-tomcat-only.yml restart | restart 重启服务                                             |
+| docker-compose rm  \|\| docker-compose -f docker-compose-tomcat-only.yml rm | rm 删除停止的容器                                            |
+| docker-compose run container_name bash                       | run 运行一个一次性命令                                       |
+| docker-compose  scale                                        | scale 设置服务的容器数目                                     |
+| docker-compose start                                         | start 开启服务                                               |
+| docker-compose stop                                          | stop 停止服务                                                |
+| docker-compose exec nginx bash                               | 登录到nginx容器中                                            |
+| docker-compose down                                          | 删除所有nginx容器,镜像                                       |
+| docker-compose config  -q                                    | 验证（docker-compose.yml）文件配置，当配置正确时，不输出任何内容，当文件配置错误，输出错误信息。 |
+| docker-compose events --json nginx                           | 以json的形式输出nginx的docker日志                            |
+| docker-compose pause nginx                                   | 暂停nignx容器                                                |
+| docker-compose unpause nginx                                 | 恢复ningx容器                                                |
 
 
 
