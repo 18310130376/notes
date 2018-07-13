@@ -18,3 +18,8 @@ ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 
 为了缩短 Tomcat 的启动时间，添加 java.security.egd 的系统属性指向 /dev/urandom 
 
+
+
+# 整合dubbo
+
+https://github.com/bz51/SpringBoot-Dubbo-Docker-Jenkins
