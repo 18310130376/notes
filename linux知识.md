@@ -308,6 +308,9 @@ HEADnulltail
 HEAD000011112222tail
 HEADtail
 HEADtesttail
+
+或者：
+sed 's/$/tail/' file1
 ```
 
 说明：
