@@ -265,7 +265,10 @@ dbmysql:
   ports:  
     - 3306:3306  
   environment:  
-    MYSQL_ROOT_PASSWORD: password  
+    MYSQL_ROOT_PASSWORD: password 
+    MYSQL_DATABASE: 
+    MYSQL_USER: 
+    MYSQL_PASSWORD: 
   volumes:  
     - /mysql/datadir:/var/lib/mysql  
     - /mysql/conf:/etc/mysql/conf.d:ro
