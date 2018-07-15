@@ -732,3 +732,910 @@ https://www.cnblogs.com/kevingrace/category/924885.html
 |             |              |
 |             |              |
 
+### shell编程
+
+#### 入门 hello world
+
+```
+vim hello.sh
+
+#!/bin/bash
+#第一个shell小程序
+echo hello world!
+```
+
+执行
+
+```
+chmod +x hello.sh //赋权限
+./hello.sh 或
+/bin/sh hello.sh
+```
+
+#### 变量
+
+注意：定义变量不用**$**符号，使用变量要加**$**就行了 
+
+在第5行中，我们在自定义变量时，使用了双引号，在shell编程中， 如果变量出现空格或者引号，那么也必须加引号， 否则就可以省略。
+
+还有一点需要注意，定义变量的时候，“=”左右千万不要有空格啊
+
+```
+#!/bin/bash
+#使用环境变量
+echo $PATH
+#自定义变量hello
+hello="hello world"
+echo $hello
+```
+
+使用变量时使用**$**符号加上变量名就行了。记住：定义变量不用**$**符号，使用变量要加**$**就行了。 
+
+##### 将linux命令执行结果赋值给变量
+
+```
+#!/bin/bash
+path=$(pwd)
+files=`ls -al`
+echo current path: $path
+echo files: $files
+```
+
+注意：第三行的符号不是单引号，是键盘上“～”这个按键 
+
+
+
+#### 基本数据类型运算
+
+| 符号 | 语义         | 描述                           |
+| ---- | ------------ | ------------------------------ |
+| +    | 加           | 10+10，结果为20                |
+| -    | 减           | 10-3， 结果为7                 |
+| *    | 乘           | 10*2，结果为20                 |
+| /    | 除           | 10/3, 结果为3（取整数）        |
+| %    | 求余         | 10%3, 结果为1 (取余数)         |
+| ==   | 判断是否相等 | 两数相等返回1，否则0           |
+| !=   | 判断是否不等 | 两数不等返回1，否则0           |
+| >    | 大于         | 前者大于后者返回1，否则0       |
+| >=   | 大于或等于   | 前者大于或等于后者返回1，否则0 |
+| <    | 小于         | 前者小于后者返回1，否则0       |
+| <=   | 小于或等于   | 前者小于或等于后者返回1，否则0 |
+
+ 上述操作符与其它语言相比，并无特殊之处。
+
+在shell中，对于基本数据类型的运算主要分为两种，**整数运算**和**浮点数（小数）运算**。下面就分别来看看这两种运算:
+
+##### 整数运算
+
+###### expr
+
+在shell中，有两种方式能实现整数运算，一种是使用**expr**命令， 另外一种是通过方括号（**$[]**）来实现。下面分别来看看： 
+
+```
+#!/bin/bash
+#输出13
+expr 10 + 3
+
+#输出10+3
+expr 10+3
+
+#输出7
+expr 10 - 3
+
+#输出30
+expr 10 \* 3
+
+#输出3
+expr 10 / 3
+
+#输出1
+expr 10 % 3
+
+#将计算结果赋值给变量
+num1=$(expr 10 % 3)
+
+#将计算结果赋值给变量
+num2=`expr 10 % 3`
+```
+
+注意:
+
+在以上的乘法(*)中，我们用了反斜线（）来转义，不然会报错。
+
+运算符前后必须还有空格，否则会被直接当作字符串返回。
+
+如果要将计算结果保存到变量，就需要用到我们上篇文章讲到的那两种方式（$() 或者 ``）来替换命令了。
+
+###### 方括号($[])
+
+```
+#!/bin/bash
+num1=10
+num2=3
+#输出num1 + num2=13
+echo "num1 + num2=$[$num1 + $num2]"
+
+#输出num1+num2=13
+echo "num1+num2=$[$num1+$num2]"
+
+#输出num1 - num2=7
+echo "num1 - num2=$[$num1 - $num2]"
+
+#输出num1 * num2=30
+echo "num1 * num2=$[$num1 * $num2]"
+
+#输出num1 > num2=1
+echo "num1 > num2=$[$num1 > $num2]"
+
+#输出num1 < num2=0
+echo "num1 < num2=$[$num1 < $num2]"
+
+#将运算结果赋值给变量，输出num3=3
+num3=$[$num1 / $num2]
+echo "num3=$num3"
+```
+
+
+
+##### 浮点运算
+
+在shell中，做浮点运算一般是用bash的计算器(bc)。在shell脚本中，一般我们的使用方法是：
+
+variable=$(echo "options; expression" | bc)
+
+> options是bc的一些选项，例如： 可以通过scale去设置保留的小数位数。具体有哪些参数，可以man bc进行查看
+>
+> expression就是我们具体的表达式，例如 10 * 3
+>
+> **" | "** 这个符号，对于熟悉linux系统的人来说，这个再熟悉不过了。它叫做管道， 之所以会叫做管道，其实很形象，你可以把它看作一根水管，水管一头接入前一个命令的返回结果, 一头接入下一个命令。表示将前一个命令的执行结果作为后一个命令的参数输入。以上，表示将我们的表达式作为bc的参数输入。
+
+```
+#!/bin/bash
+#表示 10/3， 保留2位小数，将结果赋值给了num, 输出3.33
+num=$(echo "scale=2; 10 / 3" | bc)
+echo $num
+```
+
+#### 字符串操作
+
+##### 拼接字符串
+
+```
+your_name="qinjx"
+greeting="hello, "$your_name" !"
+greeting_1="hello, ${your_name} !"
+echo $greeting $greeting_1
+```
+
+##### 获取字符串长度
+
+```
+string="abcd"
+echo ${#string} #输出 4
+```
+
+##### 提取子字符串
+
+以下实例从字符串第 **2** 个字符开始截取 **4** 个字符： 
+
+```
+string="runoob is a great site"
+echo ${string:1:4} # 输出 unoo
+```
+
+##### 查找子字符串
+
+ 查找字符 "**i** 或 **s**" 的位置：
+
+```
+string="runoob is a great company"
+echo `expr index "$string" is`  # 输出 8
+```
+
+**注意：** 以上脚本中 ` 是反引号，而不是单引号 '，不要看错了哦。 
+
+
+
+| -z "string" | 若string长度为0，则真   |
+| ----------- | ----------------------- |
+| -n "string" | 若string长度步为0，则真 |
+
+#### 条件选择
+
+```
+if command
+then
+    commands
+fi
+```
+
+在shell脚本的if其实是根据紧跟后面的那个命令的**退出状态码**来判断是否执行then后面的语句的。 
+
+关于退出状态码，你只需要记住：正常退出（命令执行正常）的状态码是0， 非正常退出的状态码不是0（有不少）。
+
+以上语句的语义为： 如果if后面的命令执行正常（状态码0），那么就执行then后面的语句。否则不执行。 fi代表if语句的结束。
+
+例子：
+
+```
+#!/bin/bash
+#这儿由于pwd是linux内置的命令，因此执行后会正常退出（状态码0），所以会执行then中的语句
+#如果此处替换为一个不存在的命令（例如: pw），那么就会非正常退出，不会执行then中的语句
+if pwd
+then
+   echo 执行then里面的语句
+fi
+```
+
+if-then还可以简写为 
+
+```
+if command; then
+    commands
+fi
+```
+
+因此，以上代码还可以写成以下： 
+
+```
+#!/bin/bash
+if pwd; then
+   echo 执行then里面的语句
+fi
+```
+
+
+
+以上，如果我要判断处理异常退出（状态码非0）情况，该怎么办？
+
+别着急： else 来帮你。
+
+```
+if command
+then
+    commands
+else
+    commands
+fi
+```
+
+与if-then语句相比，这回多了个else语句，else语句用来判断if后面的命令非正常退出的情况。 
+
+```
+#!/bin/bash
+if pwd
+then
+    echo 正常退出
+else 
+    echo 非正常退出
+fi      
+```
+
+甚至，我们还可以变形写出更多的else: 
+
+```
+if command1 
+then
+    commands 
+elif 
+    command2 
+then
+    command3
+fi
+```
+
+但是上面就只能根据退出状态码判断，不能写表达式，你还让我怎么写？ 我各个编程语言直接吊打你！
+
+不要慌，客官，请接着往下看：
+
+```
+#!/bin/bash
+num1=100
+num2=200
+if (( num1 > num2 )) 
+then
+    echo "num1 > num2"
+else 
+    echo "num2 <= num2" 
+```
+
+((  expression  )) 注意：括号里面两边都需要有空格 
+
+| 比较          | 描述                            |
+| ------------- | ------------------------------- |
+| str1 = str2   | 判断str1是否与str2相同          |
+| str1 !＝ str2 | 判断str1是否与str2不相同        |
+| str1 < str2   | 判断str1是否比str2小(根据ASCII) |
+| str1 > str2   | 判断str1是否比str2大(根据ASCII) |
+| -n str1       | 判断str1的长度是否非0           |
+| -z str1       | 判断str1的长度是否为0           |
+
+ 双方括号命令提供了针对字符串比较的高级特性 
+
+```
+#!/bin/bash
+var1=test
+var2=Test
+if [[ $test < $test2 ]]
+then
+    echo "test1 < test2"
+else
+    echo "test1 >= test2"
+fi      
+```
+
+
+
+在使用if-then-else语句中，如果碰到条件很多的情况，如下 
+
+```
+#!/bin/bash
+num=3
+if (( $num == 1 ))
+then
+    echo "num=1"
+elif (( $num == 2 ))
+then
+    echo "num=2"
+elif (( $num == 3 ))
+then
+    echo "num=3"    
+elif (( $num == 4 ))
+then
+    echo "num=4"
+fi  
+```
+
+如果再多点条件，看起来是不是很多？ 此时，其实还有一种替代方案，那就是使用case.
+
+```
+case variable in
+pattern1 | pattern2) commands1;; pattern3) commands2;;
+*) default commands;;
+esac
+```
+
+将以上代码替换为case 
+
+```
+#!/bin/bash
+case $num in
+1)
+    echo "num=1";;
+2)
+    echo "num=2";;
+3)
+    echo "num=3";;
+4)
+    echo "num=4";;
+*)
+    echo "defaul";;
+esac
+```
+
+#### 循环语句
+
+##### for循环
+
+基本语法
+
+```
+for var in list 
+do
+    commands
+done
+```
+
+list代表要循环的值，在每次循环的时候，会把当前的值赋值给var（变量名而已，随意定）, 这样在循环体中就可以直接通过$var获取当前值了。 
+
+例子：
+
+```
+#!/bin/bash
+for str in a b c d e
+do
+    echo $str
+done
+```
+
+以上会根据空格将abcde分割，然后依次输出出来。 
+
+如果以上例子不是以空格分割，而是以逗号(,)分割呢？ 
+
+```
+#!/bin/bash
+list="a,b,c,d,e"
+for str in $list
+do 
+    echo $str
+done
+```
+
+结果输出a,b,c,d,e
+
+造成这个结果的原因是：for...in循环默认是循环一组通过空格或制表符（tab键）或换行符（Enter键）分割的值。这个其实是由**内部字段分隔符**配置的，它是由系统环境变量IFS定义的。当然，既然是由环境变量定义的，那当然也就能修改啊。
+
+###### 修改IFS值
+
+```
+#!/bin/bash
+#定义一个变量oldIFS保存未修改前的IFS的值
+oldIFS=$IFS
+#修改IFS值，以逗号为分隔符
+IFS=$','
+list=a,b,c,d,e
+list2="a b c d e"
+for var in $list
+do
+    echo $var
+done
+for var2 in $list2
+do
+    echo $var2
+done
+#还原IFS的值
+IFS=$oldIFS
+```
+
+以上第一个循环会分别输出abcde几个值。而第二个循环会输出a b c d e(即未处理)。因为我们把IFS的值设置为逗号了， 当然，不一定要是逗号，想设置什么，你说了算! 
+
+
+
+```
+#!/bin/bash
+for (( i = 0; i <= 10; i++ ))
+do
+    echo $i
+done   
+```
+
+上面例子循环11次，从0到10依次输出。稍微有过编程基础的都对此应该很熟悉。就不做详细阐述了。 
+
+##### while循环
+
+示例一
+
+```
+#!/bin/bash
+flag=0
+while test $flag -le 10
+do
+    echo $flag
+    # 如果没有这句，那么flag的值一直为0，就会无限循环执行
+    flag=$[$flag + 1]
+done
+```
+
+以上判断flag是否大于或者等于10， 如果满足条件，那么输出当前flag的值，然后再将flag的值加1。最终输出的结果为0到10的结果。
+
+结合上一篇文章test的写法，我们还可以将以上示例变形为如下：
+
+实例二
+
+```
+#!/bin/bash
+flag=0
+while [ $flag -le 10 ]
+do
+    echo $flag
+    flag=$[$flag + 1]
+done
+```
+
+示例三
+
+```
+flag=0
+while (( $flag <= 10 ))
+do
+    echo $flag
+    flag=$[$flag + 1]
+done
+```
+
+##### until循环语句
+
+在掌握while循环语句之后， until语句就很简单了。until语句就是与while语句恰好相反， while语句是在test命令退出状态码为0的时候执行循环， 而until语句是在test命令退出状态码不为0的时候执行。 
+
+```
+#!/bin/bash
+flag=0
+until (( $flag > 10 ))
+do
+    echo $flag
+    flag=$[ $flag + 1 ]
+done
+```
+
+以上输出0到10的值。until后面的条件与上面while例子完全相反。 
+
+##### 控制循环
+
+1：**break用于跳出当前循环** 
+
+示例一： 
+
+```
+#!/bin/bash
+for (( flag=0; flag <= 10; flag++ ))
+do
+    if (( $flag == 5 ))
+    then
+        break
+    fi
+    echo $flag
+done
+```
+
+以上当flag的值为5的时候，退出循环。输出结果为0-4的值。 
+
+2：continue
+
+continue表示终止当前的一次循环，进入下一次循环，注意,continue后面的语句不会执行。
+
+continue的语法与break一样，因此，就只做一个示例演示啦。
+
+```
+flag=0
+while (( $flag <= 10 ))
+do
+    if (( $flag == 5 ))
+    then
+        flag=$[$flag+1]
+        continue
+    fi
+    echo "outerFlag=$flag"
+    for (( innerFlag=11; innerFlag < 20; innerFlag++ ))
+    do
+        if (( $innerFlag == 16 ))
+        then
+            flag=$[$flag+1]
+            continue 2
+        fi
+        echo "innerFlag=$innerFlag"
+    done
+done
+```
+
+以上例子： 当for循环中innerFlag的值为16的时候会跳到外层while循环，当外层循环的flag的值为5的时候，会直接跳过本次循环，然后进入下一次循环，因此在输出的结果中，不会出现outerFlag=5的情况。 
+
+
+
+#### 命令行参数处理
+
+bash shell可根据参数位置获取参数。通过 **$1** 到 **$9** 获取第1到第9个的命令行参数。**$0**为shell名。如果参数超过9个，那么就只能通过**${}**来获取了， 例如获取第10个参数，那么可以写为${10}。 
+
+示例一
+
+```
+#!/bin/bash
+#testinput.sh
+echo "file name: $0"
+echo "base file name: $(basename $0)"
+echo "param1: $1"
+echo "param2: ${2}"
+```
+
+运行上面shell
+
+```
+./testinput.sh 12 34
+```
+
+最终得到的结果如下：
+
+file name: ./testinput4.sh
+
+base file name: testinput4.sh
+
+param1: 12
+
+param2: 34
+
+成功的得到文件名和命令行输入的参数（命令行参数以空格分隔，如果参数包含了空格，那么久必须添加引号了） 
+
+**$0**默认会获取到当前shell文件的名称，但是，它也包含(./)，如果你以完整路径运行，那么这还会包含目录名。因此，上面通过basename命令来获取单纯的文件名$(basename $0)。 
+
+###### 读取所有参数
+
+方法一
+
+既然bash shell通过位置可获取参数，那意味着如果我们知道参数的总个数就可以通过循环依次获取参数。那么如何获取参数总个数呢？
+
+在bash shell中通过 **$#** 可获取参数总数。
+
+示例：（循环获取参数） 
+
+```shell
+#!/bin/bash
+for (( index=0; index <= $#; index++ ))
+do
+    echo ${!index}
+done
+```
+
+```
+以上示例，我们通过 $# 获取总参数个数。然后通过循环获取每个位置的参数。注意： 按照正常的理解，上面的 ${!index} 应该是 ${$index}才对， 对吧？ 但是，由于${}内不能再写$符号，bash shell在这个地方是用了!符号，所以以上才写为了${!index}。
+```
+
+
+
+方法二
+
+在bash shell中还可以通过 $* 和 $@ 来获取所有参数。但是这两者之间有着很大的区别：
+
+$* 会将命令行上提供的所有参数当作一个单词保存, 我们得到的值也就相当于是个字符串整体。
+
+$@ 会将命令行上提供的所有参数当作同一字符串中的多个独立的单词。
+
+```
+#!/bin/bash
+#testinput.sh
+var1=$*
+var2=$@
+echo "var1: $var1"
+echo "var2: $var2"
+countvar1=1
+countvar2=1
+for param in "$*"
+do
+    echo "first loop param$countvar1: $param"
+    countvar1=$[ $countvar1 + 1 ]
+done
+echo "countvar1: $countvar1"
+
+for param in "$@"
+do
+    echo "second param$countvar2: $param"
+    countvar2=$[ $countvar2 + 1 ]
+done
+echo "countvar2: $countvar2"
+```
+
+执行
+
+```
+./testinput.sh 12 34 56 78  
+```
+
+#### 获得用户输入
+
+##### 单个输入
+
+有时候，我们在shell执行过程中获取用户的输入，以此与用户进行交互。这是通过**read**命令来实现的。下面就来看看其用法： 
+
+示例一 
+
+```
+#!/bin/bash
+echo -n "yes or no(y/n)?"
+read choice
+echo "your choice: $choice"
+```
+
+运行以上示例，首先会输出”yes or no(y/n)?“， 然后会等待用户输入（-n参数表示不换行，因此会在本行等待用户输入），当用户输入后，会把用户输入的值赋值给choice变量， 然后最终输出 “your choice: (你输入的内容)”。
+
+事实上，我们可以不指定**read**后面的变量名，如果我们不指定， read命令会将它收到的任何数据都放进特殊环境变量REPLY中。如下：
+
+示例二： 
+
+```
+#!/bin/bash
+echo -n "yes or no(y/n)?"
+read
+echo "your choice: $REPLY"
+```
+
+以上示例与示例一是等价的。
+
+有时候，我们需要用户输入多个参数，当然，shell是支持一次接受多个参数输入的。
+
+#### 多个输入
+
+示例三 
+
+```
+#!/bin/bash
+read -p "what's your name?" first last
+echo first: $first
+echo last: $last
+```
+
+以上示例首先输出“what's your name?”， 然后在本行等待用户输入（此处用read -p实现以上示例的echo -n + read命令的不换行效果），输入的参数以空格分隔，shell会把输入的值依次赋值给first和last两个变量。如果输入的值过多，假如我输入了3个值，那么shell会把剩下的值都赋值给最后一个变量（即第二三两个的值都会赋值给last变量）。
+
+细想一下，有个问题，假如用户一直不输入，怎么办？一直等待？
+
+#### 超时设置
+
+我们可以通过read -t 来指定超时时间（单位为秒），如果用户在指定时间内没输入，那么read命令就会返回一个非0的状态码。 
+
+示例四 
+
+```
+#/bin/bash
+if read -t 5 -p "Please enter your name: " name 
+then
+    echo "Hello $name"
+else
+    echo "Sorry, timeout! "
+fi
+```
+
+运行以上示例，如果超过5秒没输入，那么就会执行else里面的。 
+
+
+
+#### 注释
+
+以"#"开头的行就是注释，会被解释器忽略。
+
+sh里没有多行注释，只能每一行加一个#号。只能像这样：
+
+```
+#--------------------------------------------
+# 这是一个注释
+# author：菜鸟教程
+# site：www.runoob.com
+# slogan：学的不仅是技术，更是梦想！
+#--------------------------------------------
+##### 用户配置区 开始 #####
+#
+#
+# 这里可以添加脚本描述信息
+# 
+#
+##### 用户配置区 结束  #####
+```
+
+##### 多行注释
+
+```
+:<<EOF
+注释内容...
+注释内容...
+注释内容...
+EOF
+```
+
+
+
+#### 编程实战一
+
+```
+#!/bin/bash
+if [ $# -lt 1 -o $# -gt 2 ]
+then
+    echo "参数个数不正确！"
+    exit -1
+fi
+
+WHOAIM=`whoami`
+
+function release
+{
+    if [ $1 -le $2 ]
+        then
+                for id in `ipcs | sed -n $1,$2p | grep "${WHOAMI}" | \
+                awk '{print $2}'`
+        do
+            ipcrm $3 $id
+        done
+        fi
+}
+
+function releasebyid
+{
+    ipcrm $1 $2
+}
+
+
+function judgetype
+{
+    case $1 in
+    "shm")
+        start=$((`ipcs | sed -n '/shmid/='`+1))
+        end=$((`ipcs | sed -n '/Semaphore/='`-1))
+        if [ $# -eq 2 ]
+        then
+            releasebyid "-m" $2
+        else
+            release $start $end "-m"
+        fi
+        ;;
+    "sem")
+        start=$((`ipcs | sed -n '/semid/='`+1))
+        end=$((`ipcs | sed -n '/Message/='`-1))
+        if [ $# -eq 2 ]
+        then
+            releasebyid "-s" $2
+        else
+            release $start $end "-s"
+        fi
+        ;;
+    "msg")
+        start=$((`ipcs | sed -n '/msqid/='`+1))
+        end=$((`ipcs | sed -n '$='`-1))
+        if [ $# -eq 2 ]
+        then
+            releasebyid "-q" $2
+        else
+        release $start $end "-q"
+        fi
+        ;;
+    *)
+        echo "错误的参数 [shm] [sem] [msg] [all]"
+        exit 0
+        ;;
+    esac
+}
+
+if [ "$1" = "all" ]
+then
+    if [ $# -eq 2 ]
+    then
+        echo "[all]不可以有第二个参数！"
+        exit 0
+    else
+        judgetype "shm"
+        judgetype "sem"
+        judgetype "msg"
+    fi
+else
+    judgetype $1 $2
+fi
+
+echo "shell执行成功！"
+```
+
+#### 实战二
+
+隔一秒检查MySQL在执行的DML语句 
+
+```
+while true; do 
+  sudo mysql --default-character-set=utf8 -h ${host} -P 3306  -u${username}  -p${passwd} -e "show processlist" | grep Query; 
+sleep 1; 
+done
+```
+
+以逗号分隔每一行，取第一列 
+
+```
+awk -F, '{print $1}' doufen_uid_name
+```
+
+查看jar包内容
+
+```
+jar -tf xxxx.jar
+```
+
+```
+# 统计一个文件的行数
+# 方法1：先用wc -l算出行数，awk取第一个字段
+wc -l filename | awk '{print $1}'
+
+# 方法2：巧用END函数和内置变量NR直接输出行数
+# NR变量可以输出当前行号，END函数是awk读取完文件之后执行的操作，显而易见的在文件的mo行
+awk 'END{pint NR}' filename
+```
+
+#### 实战三 批量修改文件名实践
+
+现在想要将后缀前部改为大写JPG 
+
+方法一 
+
+```
+#!/bin/bash
+for obj in $(ls *.jpg)
+do
+    mv ${obj} $(echo ${obj/%jpg/JPG})
+done
+```
+
+方法二
+
+```
+rename 's/jpg$/JPG/' *.jpg
+```
