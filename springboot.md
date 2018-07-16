@@ -2,7 +2,9 @@ see:https://github.com/vector4wang/spring-boot-quick
 
 see:https://www.cnblogs.com/sunny3096/category/1034222.html
 
+maven插件详细介绍
 
+https://segmentfault.com/a/1190000015077021
 
 # Jar方式运行
 
@@ -456,6 +458,174 @@ filter是在maven的compile阶段执行过虑替换的，所以只要触发了�
 手工编译，打包：maven clean install -Ptest	-- 激活id="test"的profile 
     生产环境 
 手工编译，打包：maven clean install -Pproduct	-- 激活id="product"的profile 
+
+
+
+## 修改编译得到的文件名
+
+默认情况下，通过maven package命令编译得到的文件名为artifactId-version所设置的值。比如，使用下面的pom.xml文件时，通过maven package命令编译得到的文件名为“springboot4Docker-1.0-SNAPSHOT.jar”：
+
+```
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<artifactId>springboot4Docker</artifactId>
+	<groupId>com.docker</groupId>
+	<version>1.0-SNAPSHOT</version>
+	<modelVersion>4.0.0</modelVersion>
+	<packaging>jar</packaging>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<docker.image.prefix>13662241921</docker.image.prefix>
+		<spring.boot.version>1.3.3.RELEASE</spring.boot.version>
+	</properties>
+</project>	
+```
+
+### 手工设置编译得到的文件名
+
+在上面的pom.xml中进行修改，在build节点下添加finalName节点。finalName的值作为编译得到的文件名使用。比如使用下面的pom.xml文件时，通过maven package命令编译得到的文件名为“newfilename.jar”：
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+    http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>mygroupid</groupId>
+    <artifactId>test.maven.filename</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <name>test</name>
+...
+    <build>
+        <finalName>newfilename</finalName>
+        <plugins>
+            ...
+        </plugins>
+    </build>
+</project>
+```
+
+还可以使用变量设置
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+    http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>mygroupid</groupId>
+    <artifactId>test.maven.filename</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+    <name>test</name>
+...
+    <build>
+        <finalName>${name}-${version}</finalName>
+        <plugins>
+            ...
+        </plugins>
+    </build>
+</project>
+```
+
+## 文件拷贝
+
+see;https://www.cnblogs.com/langke93/p/3420124.html
+
+```
+   <plugin>
+				<groupId>com.coderplus.maven.plugins</groupId>
+				<artifactId>copy-rename-maven-plugin</artifactId>
+				<version>1.0</version>
+				<executions>
+					<execution>
+						<id>copy-file</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+						<configuration>
+							<fileSets>
+								<fileSet>
+									<sourceFile>src/main/resources/release/init_${releaseEnv}.properties</sourceFile>
+									<destinationFile>${basedir}/target/classes/init.properties</destinationFile>
+								</fileSet>
+								<fileSet>
+									<sourceFile>src/main/resources/release/log4j_${releaseEnv}.properties</sourceFile>
+									<destinationFile>${basedir}/target/classes/log4j.properties</destinationFile>
+								</fileSet>
+								<fileSet>
+									<sourceFile>src/main/resources/release/quartz.properties</sourceFile>
+									<destinationFile>${basedir}/target/classes/quartz.properties</destinationFile>
+								</fileSet>
+							</fileSets>
+						</configuration>
+					</execution>
+				</executions>
+	</plugin>
+```
+
+
+
+## 内容替换
+
+```
+<plugin>
+				<groupId>com.google.code.maven-replacer-plugin</groupId>
+				<artifactId>replacer</artifactId>
+				<version>1.5.3</version>
+				<executions>
+					<execution>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>replace</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<includes>
+						<include>${basedir}/target/classes/log4j.properties</include>
+						<include>${basedir}/target/classes/dubbo.properties</include>
+						<include>${basedir}/target/classes/init.properties</include>
+						<include>${basedir}/target/classes/quartz.properties</include>
+					</includes>
+                	<replacements>
+                    	<replacement>
+							<token>Goldoffice_api</token>
+							<value>${project.file.parentFile.parentFile.name}/${project.file.parentFile.name}_${releaseVersion}_${releaseEnv}</value>
+						</replacement>
+						<!-- <replacement>
+							<token>netty\.server\.port\=[0-9]{4}</token>
+							<value>netty.server.port=${releaseApiPort}</value>
+						</replacement> -->
+                    	<replacement>
+							<token>release\.version\=.+</token>
+							<value>release.version=${releaseVersion}-${releaseEnv}</value>
+						</replacement>
+                    	<replacement>
+							<token>dubbo\.service\.version=.+</token>
+							<value>dubbo.service.version=${dubboServiceVersion}-${releaseEnv}</value>
+						</replacement>
+						<replacement>
+							<token>version:version</token>
+							<value>version:${releaseVersion}</value>
+						</replacement>
+					</replacements>
+				</configuration>
+			</plugin>
+```
+
+
+
+
+
+
 
 ## 常用常量表达式
 

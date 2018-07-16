@@ -52,8 +52,6 @@ source /etc/profile    source ~/.bash_profile
 java -version
 ```
 
-
-
 三、tomcat安装说明：
 
 ```
