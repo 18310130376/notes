@@ -1639,3 +1639,201 @@ done
 ```
 rename 's/jpg$/JPG/' *.jpg
 ```
+
+
+#### 实战四
+
+```
+
+
+git checkout .
+git pull
+
+env=${1-DEV}
+dos2unix ./version_${env}.properties
+. ./version_${env}.properties
+
+echo $tomcat
+$tomcat/bin/shutdown.sh
+
+sed -i "s/<trade.version>.*<\/trade.version>/<trade.version>${tradeVersion}<\/trade.version>/g" pom.xml
+mvn versions:set -DgenerateBackupPoms=false -DnewVersion=${releaseVersion}-${env}-SNAPSHOT
+mvn clean install -Dmaven.test.skip=true -DreleaseEnv=${env}
+
+if [ $? -eq 0 ]; then
+    echo clean install success
+else 
+    exit -1
+fi
+
+apijar=Goldoffice_api*${releaseVersion}*${env}.jar
+
+apiName=`basename Goldoffice_api/target/$apijar`
+
+dos2unix killProcess.sh
+chmod +x killProcess.sh
+echo start API ${apiName}
+./killProcess.sh Goldoffice_api/target/${apiName}
+nohup java -Xms128m -Xmx512m -jar Goldoffice_api/target/${apiName} 1>/dev/null 2>&1 &
+
+if [ $? -eq 0 ]; then
+    echo start api success
+else 
+    exit -1
+fi
+
+chmod +x killTomcat.sh
+dos2unix killTomcat.sh
+./killTomcat.sh $tomcat
+rm -rf $appBase/Goldoffice_web-${releaseVersion}-${env}*
+rm -rf $appBase/ROOT
+\cp Goldoffice_web/target/Goldoffice_web*${releaseVersion}*${env}.war $appBase/Goldoffice_web-${releaseVersion}-${env}.war
+
+echo start web
+$tomcat/bin/startup.sh
+
+if [ $? -eq 0 ]; then
+    echo start tomcat success
+else 
+    exit -1
+fi
+```
+
+```
+releaseVersion=1.0.0-IX
+releaseDate=2017-03-04
+tomcat=/opt/tomcat-branch-bo
+appBase=/web_branch_bo
+tradeVersion=1.0.0-IX-FD-AWS-SNAPSHOT
+dubboServiceVersion=1.0.0
+```
+
+知识点：
+
+A:    .  ./a.properties后，shell中可以通过$变量名获取值
+
+B:   $?表示上一步执行的结果
+
+C： sed -i "s/<trade.version>.*<\/trade.version>/<trade.version>${tradeVersion}<\/trade.version>/g" pom.xml 
+
+D:  basename
+
+
+
+自动部署tomcat
+
+```
+#!/bin/bash
+#Desc 重启tomcat服务脚本
+#Time Thu Jun 22 22:06:39 CST 2017
+
+#################### 自定义变量 ####################
+
+#定义变量:应用服务器相关文件夹
+serverHome=/opt/app/tomcat/tomcat-8-8080
+warName=LoadBalance
+
+#设定运行java环境: jdk
+export JAVA_HOME=/opt/app/jdk/jdk1.8.0_131
+
+serverBin=$serverHome/bin
+serverLog=$serverHome/logs
+serverTemp=$serverHome/temp
+serverDeploy=$serverHome/webapps
+serverWork=$serverHome/work/Catalina/localhost
+
+################### 子函数 ###################
+
+#Desc 获取服务器进程id
+get_pid(){
+pid=`ps -ef | grep -v grep | grep "$serverHome" | awk "{print $2}" `
+}
+
+#Desc 使用tomcat自带脚本关闭, 1秒关闭一次
+shutdown(){
+#执行三次, 每隔1秒执行一次, 尝试正常关闭Tomcat
+for i in 1 2 3
+do
+if [ -n "$pid" ] ; then
+echo "[info ] try to shutdown the server ..."
+$serverBin/shutdown.sh &
+# 睡眠3秒,再往下执行
+sleep 3
+get_pid
+fi
+done
+}
+
+#Desc 使用linux kill 命令强制关闭服务器, 尝试3次
+force_shutdown(){
+for i in 1 2 3
+do
+if [ -n "$pid" ] ; then
+echo "[info ] force shutdown the server ..."
+ps -ef | grep -v grep | grep "$serverHome"| awk '{print $2}' | xargs kill -9
+# 睡眠3秒,再往下执行
+sleep 3
+get_pid
+fi
+done
+}
+
+##################### 执行脚本 #####################
+# 0. 检测文件是否存在
+if [ ! -f "$serverTemp/$warName.war" ]; then
+echo "[error] The file $serverTemp/$warName.war is not exsits !!!"
+exit 1
+else
+echo "[info ] Find file: $serverTemp/$warName.war";
+fi
+
+# 1. 关闭服务器
+#获取当前服务器的进程id
+get_pid
+
+# 如果pid 不为空, 则证明已经关闭了
+if [ -n "$pid" ] ; then
+shutdown
+else
+echo "[info ] The server is not running !"
+fi
+
+# 确认关闭服务器如果还没有关闭, 则强制关闭
+if [ -n "$pid" ] ; then
+force_shutdown
+fi
+
+# 最后确认服务器是否关闭, 如果服务器未关闭,则停止重部署流程
+if [ -n "$pid" ] ; then
+echo "[error] cannot shutdown the server,please shutdown manually!"
+exit
+fi
+
+# 2. 备份老版本项目
+date_time=`date "+%Y%m%d.%H%M"`
+mv $serverDeploy/$warName.war $serverDeploy/$warName.war.$date_time
+
+# 3. 删除部署项目的文件夹
+echo "[info ] delete the old project: $serverDeploy/$warName"
+rm -rf $serverDeploy/$warName
+
+# 4. 清空服务器工作目录
+echo "[info ] clean the project work directory: $serverWork/$warName"
+rm -rf $serverWork/$warName
+
+# 5. 清空日志文件
+echo "[info ] clean the server log: $serverLog/catalina.out"
+echo "" > $serverLog/catalina.out
+
+# 6. 将新项目文件移动到服务器部署文件夹中
+echo "[info ] deploy the project: $serverTemp/$warName.war"
+mv $serverTemp/$warName.war $serverDeploy
+
+# 7. 重新启动服务器
+echo "[info ] start the server: $serverBin/startup.sh &"
+$serverBin/startup.sh &
+
+# 8. 监控tomcat 启动日志
+tail -f $serverLog/catalina.out
+```
+
