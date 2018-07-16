@@ -107,6 +107,19 @@ zkServer.sh status
     Using config: /usr/local/services/zookeeper/zookeeper-3.4.9/bin/../conf/zoo.cfg
     Starting zookeeper ... STARTED
 
+**查看进程**
+
+```
+$ jps
+1456 QuorumPeerMain 
+```
+
+**查看服务输出信息**
+
+```
+$ tail -500f /usr/local/services/zookeeper/zookeeper-3.4.9/bin/zookeeper.out
+```
+
 
 
 ### 1.2 连接到zookeeper

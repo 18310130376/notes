@@ -119,6 +119,40 @@ jar项目默认的打包工具，默认情况下只会将项目源码编译生�
 
 
 
+## maven-war-plugin 
+
+```
+<plugin>      
+
+   <groupId>org.apache.maven.plugins</groupId>      
+
+   <artifactId>maven-war-plugin</artifactId>      
+
+   <configuration>      
+
+    <warSourceExcludes>src/main/resources/**</warSourceExcludes> 
+
+    <warName>gateway</warName>      
+
+   </configuration>      
+
+</plugin>
+```
+
+```
+<dependency>
+
+    <groupId>org.springframework.boot</groupId>
+
+    <artifactId>spring-boot-starter-tomcat</artifactId>
+
+    <scope>provided</scope>
+
+</dependency>
+```
+
+
+
 ## maven-assembly-plugin
 
 下面是pom.xml 和 package.xml部分内容
@@ -623,7 +657,16 @@ see;https://www.cnblogs.com/langke93/p/3420124.html
 
 
 
+## SpringBoot命令行运行jar时指定日志位置
 
+```
+java -jar -Dserver.port=10000 -Dlogging.path=/var/logs xxx.jar &    -- 默认在/var/logs/生成spring.log文件  
+  
+java -jar -Dserver.port=10001 -Dlogging.file=/var/logs/yyy.log yyy.jar &  
+  
+-- 指定虚拟机内存、日志文件、配置文件，启动SpringBoot项目  
+java -Xms256m -Xmx512m -jar -Dlogging.file=/var/logs/ebag-school.log LK-school-1.0.jar --spring.config.location=school-prod.yml & 
+```
 
 
 

@@ -126,6 +126,119 @@ public class DubooProvider {
 
 
 
+# Dubbo服务的运行方式 
+
+**1、使用Servlet容器运行（Tomcat、Jetty等）----不可取**  
+
+缺点：增加复杂性（端口、管理） 浪费资源（内存）
+
+官方：服务容器是一个standalone的启动程序，因为后台服务不需要Tomcat或JBoss等Web容器的功能，如果硬要用Web容器去加载服务提供方，增加复杂性，也浪费资源。
+
+**2、自建Main方法类来运行（Spring容器） ----不建议（本地调试可用）**  
+
+缺点： Dobbo本身提供的高级特性没用上 自已编写启动类可能会有缺陷 
+
+官方：服务容器只是一个简单的Main方法，并加载一个简单的Spring容器，用于暴露服务。
+
+**3、使用Dubbo框架提供的Main方法类来运行（Spring容器）----建议使用**  
+
+优点：框架本身提供（com.alibaba.dubbo.container.Main） 
+
+可实现优雅停机（ShutdownHook）  
+
+官方：服务容器的加载内容可以扩展，内置了spring, jetty, log4j等加载，可通过Container扩展点进行扩展
+
+Dubbo是通过JDK的ShutdownHook来完成优雅停机的，所以如果用户使用"kill -9 PID"等强制关闭指令，是不会执行优雅停机的，只有通过"kill PID"时，才会执行。
+
+**原理：**
+
+- 服务提供方
+  - 停止时，先标记为不接收新请求，新请求过来时直接报错，让客户端重试其它机器。
+  - 然后，检测线程池中的线程是否正在运行，如果有，等待所有线程执行完成，除非超时，则强制关闭。
+- 服务消费方
+  - 停止时，不再发起新的调用请求，所有新的调用在客户端即报错。
+  - 然后，检测有没有请求的响应还没有返回，等待响应返回，除非超时，则强制关闭。
+
+设置优雅停机超时时间，缺省超时时间是10秒：(超时则强制关闭)
+
+```
+< dubbo:application ...>
+     < dubbo:parameter key = "shutdown.timeout" value = "60000" /> <!-- 单位毫秒 -->
+</dubbo:application>
+```
+
+如果ShutdownHook不能生效，可以自行调用：
+
+```
+ProtocolConfig.destroyAll();
+```
+
+
+
+# 打包
+
+maven打包方式： 
+
+```
+<resources>
+            <resource>
+                <targetPath>${project.build.directory}/classes</targetPath>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/*.xml</include>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+            <!-- 结合com.alibaba.dubbo.container.Main，需要重点掌握-->
+            <resource>
+                <targetPath>${project.build.directory}/classes/META-INF/spring</targetPath>
+                <directory>src/main/resources/spring</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>spring-context.xml</include>
+                </includes>
+            </resource>
+ </resources>
+```
+
+**官网声明： Spring Container**
+
+- **自动加载META-INF/spring目录下的所有Spring配置。**
+
+- **配置：(配在java命令-D参数或者dubbo.properties中)**
+
+- **dubbo.spring.config=classpath\*:META-INF/spring/*.xml ----配置spring配置加载位置**
+
+  **所以声明必须使用maven方式配置才能将spring配置文件打包到META-INF/spring目录下**
+
+引入相关插件 
+
+```
+<plugins>
+            <!-- 打包jar文件时，配置manifest文件，加入lib包的jar依赖 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <classesDirectory>target/classes/</classesDirectory>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.alibaba.dubbo.container.Main</mainClass>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>lib/</classpathPrefix>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>.</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+ </plugin>
+</plugins>
+```
+
+
+
 # dubbo-admin的使用
 
 下载dubbo-admin-2.5.3.war
@@ -487,3 +600,258 @@ Dubbo框架内置提供负载均衡的功能以及扩展接口，我们可以透
 ```
 
 上述配置，也体现了Dubbo配置的继承性特点，也就是dubbo:service元素配置了loadbalance=”random”，则该元素的子元素dubbo:method如果没有指定负载均衡策略，则默认为loadbalance=”random”，否则如果dubbo:method指定了loadbalance=”leastactive”，则使用子元素配置的负载均衡策略覆盖了父元素指定的策略（这里调用queryRoomUserCount方法使用leastactive负载均衡策略）。
+
+
+
+# springboot两种方式集成dubbo
+
+
+
+方式一：
+
+```
+<!--dubbo-springBoot依赖-->
+		<dependency>
+			<groupId>com.alibaba.spring.boot</groupId>
+			<artifactId>dubbo-spring-boot-starter</artifactId>
+			<version>2.0.1-SNAPSHOT</version>
+</dependency>
+
+还有说或者引用，这种方式的配置内容前缀没有spring.
+<dependency>
+    <groupId>com.alibaba.boot</groupId>
+    <artifactId>dubbo-spring-boot-starter</artifactId>
+    <version>0.2.0</version>
+</dependency>
+```
+
+在springboot启动类上加：
+
+```
+@EnableDubboConfiguration
+```
+
+提供者实现上
+
+```
+@Service(interfaceClass = ShopApi.class)
+```
+
+消费方springboot启动类上加
+
+```
+@EnableDubboConfiguration
+```
+
+配置文件
+
+```
+## 避免和 server 工程端口冲突
+server.port=8081
+## Dubbo 服务消费者配置
+spring.dubbo.application.name=live-dubbo-consumer
+spring.dubbo.application.id=live-dubbo-consumer
+spring.dubbo.protocol.port=20800
+spring.dubbo.protocol.name=dubbo
+spring.dubbo.registry.address=zookeeper://127.0.0.1:2181
+```
+
+
+
+方式二：
+
+```
+<dependency>
+     <groupId>io.dubbo.springboot</groupId>
+     <artifactId>spring-boot-starter-dubbo</artifactId>
+     <version>1.0.0</version>
+</dependency>
+
+或者
+<dependency>
+            <groupId>com.gitee.reger</groupId>
+            <artifactId>spring-boot-starter-dubbo</artifactId>
+            <version>1.0.10</version>
+</dependency>
+```
+
+启动类上不加对应的注解
+
+
+
+方式三：
+
+官方原生dubbo依赖，boot启动类上加
+
+```
+<dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>dubbo</artifactId>
+            <version>2.5.3</version>
+            <exclusions>
+                <exclusion> //这个排除低版本的spring
+                    <groupId>org.springframework</groupId>
+                    <artifactId>spring</artifactId>
+                </exclusion>
+            </exclusions>
+</dependency>
+```
+
+```
+@ImportResource({"classpath:spring-context.xml"})
+```
+
+xml里配置原生的dubbuo配置
+
+# 多个zookeeper
+
+```
+spring.dubbo:
+            application:
+                name: qb-api-manager
+                registries[0]:
+                    address: zookeeper://192.168.1.236:3181
+                registries[1]:
+                    address: zookeeper://192.168.1.237:3181
+                registries[2]:
+                    address: zookeeper://192.168.1.237:3182
+             scan: com.qb.api.manager.modules.web.service
+```
+
+
+
+# ProtocolConfig
+
+```
+package hello.configuration;
+
+import javax.annotation.Resource;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.alibaba.dubbo.config.ApplicationConfig;
+import com.alibaba.dubbo.config.ProtocolConfig;
+import com.alibaba.dubbo.config.ProviderConfig;
+import com.alibaba.dubbo.config.RegistryConfig;
+import com.alibaba.dubbo.rpc.Exporter;
+
+/**
+ * 多端口提供dubbo服务
+ *     当你使用多端口提供服务，使用默认端口提供服务：需要加入在service上加上defaultProvider
+ * @author chenlili
+ *
+ */
+@Configuration
+@ConditionalOnClass(Exporter.class)
+public class DubboAutoConfiguration {
+    
+    @Resource(name="protocolConfig1")
+    private ProtocolConfig protocolConfig;
+    
+    @Resource(name="protocolConfig2")
+    private ProtocolConfig protocolConfig2;
+    
+    /**
+     * 默认基于dubbo协议提供服务
+     * 
+     * @return
+     */
+    @Bean(name = "protocolConfig1")
+    public ProtocolConfig protocolConfig() {
+        // 服务提供者协议配置
+        ProtocolConfig protocolConfig = new ProtocolConfig();
+        protocolConfig.setName("rmi");
+        protocolConfig.setPort(20881);
+        protocolConfig.setThreads(200);
+
+        System.out.println("protocolConfig1的hashCode: " + protocolConfig.hashCode());
+
+        return protocolConfig;
+    }
+
+    /**
+     * dubbo服务提供
+     * 
+     * @param applicationConfig
+     * @param registryConfig
+     * @param protocolConfig
+     * @return
+     */
+    @Bean(name = "providerConfig1")
+    public ProviderConfig providerConfig(ApplicationConfig applicationConfig, RegistryConfig registryConfig) {
+        ProviderConfig providerConfig = new ProviderConfig();
+        providerConfig.setTimeout(1000);
+        providerConfig.setRetries(1);
+        providerConfig.setDelay(-1);
+        providerConfig.setApplication(applicationConfig);
+        providerConfig.setRegistry(registryConfig);
+        providerConfig.setProtocol(this.protocolConfig);
+        return providerConfig;
+    }
+
+    /**
+     * 默认基于dubbo协议提供服务
+     * 
+     * @return
+     */
+    @Bean(name = "protocolConfig2")
+    public ProtocolConfig protocolConfig2() {
+        // 服务提供者协议配置
+        ProtocolConfig protocolConfig = new ProtocolConfig();
+        protocolConfig.setName("dubbo");
+        protocolConfig.setPort(20882);
+        protocolConfig.setThreads(200);
+
+        System.out.println("protocolConfig2的hashCode: " + protocolConfig.hashCode());
+
+        return protocolConfig;
+    }
+
+    /**
+     * dubbo服务提供
+     * 
+     * @param applicationConfig
+     * @param registryConfig
+     * @param protocolConfig
+     * @return
+     */
+    @Bean(name = "providerConfig2")
+    public ProviderConfig providerConfig2(ApplicationConfig applicationConfig, RegistryConfig registryConfig) {
+        ProviderConfig providerConfig = new ProviderConfig();
+        providerConfig.setTimeout(1000);
+        providerConfig.setRetries(1);
+        providerConfig.setDelay(-1);
+        providerConfig.setApplication(applicationConfig);
+        providerConfig.setRegistry(registryConfig);
+        providerConfig.setProtocol(protocolConfig2);
+        return providerConfig;
+    }
+}
+```
+
+　@Service使用时，直接使用@Service(version="1.0.0")会报错，提示你找不到对应的provider，因此需要配上对应的provider，因此在默认dubboConfiguration上加了@Bean(name="defaultProvider")，用于索引默认provider。 
+
+```
+package hello.dubbo;
+
+import com.alibaba.dubbo.config.annotation.Service;
+import com.jon.show.service.IDubboDemoService;
+
+@Service(version="1.0.0",provider="providerConfig1")
+public class DubboDemoServiceImpl implements IDubboDemoService{
+
+    @Override
+    public String sayHello(String name) {
+        return "hello " + name;
+    }
+
+    @Override
+    public String sayYourAge(int age) {
+        return null;
+    }
+
+}
+```
+

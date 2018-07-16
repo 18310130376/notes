@@ -127,6 +127,10 @@ mvn package docker:build -DpushImage
   </build>
 ```
 
+#### 多模块
+
+https://blog.csdn.net/liyanlei5858/article/details/79047884
+
 #### Maven私服Nexus3.x环境构建操作记录
 
 **Maven介绍**
