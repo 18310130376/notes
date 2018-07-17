@@ -155,7 +155,9 @@ mvn jetty:run
 
 https://blog.csdn.net/liyanlei5858/article/details/79047884
 
+多模块打包
 
+https://blog.csdn.net/Ser_Bad/article/details/78433340
 
 第一步：eclipse创建maven project
 
