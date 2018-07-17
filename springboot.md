@@ -238,10 +238,6 @@ dependencySet中使用exclude标签中过滤的名字有点坑，不能直接写
 
 useProjectArtifact为true，则会把打的jar包放在zip对应的依赖包目录下，否则不会放进去。
 
-
-
-
-
 ## Maven多环境配置
 
 ```

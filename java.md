@@ -60,6 +60,12 @@ wget http://apache.fayea.com/tomcat/tomcat-7/v7.0.75/bin/apache-tomcat-7.0.75.ta
 
 
 
+#### 二、命令
+
+1、打包时指定了主类，可以直接用java -jar xxx.jar
+
+2、打包是没有指定主类，可以用java -cp xxx.jar 主类名称（绝对路径）
+
 
 
 https://www.cnblogs.com/wade-luffy/category/853135.html

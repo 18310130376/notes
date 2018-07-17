@@ -85,6 +85,30 @@ mvn package && java -jar target/gs-spring-boot-docker-0.1.0.jar  //打包并且�
 mvn package docker:build -DpushImage
 ```
 
+#### maven jetty插件
+
+```
+<plugins>
+         <!--配置Jetty插件-->
+         <plugin>
+             <groupId>org.mortbay.jetty</groupId>
+             <artifactId>maven-jetty-plugin</artifactId>
+         </plugin>
+</plugins>
+```
+
+运行命令
+
+```
+mvn clean install
+```
+
+```
+mvn jetty:run
+```
+
+
+
 #### 项目部署到远程tomcat
 
 #### buildArgs 
@@ -130,6 +154,58 @@ mvn package docker:build -DpushImage
 #### 多模块
 
 https://blog.csdn.net/liyanlei5858/article/details/79047884
+
+
+
+第一步：eclipse创建maven project
+
+第二步：选择父项目右键选择创建maven module项目
+
+第三步：修改父项目：
+
+```
+<packaging>jar</packaging>修改为<packaging>pom</packaging>
+```
+
+查看父项目有
+
+```
+<modules>
+    <module>system-domain</module>
+</modules>
+```
+
+第四步：修改子项目
+
+```
+把<groupId>me.gacl</groupId>和<version>1.0-SNAPSHOT</version>去掉，因为groupId和version会继承system-parent中的groupId和version，，加上<packaging>jar</packaging>
+```
+
+同时子模块里
+
+```
+<parent>
+  <groupId>me.gacl</groupId>
+  <artifactId>system-parent</artifactId>
+  <version>1.0-SNAPSHOT</version>
+</parent>
+```
+
+第五步：假设另外一个子模块C 模块需要依赖上面的子模块B，则在C的pom里配置
+
+```
+<dependencies>
+      <dependency>
+       <groupId>me.gacl</groupId>
+       <artifactId>system-B</artifactId>
+       <version>${project.version}</version>
+     </dependency>
+</dependencies>
+```
+
+第六步：假设此时子模块D需要依赖模块B和模块C，此时D模块里只需要引入C即可，因为C已经依赖了B
+
+
 
 #### Maven私服Nexus3.x环境构建操作记录
 
