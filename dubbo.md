@@ -605,8 +605,6 @@ Dubbo框架内置提供负载均衡的功能以及扩展接口，我们可以透
 
 # springboot两种方式集成dubbo
 
-
-
 方式一：
 
 ```
@@ -677,7 +675,52 @@ spring.dubbo.registry.address=zookeeper://127.0.0.1:2181
 
 启动类上不加对应的注解
 
+spring.dubbo.registry.address配置  IP：端口 
 
+`等价于`  
+
+ spring.dubbo.registry.address配置IP
+
+ spring.dubbo.registry.port配置端口
+
+注意点：
+
+provider：spring.dubbo.scan配置的包名是声明@service类(dubbo的注解)所在的包名
+
+```
+spring.dubbo.application.name=dubbo-provider
+#spring.dubbo.registry.address=zookeeper://127.0.0.1:2181
+spring.dubbo.registry.address=zookeeper://127.0.0.1
+spring.dubbo.registry.port=2181
+spring.dubbo.protocol.name=dubbo
+spring.dubbo.protocol.serialization=hessian2
+spring.dubbo.server=true
+# 服务调用重试次数，服务发布者不给重试，让服务调用者自己重试
+spring.dubbo.provider.retries=0
+spring.dubbo.protocol.port=20880
+spring.dubbo.scan=com.integration.boot.provider.service
+## dubbo服务发布者所在的包
+#spring.dubbo.base-package=com.integration.boot.provider.service
+```
+
+consumer：spring.dubbo.scan配置的包名是声明@Reference类(dubbo的注解)所在的包名
+
+```
+spring.dubbo.application.name=dubbo-consumer
+spring.dubbo.registry.address=zookeeper://127.0.0.1
+spring.dubbo.registry.port=2181
+spring.dubbo.protocol.name=dubbo
+#spring.dubbo.protocol.serialization=hessian2
+spring.dubbo.protocol.port=20880
+spring.dubbo.scan=com.integration.boot
+## dubbo服务发布者所在的包
+#spring.dubbo.base-package=com.integration.boot.provider.service
+spring.dubbo.consumer.timeout=1000
+spring.dubbo.consumer.check=false
+spring.dubbo.consumer.retries=2
+```
+
+详细配置：https://blog.csdn.net/jeffli1993/article/details/71480627
 
 方式三：
 
@@ -702,6 +745,57 @@ spring.dubbo.registry.address=zookeeper://127.0.0.1:2181
 ```
 
 xml里配置原生的dubbuo配置
+
+
+
+# dubbo多个服务提供者
+
+如果是同一台机器部署两个服务提供者，则只需要保证下面端口不一致即可
+
+```
+spring.dubbo.protocol.port=20882
+```
+
+如果是多台机器部署，每一台机器的配置一样即可。
+
+消费方不需要配置spring.dubbo.protocol.port。dubbo决定调用哪个提供者
+
+
+
+# springboot dubbo配置清单
+
+```
+#应用名称
+spring.dubbo.application.name=dubbo-provider
+#spring.dubbo.registry.address=zookeeper://127.0.0.1:2181
+spring.dubbo.registry.address=zookeeper://127.0.0.1
+spring.dubbo.registry.port=2181
+spring.dubbo.protocol.name=dubbo
+spring.dubbo.protocol.serialization=hessian2
+spring.dubbo.server=true
+# 服务调用重试次数，服务发布者不给重试，让服务调用者自己重试
+spring.dubbo.provider.retries=0
+spring.dubbo.protocol.port=20880
+spring.dubbo.scan=com.integration.boot.provider.service
+## dubbo服务发布者所在的包
+#spring.dubbo.base-package=com.integration.boot.provider.service
+# 模块版本
+#spring.dubbo.application.version=xxx
+# 应用负责人
+#spring.dubbo.application.owner=xxx
+# 环境，如：dev/test/run
+#spring.dubbo.application.environment=xxx
+# 日志输出方式
+#spring.dubbo.application.logger=xxx
+# 注册中心 0
+#spring.dubbo.application.registries[0].address=zookeeper:#127.0.0.1:2181=xxx
+# 注册中心 1
+#spring.dubbo.application.registries[1].address=zookeeper:#127.0.0.1:2181=xxx
+# 服务监控
+#spring.dubbo.application.monitor.address=xxx
+```
+
+
 
 # 多个zookeeper
 
