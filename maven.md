@@ -4,13 +4,20 @@ https://www.cnblogs.com/homeword/p/7118803.html?utm_source=itdadao&utm_medium=re
 
 https://www.w3cschool.cn/maven/eljx1hts.html
 
-
-
 new：
 
 https://www.cnblogs.com/YatHo/category/1022056.html
 
 #### maven安装
+
+maven依赖于jdk，先检查是否安装jdk
+
+```
+[root@wk03 nexus]# java -version
+java version "1.8.0_131"
+Java(TM) SE Runtime Environment (build 1.8.0_131-b11)
+Java HotSpot(TM) 64-Bit Server VM (build 25.131-b11, mixed mode)
+```
 
 1 下载地址：
 
@@ -499,79 +506,11 @@ activeProfiles用来激活。
 
 只要mirrorOf中的工程需要下载jar，都会自动来找该镜像。如果镜像地址有，就下载下来。若镜像地址没有，mirrorOf中的工厂也不会到中央资源库下载，而是由镜像去下载。这是推荐的做法。若镜像下载不到，就下载失败。
 
-
-
 #### maven命令
 
 ```
 mvn package && java -jar target/gs-spring-boot-docker-0.1.0.jar  //打包并且运行
 mvn package docker:build -DpushImage
-```
-
-#### maven jetty插件
-
-```
-<plugins>
-         <!--配置Jetty插件-->
-         <plugin>
-             <groupId>org.mortbay.jetty</groupId>
-             <artifactId>maven-jetty-plugin</artifactId>
-         </plugin>
-</plugins>
-```
-
-运行命令
-
-```
-mvn clean install
-```
-
-```
-mvn jetty:run
-```
-
-
-
-#### 项目部署到远程tomcat
-
-#### buildArgs 
-
-[docker-maven-plugin](https://github.com/spotify/docker-maven-plugin)是spotify出品的一款针对spring boot项目的docker插件，可将spring boot项目打包到docker镜像中。
-
-如果在编译docker镜像时需要设置build arg，只需要在maven的配置文件pom.xml中，configuration下增加buildArgs。标签的key和值对应build arg的key和值，如下所示，docker镜像编译过程中，会有一个build arg名为ARG_TIME_ZONE，而其值则为OS的环境变量TIME_ZONE。
-
-```
-<build>
-    <plugins>
-      <plugin>
-        <groupId>com.spotify</groupId>
-        <artifactId>docker-maven-plugin</artifactId>
-        <version>0.4.13</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <imageName>${docker.registry.name}/${project.artifactId}:latest</imageName>
-          <dockerDirectory>src/main/docker</dockerDirectory>
-          <buildArgs>
-            <ARG_TIME_ZONE>${env.TIME_ZONE}</ARG_TIME_ZONE>
-          </buildArgs>
-          <resources>
-            <resource>
-              <targetPath>/</targetPath>
-              <directory>${project.build.directory}</directory>
-              <include>${project.build.finalName}.jar</include>
-            </resource>
-          </resources>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 ```
 
 #### 多模块
@@ -1077,11 +1016,117 @@ see：https://blog.csdn.net/fengchao2016/article/details/72726101/
 
 2.创建自己的repositories并且部署这个包，使用类似上面的deploy:deploy-file命令，
 
-3.设置scope为system,并且指定系统路径。
+3.设置scope为system,并且指定系统路径。但是打包时默认不会打进去，需要插件支持。
+
+例如依赖了 `${project.basedir}/lib` 目录下的 jar 包 
+
+```
+<dependency>
+            <groupId>com.dingtalk.open</groupId>
+            <artifactId>client-sdk.api</artifactId>
+            <version>1.0.2</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/client-sdk.api-1.0.2.jar</systemPath>
+</dependency>
+```
+
+打包时, system 依赖的 jar 包默认不会打到 target 中, 所以需要 maven-dependency-plugin 
+
+```
+<plugin>
+       <groupId>org.apache.maven.plugins</groupId>
+       <artifactId>maven-dependency-plugin</artifactId>
+       <version>2.10</version>
+       <executions>
+           <execution>
+               <id>copy-dependencies</id>
+               <phase>compile</phase>
+               <goals>
+                   <goal>copy-dependencies</goal>
+               </goals>
+               <configuration>
+                   <outputDirectory>${project.build.directory}/${project.build.finalName}/WEB-INF/lib</outputDirectory>
+                   <includeScope>system</includeScope>
+               </configuration>
+           </execution>
+       </executions>
+</plugin>
+```
+
+也可以使用 maven-war-plugin 
+
+```
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-war-plugin</artifactId>
+    <version>2.3</version>
+    <configuration>
+        <warName>${project.artifactId}</warName>
+        <webResources>
+            <resource>
+                <directory>lib/</directory>
+                <targetPath>WEB-INF/lib</targetPath>
+                <includes>
+                    <include>**/*.jar</include>
+                </includes>
+            </resource>
+        </webResources>                    
+    </configuration>
+</plugin>
+```
 
 
 
+#### 国内的maven镜像站
 
+在 `~/.m2` 目录下的 `settings.xml` 文件中增加 ，目的：本地--私服--镜像站（加速）--maven中央仓库
+
+```
+<mirrors>
+<mirror>  
+  <id>alimaven</id>  
+  <name>aliyun maven</name>  
+  <url>http://maven.aliyun.com/nexus/content/groups/public/</url>  
+  <mirrorOf>central</mirrorOf>          
+</mirror>
+</mirrors>
+```
+
+#### 设置HTTP代理
+
+修改settings.xml,添加proxies元素：可以声明多个proxy,第一个被激活的proxy会生效 
+
+```
+<settings>
+  ...
+  <proxies>
+    <proxy>
+      <id>my-proxy</id>
+      <active>true</active>
+      <protocol>http</protocol>
+      <host>1.1.1.1</host>
+      <port>2222</port>
+      <!--
+      <username>***</username>
+      <password>***</password>
+      <nonProxyHosts>repository.mycom.com|*.google.com</nonProxyHosts>
+      -->
+    </proxy>
+  </proxies>
+  ...
+</settings>
+```
+
+#### 配置用户范围的 settings.xml
+
+将 $M2_HOME/conf/settings.xml 复制到~/.m2/目录下修改 
+
+```
+mkdir ~/.m2;
+cp $M2_HOME/conf/settings.xml ~/.m2/ 
+```
+
+一个是全局的,一个是用户级的,还有就是不担心升级带来的配置更改 
 
 #### 学习文档
 
@@ -1094,3 +1139,7 @@ https://blog.csdn.net/yztezhl/article/details/21239191
 https://www.cnblogs.com/kevingrace/p/6201984.html
 
 https://blog.csdn.net/woshixuye/article/details/8133050
+
+
+
+https://www.jianshu.com/p/0906e26abd19

@@ -778,6 +778,7 @@ echo $PATH
 #自定义变量hello
 hello="hello world"
 echo $hello
+echo `pwd`
 ```
 
 使用变量时使用**$**符号加上变量名就行了。记住：定义变量不用**$**符号，使用变量要加**$**就行了。 

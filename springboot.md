@@ -117,7 +117,54 @@ nohup java -Xmx512M -Xms512M -Djava.security.egd=/dev/urandom -jar springboot4Do
 
 jar项目默认的打包工具，默认情况下只会将项目源码编译生成的class文件和资源文件打包进来，不会打包进项目依赖的jar包。 
 
+## maven-shade-plugin 
 
+默认打包生成的jar包是不能直接运行的, 带有main方法的类信息不会添加到manifest中(jar文件中的META-INF/MANIFEST.MF文件中没有Main-Class一行) 要想可以运行,需要借助maven-shade-plugin 配置文件 
+
+```
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-shade-plugin</artifactId>
+    <version>1.4</version>
+    <executions>
+      <execution>
+        <phase>package</phase>
+        <goals>
+          <goal>shade</goal>
+        </goals>
+        <configuration>
+          <transformers>
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+              <mainClass>com.juvenxu.mavenbook.HelloWorldCli</mainClass>
+            </transformer>
+          </transformers>
+        </configuration>
+      </execution>
+    </executions>
+  </plugin>
+```
+
+或者使用 maven-jar-plugin 插件增加 manifestEntries （除了可以增加Main-Class之外，还可以增加其他任意的想加的内容，例如Premain-Class、Can-Redefine-Classes等） 
+
+```
+<plugin>  
+    <groupId>org.apache.maven.plugins</groupId>  
+    <artifactId>maven-jar-plugin</artifactId>  
+    <version>3.0.2</version>  
+    <configuration>  
+        <archive>  
+            <manifest>  
+                <addClasspath>true</addClasspath>  
+            </manifest>  
+            <manifestEntries>  
+                <Main-Class>  
+                    com.xxx.test.App  
+                </Main-Class>  
+            </manifestEntries>  
+        </archive>  
+    </configuration>  
+</plugin>
+```
 
 ## maven-war-plugin 
 
@@ -436,7 +483,27 @@ see：http://www.cnblogs.com/qq78292959/p/3711497.html
 </plugin>
 ```
 
+## maven jetty插件
 
+```
+<plugins>
+         <!--配置Jetty插件-->
+         <plugin>
+             <groupId>org.mortbay.jetty</groupId>
+             <artifactId>maven-jetty-plugin</artifactId>
+         </plugin>
+</plugins>
+```
+
+运行命令
+
+```
+mvn clean install
+```
+
+```
+mvn jetty:run
+```
 
 ## copy-rename-maven-plugin
 

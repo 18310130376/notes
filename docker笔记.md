@@ -5080,7 +5080,7 @@ b.一个含有Tomcat服务器的镜像运行这些下载的WAR文件
 
 #### 部署sprongBoot
 
-方案1：`手动拷贝jar包到目录，手动执行build`
+##### 方案1：手动拷贝jar包到目录，手动执行build
 
 第一步：搭建springboot的web应用，可在CMD命令行中通过mvn install命令将应用打成jar包:如demo-0.0.1-SNAPSHOT.jar
 
@@ -5115,6 +5115,10 @@ ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 >VOLUME 指定了临时文件目录为/tmp。其效果是在主机 /var/lib/docker 目录下创建了一个临时文件，并链接到容器的/tmp。改步骤是可选的，如果涉及到文件系统的应用就很有必要了。/tmp目录用来持久化到 Docker 数据文件夹，因为 Spring Boot 使用的内嵌 Tomcat 容器默认使用/tmp作为工作目录 
 >项目的 jar 文件作为 “app.jar” 添加到容器的 
 >ENTRYPOINT 执行项目 app.jar。为了缩短 Tomcat 启动时间，添加一个系统属性指向 “/dev/urandom” 作为 Entropy Source 
+
+
+
+方案2：maven docker插件build
 
 pom.xml
 
@@ -5183,7 +5187,66 @@ e:应用运行以后，通过以下链接访问：http://192.168.0.193:8082/test
 
 
 
-方案二：maven docker插件
+##### 方案二：maven docker插件
+
+| -              | Docker镜像管理                                               | Jar包管理                                                    |
+| -------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 官方仓库       | [https://hub.docker.com/](https://link.jianshu.com?t=https%3A%2F%2Fhub.docker.com%2F) | [http://mvnrepository.com/](https://link.jianshu.com?t=http%3A%2F%2Fmvnrepository.com%2F) |
+| 私有仓库       | Nexus                                                        | harbor                                                       |
+| 本地仓库命令   | maven：mvn install                                           | docker build                                                 |
+| 发布至远程仓库 | maven：mvn deploy                                            | docker push                                                  |
+
+[dockerfile-maven-plugin](https://link.jianshu.com/?t=https%3A%2F%2Fgithub.com%2Fspotify%2Fdockerfile-maven)  ：独立编写dockerfile   （推荐）
+
+[docker-maven-plugin](https://link.jianshu.com/?t=https%3A%2F%2Fgithub.com%2Fspotify%2Fdocker-maven-plugin)  ：可以编写dockerfile，也可以在maven插件里配置相关构建参数。
+
+第一种做法
+
+```
+<properties>
+  <dockerfile.maven.version>1.4.0</dockerfile.maven.version>
+  <docker.registry.name.prefix>192.168.6.37:80/galaxy</docker.registry.name.prefix>
+</properties>
+
+<plugin>
+    <groupId>com.spotify</groupId>
+    <artifactId>dockerfile-maven-plugin</artifactId>
+    <version>${dockerfile.maven.version}</version>
+    <dependencies>
+        <dependency>
+            <groupId>javax.activation</groupId>
+            <artifactId>activation</artifactId>
+            <version>1.1.1</version>
+        </dependency>
+    </dependencies>
+    <executions>
+        <execution>
+            <id>default</id>
+            <goals>
+                <goal>build</goal>
+                <goal>push</goal>
+            </goals>
+        </execution>
+    </executions>
+    <configuration>
+        <repository>${docker.registry.name.prefix}/${project.artifactId}</repository>
+        <tag>${project.version}</tag>
+        <username>username</username>
+        <password>password</password>
+        <buildArgs>
+            <JAR_FILE>${project.build.finalName}.jar</JAR_FILE>
+        </buildArgs>
+    </configuration>
+</plugin>
+```
+
+1. 标准的Dockerfile放在classpath的根目录下。
+2. 执行maven命令：mvn clean package。
+
+从`<execution>`的配置中可以看到，在执行maven命令的时候会默认执行docker的`build`和`push`。
+ 单独执行dockerfile操作的maven命令是：`mvn dockerfile:build` 和 `mvn dockerfile:push`等。`<configuration>`中配置docker镜像的仓库的地址等。
+
+下面讲解的是第二种做法
 
 pom.xml
 
@@ -5334,6 +5397,8 @@ sudo docker login --username=***pro@gmail.com registry.cn-hangzhou.aliyuncs.com
 sudo docker pull registry.cn-hangzhou.aliyuncs.com/viiso/dockerdemo:[镜像版本号]
 ```
 
+
+
 ```
 docker push kitesweet/pan-search-springboot
 docker pull kitesweet/pan-search-springboot
@@ -5415,7 +5480,7 @@ DOCKER_OPTS="-H unix:///var/run/docker.sock -H 0.0.0.0:5555"
 
 
 
-**3、在Windows 中 利用 Maven 为该Docker服务端构筑docker 镜像（该Windows中无须安装Docker）：**
+##### 三、在Windows 中 利用 Maven 为该Docker服务端构筑docker 镜像（该Windows中无须安装Docker）
 
 pom.xml配置插件：
 
