@@ -151,7 +151,41 @@ jar项目默认的打包工具，默认情况下只会将项目源码编译生�
 </dependency>
 ```
 
+升级war包的时候每次都要把lib依赖jar打入war包没必要，则可以这样设置：
 
+如：不将 lib/*.jar 打进 war 包
+
+```
+<project>
+  ...
+  <properties>
+    <lib.exclude>abc.jar</lib.exclude>
+  </properties>
+  ...
+  <build>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-war-plugin</artifactId>
+      <version>2.3</version>
+      <configuration>
+        <packagingExcludes>WEB-INF/lib/${lib.exclude}.jar</packagingExcludes>
+      </configuration>
+    </plugin>
+  </build>
+</project>
+```
+
+第一次打包时：
+
+```
+mvn clean compile war:war -Pproduction
+```
+
+今后要升级，不用再把 lib 打进 war 包（这样可以使得 war 包体积减少很多），可以使用以下的命令
+
+```
+mvn clean compile war:war -Pproduction -Dlib.execlude=*
+```
 
 ## maven-assembly-plugin
 
@@ -310,7 +344,7 @@ PS：SpringBoot 中引用 profile 的值使用 @propertyName@，传统 Spring �
            </includes>
             <!-- 打包时是否进行文件置换(将 maven profile 中的 properties 与配置文件引用置换) -->
             <filtered>true</filtered>
-        </fileSet>  
+</fileSet>  
 ```
 
 ```
@@ -399,6 +433,110 @@ https://blog.csdn.net/alibert/article/details/78912523
     </configuration>
 </plugin>
 ```
+
+
+
+## copy-rename-maven-plugin
+
+```
+<plugin>
+				<groupId>com.coderplus.maven.plugins</groupId>
+				<artifactId>copy-rename-maven-plugin</artifactId>
+				<version>1.0</version>
+				<executions>
+					<execution>
+						<id>copy-file</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+						<configuration>
+							<fileSets>
+								<fileSet>
+									<sourceFile>src/main/resources/release/init_${releaseEnv}.properties</sourceFile>
+									<destinationFile>${basedir}/target/classes/init.properties</destinationFile>
+								</fileSet>
+								<fileSet>
+									<sourceFile>src/main/resources/release/log4j_${releaseEnv}.properties</sourceFile>
+									<destinationFile>${basedir}/target/classes/log4j.properties</destinationFile>
+								</fileSet>
+								<fileSet>
+									<sourceFile>src/main/resources/release/quartz.properties</sourceFile>
+									<destinationFile>${basedir}/target/classes/quartz.properties</destinationFile>
+								</fileSet>
+							</fileSets>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+```
+
+
+
+## maven-replacer-plugin
+
+```
+<plugin>
+				<groupId>com.google.code.maven-replacer-plugin</groupId>
+				<artifactId>replacer</artifactId>
+				<version>1.5.3</version>
+				<executions>
+					<execution>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>replace</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<includes>
+						<include>${basedir}/target/classes/log4j.properties</include>
+						<include>${basedir}/target/classes/dubbo.properties</include>
+						<include>${basedir}/target/classes/init.properties</include>
+						<include>${basedir}/target/classes/quartz.properties</include>
+					</includes>
+                	<replacements>
+                    	<replacement>
+							<token>Goldoffice_api</token>
+							<value>${project.file.parentFile.parentFile.name}/${project.file.parentFile.name}_${releaseVersion}_${releaseEnv}</value>
+						</replacement>
+						<!-- <replacement>
+							<token>netty\.server\.port\=[0-9]{4}</token>
+							<value>netty.server.port=${releaseApiPort}</value>
+						</replacement> -->
+                    	<replacement>
+							<token>release\.version\=.+</token>
+							<value>release.version=${releaseVersion}-${releaseEnv}</value>
+						</replacement>
+                    	<replacement>
+							<token>dubbo\.service\.version=.+</token>
+							<value>dubbo.service.version=${dubboServiceVersion}-${releaseEnv}</value>
+						</replacement>
+						<replacement>
+							<token>version:version</token>
+							<value>version:${releaseVersion}</value>
+						</replacement>
+					</replacements>
+				</configuration>
+			</plugin>
+```
+
+
+
+## maven-deploy-plugin
+
+```
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-deploy-plugin</artifactId>
+    <version>2.8.2</version>
+    <configuration>
+        <skip>true</skip>
+    </configuration>
+</plugin>
+```
+
+
 
 
 

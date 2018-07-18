@@ -694,6 +694,17 @@ iptables -L -n | grep 21
 ACCEPT     tcp  --  0.0.0.0/0            0.0.0.0/0            tcp dpt:21 ctstate NEW
 
 firewall-cmd --list-all
+
+
+添加
+firewall-cmd --zone=public --add-port=8081/tcp --permanent    （--permanent永久生效，没有此参数重启后失效）
+重新载入
+firewall-cmd --reload
+查看
+firewall-cmd --zone=public --query-port=8081/tcp
+删除
+firewall-cmd --zone=public --remove-port=80/tcp --permanent
+
 ```
 
 

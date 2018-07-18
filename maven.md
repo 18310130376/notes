@@ -78,6 +78,429 @@ env|grep MAVEN_HOME #此命令没有输出，证明环境变量MAVEN_HOME已经�
 MAVEN_OPTS=-Xms128m  -Xmx512m
 ```
 
+
+
+#### eclipse配置
+
+**一、安装maven**① 下载地址：maven.apache.org/，解压
+② 配置环境变量：新增M2_HOME：E:\maven\apache-maven-3.1.1，添加path：E:\\maven\apache-maven-3.1.1\bin
+③ 将maven的conf中的settings.xml文件拷贝出来，放到任意位置，并在文件中指定本地仓库位置
+
+**二、IDE中配置maven**
+在MyEclipse或STS中配置maven是一样的：
+preference—>maven—>Installations选择解压的maven目录(不用内嵌的maven)
+preference—>maven—>User Settings—>选择放在任意位置的settings.xml(该文件从maven/conf里面拷贝出来，修改本地仓库地址)
+
+**三、settings.xml**
+
+配置localRepository， **<localRepository>e:/repository</localRepository>**
+
+如果没有该目录，项目下载jar包时自动创建该目录**，**默认是**.m2/repository**里面
+
+#### **利用Nexus来构建企业级Maven仓库**
+
+**4.1 为什么使用Nexus**
+
+Nexus是Maven仓库管理器，用来搭建一个本地仓库服务器，这样做的好处是便于管理，节省网络资源，速度快，还有一个非常有用的功能就是可以通过项目的SNAPSHOT版本管理，来进行模块间的高效依赖开发。
+
+虽然你可以通过中央仓库来获取你所需要的jar包，但是现实往往是存在很多问题：
+
+问题1
+网速慢，你可能需要花很长的时间来下载你所需要的jar
+
+问题2
+如果你的公司很大，有几百甚至几千人再用Maven，那么这些人都去通过中央仓库来获取jar，那么这是一个很大的资源浪费。如果存在模块之间的依赖开发，你的snapshot版本是不能够被你的伙伴很方便的获取。在实际开发过程中，有些jar的版本可能在中央仓库里面不存在，或者更新不及时，你是获取不到这个jar的。
+
+总结
+
+所有以上问题通过Nexus这个日益流行的仓库管理器可以轻松的解决。
+
+1 这个仓库是本地的，下载的速度是从远程下载不可比的。
+
+2 可以为你公司所有的Maven使用者服务，可以进行统一管理
+
+3 后面我会介绍如何通过nexus来进行存在模块依赖的项目的开发
+
+4 你可以添加自己的第三方包
+
+**4.2 安装**
+
+Nexus提供了两种安装方式，第一种是内嵌Jetty的bundle，只要你有JRE就能直接运行see：https://blog.csdn.net/nanjing0412/article/details/77149895。第二种方式是WAR，你只须简单的将其发布到web容器中即可使用。
+
+方式一：下载地址:https://www.sonatype.com/download-nexus-repository-trial 选择Choose Your OS，此时下载的是内嵌jetty包。see：https://www.cnblogs.com/kevingrace/p/6201984.html
+
+```
+cd /opt/nexus
+wget https://sonatype-download.global.ssl.fastly.net/nexus/3/nexus-3.12.1-01-unix.tar.gz
+tar -zvxf nexus-3.12.1-01-unix.tar.gz 
+启动nexus（默认端口是8081）
+/opt/nexus/nexus/bin/nexus
+
+[root@wk01 bin]# ./nexus start
+WARNING: ************************************************************
+WARNING: Detected execution as "root" user.  This is NOT recommended!
+WARNING: ************************************************************
+Starting nexus
+[root@wk01 bin]#
+
+------------------------------begin  以下为非必须步骤-----------------------------
+
+上面在启动过程中出现告警：不推荐使用root用户启动。这个告警不影响nexus的正常访问和使用。
+去掉上面WARNING的办法：
+[root@master-node src]# vim /etc/profile
+......
+export RUN_AS_USER=root
+[root@master-node src]# source /etc/profile
+
+------------------------------end  以上为非必须步骤-----------------------------
+
+[root@wk01 bin]# netstat -anp | grep 8081   //nexus服务启动成功后，需要稍等一段时间，8081端口才起来
+tcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      2066/java
+
+此时如果访问不了则设置防火墙开放端口
+添加
+firewall-cmd --zone=public --add-port=8081/tcp --permanent （--permanent永久生效，没有此参数重启后失效）
+重新载入
+firewall-cmd --reload
+查看
+firewall-cmd --zone=public --query-port=8081/tcp
+
+访问nexus，即http://localhost:8081    （如果出现404，就访问http://localhost:8081/nexus）
+```
+
+方式二：https://sonatype-download.global.ssl.fastly.net/nexus/oss/nexus-2.6.1-02.war 版本比较老，官方已经不提供新版本的war包下载了。
+
+你可以同过war的方式以web应用的形式发布到你的应用服务器，比如tomcat。你所要做的就是下载war版本的文件，然后放到应用服务器的发布目录即可。
+
+我的版本是nexus-2.2-01，把war包改为 所以访问http://127.0.0.0:8080/nexus
+
+当然我们要操作的话需要登录，默认用户名admin，密码admin123。
+
+**4.3 使用**
+
+mvn:deploy在整合或者发布环境下执行，将最终版本的包拷贝到远程的repository，使得其他的开发者或者工程可以共享。
+
+以将Goldoffice_api-1.0.0-IX-TD-SIT.jar传到nexus中的maven-releases为例
+
+4.3.1  配置settings.xml
+
+因为nexus是需要登陆操作，当然可以通过配置免登陆，这是后话。
+
+在settings.xml的<servers></servers>
+
+```
+<server>   
+    <id>thirdparty</id>   
+    <username>admin</username>
+    <password>admin123</password>   
+</server>
+```
+
+当然如果你要上传包去其他仓库，可依照此例，如
+
+```
+<server>   
+    <id>maven-releases</id>   
+    <username>admin</username>   
+    <password>admin123</password>   
+</server>
+```
+
+如果进行deploy时返回Return code is: 401错误，则需要进行用户验证或者你已经验证的信息有误。
+
+4.3.2  发布包到nexus
+
+mvn deploy:deploy-file -DgroupId=com.abbott -DartifactId=stax-api -Dversion=0.0.1 -Dpackaging=jar -Dfile=C:\Users\789\Desktop\新建文件夹\stax-api-1.0.1.jar  -Durl=http://192.168.48.131:8081/repository/maven-releases/  -DrepositoryId=maven-releases
+
+ 
+
+DgroupId和DartifactId构成了该jar包在pom.xml的坐标，项目就是依靠这两个属性定位。自己起名字也行。
+
+Dfile表示需要上传的jar包的绝对路径。
+
+Durl私服上仓库的位置，打开nexus——>repositories菜单，可以看到该路径。
+
+DrepositoryId服务器的表示id，在nexus的configuration可以看到。
+
+Dversion表示版本信息，**怎样得到一个jar包准确的版本呢？**
+
+解压该包，会发现一个叫MANIFEST.MF的文件，这个文件就有描述该包的版本信息。
+
+比如Manifest-Version: 1.0可以知道该包的版本了。
+
+上传成功后，在nexus界面点击maven-releases仓库可以看到这包。或者在browse或者search可以找到。
+
+遇见的问题：
+
+在敲击该命令的时候，有时候看到提示需要POM文件，但上传包是不需要pom文件的
+
+**可能原因**
+
+最大可能是你语句打错了如多了一个空格和换行，这样语句直接截断到换行前面，cmd就找它可以认识的语句执行，比如直接执行mvn，而mvn是对项目打包，是要pom文件的。所以细心的把命令敲击一遍。
+
+**4.4 修改用户密码**
+
+点击左侧菜单栏的Security——>Users，你可以看到系统默认的用户。双击进入详情页面，上方More下拉出现Change password，这样就可以设置新密码了。
+
+**4.5 添加新用户**
+
+步骤同上，用户列表上方Create local user
+
+
+
+#### pom.xml简介以及客户端下载包的流程
+
+<repositories>资源地址，所有的依赖包将从次地址下载，其中如果snapshot为资源快照，相对不稳定，而release为稳定版本。
+
+<pluginRepositories> 插件地址，因为maven的所有功能都是使用插件来实现功能的，因此需要从特定的地址下载插件包。
+
+其中**repositories和pluginRepositories就是放私服的地址**，即我们前几讲的nexus的public仓库组地址。
+
+```
+<project >
+
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.xy.company</groupId>
+    <artifactId>MavenResource</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <name>MavenResource</name>
+    <url>http://maven.apache.org</url>
+
+<repositories>
+    <repository>
+     <id>xy-central</id>
+     <name>xycentral</name>
+     <url>http://localhost:8080/nexus/content/groups/public/</url>
+     <releases>
+      <enabled>true</enabled>
+     </releases>
+     <snapshots>
+      <enabled>false</enabled>
+     </snapshots>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+  <pluginRepository>
+   <id>xy-central</id>
+   <name>xycentral</name>
+   <url>http://localhost:8080/nexus/content/groups/public/</url>
+   <layout>default</layout>
+   <snapshots>
+    <enabled>false</enabled>
+   </snapshots>
+   <releases>
+    <updatePolicy>never</updatePolicy>
+   </releases>
+  </pluginRepository>
+ </pluginRepositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>
+```
+
+
+
+比如客户端需要一个junit的jar包
+
+第一步：到本地仓库找该jar包，找到结束。没找到下一步。
+
+第二步：到pom配置的私服仓库去找，即pom.xml配置的**repositories**标签。如找到下载到本地仓库并引用。没找到下一步。
+
+第三步：到maven的中央仓库去找，如找到**同时下载到本地仓库和私服的central仓库并引用。**
+
+
+
+#### pom.xml或settings.xml对nexus的配置
+
+
+
+**一 、在pom中配置Nexus仓库**
+
+```
+ <project>
+         ...
+         <repositories>
+            <repository>
+                 <id>nexus</id>
+                 <name>Nexus</name>
+                 <url>http://localhost:8081/nexus/content/groups/public/<url>
+                 <release><enabled>true</enabled></release>
+                 <snapshots><enabled>true></enabled></snapshots>
+             </repository>
+        </repositories>
+        <pluginRepositories>
+             <pluginRepository>
+                 <id>nexus</id>
+                 <name>Nexus</name>
+                 <url>http://localhost:8081/nexus/content/groups/public/<url>
+                 <release><enabled>true</enabled></release>
+                 <snapshots><enabled>true></enabled></snapshots>
+              </pluginRepository>
+         </pluginRepositories>
+         ...
+    </project>
+```
+
+上述配置只对当前项目有效，若需让本机所有Maven项目均使用Mavne私服，应该在setting.xml中进行配置
+
+二  、**在setting.xml中配置Nexus仓库**
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+	 			
+	<!--
+	<localRepository>C:\Users\charles.so\.m2\r2</localRepository>
+	-->
+	 
+	<profiles>
+		<profile>
+			<repositories>
+				<repository>
+					<id>internal</id>
+					<name>Archiva Managed Internal Repository</name>
+					<url>http://192.168.35.238:8080/repository/internal/</url>
+					<releases>
+						<enabled>true</enabled>
+					</releases>
+					<snapshots>
+						<enabled>false</enabled>
+					</snapshots>
+				</repository>
+				<repository>
+					<id>snapshots</id>
+					<name>Archiva Managed Snapshot Repository</name>
+					<url>http://192.168.35.238:8080/repository/snapshots/</url>
+					<releases>
+						<enabled>false</enabled>
+					</releases>
+					<snapshots>
+						<enabled>true</enabled>
+					</snapshots>
+				</repository>
+				<repository>
+					<id>jetty</id>
+					<name>jetty Repository</name>
+					<url>http://oss.sonatype.org/content/groups/jetty/</url>
+					<releases>
+						<enabled>true</enabled>
+					</releases>
+					<snapshots>
+						<enabled>false</enabled>
+					</snapshots>
+				</repository>
+			</repositories>
+			<pluginRepositories>
+				<pluginRepository>
+					<id>plugin_internal</id>
+					<name>Archiva Managed Internal Repository</name>
+					<url>http://192.168.35.238:8080/repository/internal/</url>
+					<releases>
+						<enabled>true</enabled>
+					</releases>
+					<snapshots>
+						<enabled>false</enabled>
+					</snapshots>
+				</pluginRepository>
+				<pluginRepository>
+					<id>plugin_snapshots</id>
+					<name>Archiva Managed Snapshot Repository</name>
+					<url>http://192.168.35.238:8080/repository/snapshots/</url>
+					<releases>
+						<enabled>false</enabled>
+					</releases>
+					<snapshots>
+						<enabled>true</enabled>
+						<updatePolicy>always</updatePolicy>
+					</snapshots>
+				</pluginRepository>
+			</pluginRepositories>
+			<id>archiva</id>    <!--------------与下面activeProfile一致--->
+		</profile>
+	</profiles>
+	<servers> 
+		<server> 
+			<id>internal</id> 
+			<username>developer</username> 
+			<password>password123</password> 
+		</server> 
+		<server> 
+			<id>snapshots</id> 
+			<username>developer</username> 
+			<password>password123</password> 
+		</server> 
+		<server>   
+			<id>maven-releases</id>   
+			<username>admin</username>   
+			<password>admin123</password>   
+		</server>
+	</servers>
+	<activeProfiles>
+		<activeProfile>archiva</activeProfile>
+	</activeProfiles>
+</settings>
+```
+
+activeProfiles用来激活。 
+
+
+
+三、**配置镜像让Maven只使用私服**
+
+```
+  <settings>
+          ...
+          <mirrors>
+              <mirror>
+                  <id>nexus</id>
+                  <mirrorOf>*<?mirrorOf>
+                  <url>http://localhost:8081/nexus/content/groups/public/</url>
+              </mirror>
+          </mirrors>
+          <profiles>
+                <profile>
+                    <id>nexus</id>
+                    <repositories>
+                        <repository>
+                          <id>central</id>
+                          <name>http://central</name>                        
+                          <release><enabled>true</enabled></release>
+                          <snapshots><enabled>true></enabled></snapshots>
+                        </repository>
+                     </repositories>
+                     <pluginRepositories>
+                        <pluginRepository>
+                            <id>central</id>
+                            <name>http://central</name>                          
+                            <release><enabled>true</enabled></release>
+                            <snapshots><enabled>true></enabled></snapshots>
+                       </pluginRepository>
+                     </pluginRepositories>
+                </profile>
+           </profiles>
+           <activeProfiles>
+               <activeProfile>nexus</activeProfiles>
+           </activaProfiles>
+     </settings>
+```
+
+只要mirrorOf中的工程需要下载jar，都会自动来找该镜像。如果镜像地址有，就下载下来。若镜像地址没有，mirrorOf中的工厂也不会到中央资源库下载，而是由镜像去下载。这是推荐的做法。若镜像下载不到，就下载失败。
+
+
+
 #### maven命令
 
 ```
@@ -464,3 +887,149 @@ Deployment Pollcy: 需要把策略改成“Allow redeploy”。
 #### 插件
 
 http://www.cnblogs.com/wade-luffy/p/7080280.html
+
+
+
+#### POM文件使用技巧
+
+①dependencyManagement
+
+是用于帮助管理chidren的dependencies的。例如如果parent使用dependencyManagement定义了一个dependencyon junit:junit4.0,那么 它的children就可以只引用 groupId和artifactId,而version就可以通过parent来设置，这样的好处就是可以集中管理 依赖的详情
+
+②profiles
+
+主要是针对环境配置的切换
+
+③finalName
+
+指定去掉后缀的工程名字，例如：默认为`${artifactId}-${version}`,即是打包的包名，不包含后缀。
+
+④多环境filters
+
+如，在 spring.xml 中要配置上传文件的路径
+
+```
+<beans>
+  <bean id="uploadService" class="com.oist.project.service.UploadServiceImpl">
+    <property name="uploadDir" value="${spring.uploadDir}"/>
+  </bean>
+</beans>
+```
+
+在 pom.xml 中进行以下配置
+
+```
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  ...
+  <build>
+    <filters> <!-- 指定 filter -->
+    <!--${profiles.active}是profiles里指定激活环境的，mvn构建时指定环境，则是指定环境的-->
+      <filter>src/main/filters/${profiles.active}.properties</filter>
+    </filters>
+    <resources>
+      <resource> <!-- spring.xml 应该在 src/main/resource 目录下 -->
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering> <!-- 是否使用过滤器 -->
+      </resource>
+    </resources>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>development</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <propertys>
+        <profiles.active>develop</deploy.env>
+      </propertys>
+    </profile>
+    
+    <profile>
+      <id>production</id>
+      <propertys>
+        <profiles.active>production</deploy.env>
+      </propertys>
+    </profile>
+  </profiles>
+</project>
+```
+
+src/main/filters/develop.properties 文件
+
+```
+# 上传路径：
+spring.uploadDir=c:/uploadDir
+```
+
+src/main/filters/test.properties 文件
+
+```
+# 上传路径：
+spring.uploadDir=/tmp/upload_dir
+```
+
+src/main/filters/production.properties 文件
+
+```
+# 上传路径：
+spring.uploadDir=/app/project/upload_dir
+```
+
+如果配置了多个 filter，并且两个 filter 中有相同的 key，则后面的 value 为最终取值。
+
+```
+<build>
+  <filters>
+    <filter>src/main/filters/production.properties</filter>
+    <filter>src/main/filters/test.properties</filter>
+  </filters>
+</build>
+```
+
+```
+mvn clean compile war:war -Pproduction
+```
+
+
+
+总结：上面是通过filter路径的文件的属性值，替换directory 节点下resources路径下的文件中的占位符。
+
+上面的profile节点里也可以有peoperties节点，用来配置key value不推荐。
+
+
+
+see：https://blog.csdn.net/fengchao2016/article/details/72726101/
+
+​          https://www.cnblogs.com/0201zcr/p/6262762.html 写的不对
+
+#### Maven引入第三方包的方案
+
+如果自己写的包或者非开源的包需要引入，有三种方案
+
+1.本地安装这个插件install plugin
+
+例如：mvn install:intall-file -Dfile=non-maven-proj.jar -DgroupId=som.group -DartifactId=non-maven-proj -Dversion=1
+
+2.创建自己的repositories并且部署这个包，使用类似上面的deploy:deploy-file命令，
+
+3.设置scope为system,并且指定系统路径。
+
+
+
+
+
+#### 学习文档
+
+https://blog.csdn.net/column/details/mavenbasic.html
+
+
+
+https://blog.csdn.net/yztezhl/article/details/21239191
+
+https://www.cnblogs.com/kevingrace/p/6201984.html
+
+https://blog.csdn.net/woshixuye/article/details/8133050
