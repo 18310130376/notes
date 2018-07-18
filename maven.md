@@ -930,9 +930,18 @@ http://www.cnblogs.com/wade-luffy/p/7080280.html
       <filter>src/main/filters/${profiles.active}.properties</filter>
     </filters>
     <resources>
-      <resource> <!-- spring.xml 应该在 src/main/resource 目录下 -->
+      <resource>
+      <!--指定build资源到哪个目录，默认是base directory-->
+      <targetPath>META-INF/plexus</targetPath> 
+      <!-- spring.xml 应该在 src/main/resource 目录下 -->
         <directory>src/main/resources</directory>
         <filtering>true</filtering> <!-- 是否使用过滤器 -->
+          <includes> 
+          <include>configuration.xml</include> 
+        </includes> 
+        <excludes> 
+          <exclude>**/*.properties</exclude> 
+        </excludes> 
       </resource>
     </resources>
   </build>
@@ -999,6 +1008,52 @@ mvn clean compile war:war -Pproduction
 总结：上面是通过filter路径的文件的属性值，替换directory 节点下resources路径下的文件中的占位符。
 
 上面的profile节点里也可以有peoperties节点，用来配置key value不推荐。
+
+
+
+⑤pluginManagement 放在父模块pom然后让子pom来决定是否引用 
+
+父模块pom
+
+```
+<pluginManagement> 
+
+      <plugins> 
+        <plugin> 
+          <groupId>org.apache.maven.plugins</groupId> 
+          <artifactId>maven-jar-plugin</artifactId> 
+          <version>2.2</version> 
+          <executions> 
+            <execution> 
+              <id>pre-process-classes</id> 
+              <phase>compile</phase> 
+              <goals> 
+                <goal>jar</goal> 
+              </goals> 
+              <configuration> 
+                <classifier>pre-process</classifier> 
+              </configuration> 
+            </execution> 
+          </executions> 
+        </plugin> 
+      </plugins> 
+</pluginManagement>
+```
+
+子模块pom
+
+```
+ <build>
+ <plugins> 
+      <plugin> 
+        <groupId>org.apache.maven.plugins</groupId> 
+        <artifactId>maven-jar-plugin</artifactId> 
+      </plugin> 
+</plugins>
+</build>
+```
+
+
 
 
 

@@ -421,6 +421,8 @@ https://blog.csdn.net/alibert/article/details/78912523
 
 用于远程部署Java Web项目 
 
+see：http://www.cnblogs.com/qq78292959/p/3711497.html
+
 ```
 <plugin>
     <groupId>org.apache.tomcat.maven</groupId>
@@ -786,7 +788,7 @@ see;https://www.cnblogs.com/langke93/p/3420124.html
 						</replacement>
 					</replacements>
 				</configuration>
-			</plugin>
+</plugin>
 ```
 
 
