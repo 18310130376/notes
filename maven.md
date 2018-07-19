@@ -506,12 +506,119 @@ activeProfiles用来激活。
 
 只要mirrorOf中的工程需要下载jar，都会自动来找该镜像。如果镜像地址有，就下载下来。若镜像地址没有，mirrorOf中的工厂也不会到中央资源库下载，而是由镜像去下载。这是推荐的做法。若镜像下载不到，就下载失败。
 
-#### maven命令
+#### maven常用命令
+
+https://blog.csdn.net/u011280083/article/details/78787610
+
+-D 传入属性参数 
+-P 使用pom中指定的配置 
+-e 显示maven运行出错的信息 
+-o 离线执行命令,即不去远程仓库更新包 
+-X 显示maven允许的debug信息 
+-U 强制去远程参考更新snapshot包 
+例如 mvn install -Dmaven.test.skip=true -Poracle 
+其他参数可以通过mvn help 获取
 
 ```
+mvn -version/-v  显示版本信息
 mvn package && java -jar target/gs-spring-boot-docker-0.1.0.jar  //打包并且运行
 mvn package docker:build -DpushImage
+mvn dependency:list   查看当前项目已被解析的依赖
+mvn dependency:tree  //查看依赖树
+mvn dependency:analyze  //分析项目依赖
+mvn clean install //将生成的jar包安装到本地仓库  包含mvn compile，mvn package，然后上传到本地仓库
+mvn clean install -U  //强制让mvn检查更新
+mvn compile //编译源代码
+mvn test-compile //编译测试代码
+mvn test  //运行测试
+mvn clean  清理项目生产的临时文件,一般是模块下的target目录
+mvn eclipse:eclipse  生成eclipse项目
+mvn idea:idea   生成idea项目
+mvn -Dtest package 组合使用goal命令，如只打包不测试
+mvn jar:jar  只打jar包
+mvn eclipse:clean   清除eclipse的一些系统设置
+mvn deploy 上传到私服    包含mvn install,然后，上传到私服
+mvn archetype:create -DgroupId=com.oreilly -DartifactId=my-app    创建mvn项目
+mvn jetty:run 
+mvn -e   显示详细错误 信息
+mvn validate 验证工程是否正确，所有需要的资源是否可用
+mvn verify 运行任何检查，验证包是否有效且达到质量标准
+mvn install -Dmaven.test.skip=true   给任何目标添加maven.test.skip 属性就能跳过测试 
+mvn eclipse:eclipse  将项目转化为Eclipse项目（生成.project和.classpath文件）
+mvn eclipse:clean
+
+mvn exec命令可以执行项目中的main函数 :
+首先需要编译java工程：mvn compile
+不存在参数的情况下：mvn exec:java -Dexec.mainClass="***.Main"
+存在参数：mvn exec:java -Dexec.mainClass="***.Main" -Dexec.args="arg0 arg1 arg2"
+指定运行时库：mvn exec:java -Dexec.mainClass="***.Main" -Dexec.classpathScope=runtime
+
+发布第三方Jar到本地库中
+mvn install:install-file -DgroupId=com -DartifactId=client -Dversion=0.1.0 -Dpackaging=jar -Dfile=d:\client-0.1.0.jar
+
+
+mvnDebug tomcat:run
+mvn tomcat:run
+
+----------------------------------传参数---------------------------------
+
+mvn -DpropertyName=propertyValue clean package
+如果propertyName不存在pom.xml，它将被设置。
+如果propertyName已经存在pom.xml，其值将被作为参数传递的值覆盖-D
+要发送多个变量，请使用多个空格分隔符加-D
+mvn -DpropA=valueA -DpropB=valueB -DpropC=valueC clean package
+
+例：
+
+如果你的pom.xml如下：
+
+<properties>
+    <theme>myDefaultTheme</theme>
+</properties>
+那么在这个执行过程中mvn -Dtheme=halloween clean package会覆盖theme的值，具有如下效果：
+
+<properties>
+    <theme>halloween</theme>
+</properties>
+
+
+-----------------------------------profile-----------------------
+
+<profile>
+   <id>test</id>
+   <activation>
+      <property>
+         <name>env</name>
+         <value>test</value>
+      </property>
+   </activation>
+   ...
+</profile>
+mvn test -Ptest
+mvn test -Penv=test
 ```
+
+
+
+假设两台机器A，B部署同样的项目，发布时只需要在一台机器上A上deploy，此时A的target有了jar，执行运行。远程仓库有了jar，给第三方提供依赖。此时部署B时只需要mvn clean install 在B上打同样的jar包就可以，不用deploy到远程仓库了。
+
+#### maven打包 install package deploy区别
+
+mvn clean package依次执行了clean、resources、compile、testResources、testCompile、test、jar(打包)等７个阶段。
+
+mvn clean install依次执行了clean、resources、compile、testResources、testCompile、test、jar(打包)、install等8个阶段。
+
+mvn clean deploy依次执行了clean、resources、compile、testResources、testCompile、test、jar(打包)、install、deploy等９个阶段。
+
+
+
+`maven package`：打包到本项目，一般是在项目target目录下。如果a项目依赖于b项目，打包b项目时，只会打包到b项目下target下，编译a项目时就会报错 `没有布署到本地maven仓库和远程maven私服仓库`
+
+`maven install`：打包到本地仓库，如果没有设置过maven本地仓库，一般在用户/.m2目录下。如果a项目依赖于b项目，那么install b时，会在本地仓库同时生成pom文件和jar文件，此时package A项目 会下载依赖的B项目。并且`把打好的可执行jar包布署到本地maven仓库，但没有布署到远程maven私服仓库`
+
+`maven deploy`：打包上传到远程仓库，如：私服nexus等，需要配置pom文件,命令完成了项目编译、单元测试、打包功能，`同时把打好的可执行jar包（war包或其它形式的包）布署到本地maven仓库和远程maven私服仓库`
+
+
 
 #### 多模块
 
@@ -1128,6 +1235,235 @@ cp $M2_HOME/conf/settings.xml ~/.m2/
 
 一个是全局的,一个是用户级的,还有就是不担心升级带来的配置更改 
 
+#### 仓库
+
+本地仓库和远程仓库
+远程仓库又包括中央仓库、私服、其他公共库
+
+##### 本地仓库
+
+本地仓库在~/.m2/reposity/
+可以通过修改settings文件：
+
+```
+<localRepository>D:\mavenrepo\</localRepository>
+```
+
+执行下面的命令 会将生成的jar包安装到本地仓库
+
+```
+mvn clean install
+```
+
+##### 中央仓库
+
+在 $M2_HONE/lib/maven-x.y.z-uber.jar 中的 org/apache/maven/model/pom-4.0.0.xml 中
+有一个超级POM文件,其中定义了中央仓库的位置,
+其中<snapshots>属性是false,表示不从中央仓库下载快照版本
+
+##### 私服
+
+即使是个人机器也应该建立私服,好处多多:
+加速构建、
+节省带宽、
+部署第三方构件、
+降低中央仓库的负荷
+
+##### 远程仓库的配置
+
+在项目的pom文件里声明，只针对当前项目有效，应该在setting.xml配置
+
+```
+<repositories>
+      <repository>
+        <id>xx</id>
+        <name>xx</name>
+        <url>xx</url>
+        <releases>true|false</release>
+        <enabled>true | false </release>
+        <updatePolicy>daily| never | always | interval:X分钟 </updatePolicy>
+        <checksumPolicy>ignore | warn | fail </checksumPolicy>
+        <snapshots>true|false</release>
+      </repository>
+</repositories>
+```
+
+##### 远程仓库的认证
+
+认证信息必须在settings.xml中,
+
+```
+<servers>
+      <server>
+        <id>my-proj</id>
+        <username>repo-user</username>
+        <password>repo-pwd</password>
+      </server>
+</servers>
+```
+
+##### 部署到远程仓库
+
+需要配置pom.xml文件,配置 distributionManagement 元素,
+如果需要认证,同上面一样
+
+```
+<distributionManagement>
+     <repository>
+        <id>xx</id>
+        <name>xx</name>
+        <url>xx</url>
+     </repository>
+     <snapshotRepository>
+        <id>xx</id>
+        <name>xx</name>
+        <url>xx</url>
+     </snapshotRepository>
+</distributionManagement>
+```
+
+##### 镜像
+
+在settings.xml中配置
+
+```
+<mirrors>
+    <mirror>
+      <id>xx</id>
+      <url>xx</url>
+      <mirrorOf>xx</mirrorOf>
+    </mirror>
+</mirrors>
+```
+
+- 可以使用*,还可以使用 external:*表示匹配所有远程仓库
+- 还可以 *,!repo1表示匹配所有仓库,repo1除外
+
+镜像仓库会屏蔽被镜像仓库,因此要保证镜像仓库的稳定性
+
+
+
+##### 配置梳理
+
+一  配置Maven 从私服上下载构件
+
+pom的repositories配置只针对当前项目有效，如果需要全部项目使用就有了下面的配置在setting.xml里
+
+```
+<profiles>
+	<profile>
+		<id>nexus</id>
+		<repositories>
+			<repository>
+				<id>nexus</id>
+				<name>Nexus</name>
+				<url>http://192.168.53.55:8081/nexus/content/groups/public/</url>
+				<releases>
+					<enabled>true</enabled>
+				</releases>
+				<snapshots>
+					<enabled>true</enabled>
+				</snapshots>
+			</repository>
+		</repositories>
+		<pluginRepositories>
+			<pluginRepository>
+				<id>nexus</id>
+				<name>Nexus</name>
+				<url>http://192.168.53.55:8081/nexus/content/groups/public/</url>
+				<releases>
+					<enabled>true</enabled>
+				</releases>
+				<snapshots>
+					<enabled>true</enabled>
+				</snapshots>
+			</pluginRepository>
+		</pluginRepositories>
+	</profile>
+</profiles>
+<activeProfiles>
+<activeProfile>nexus</activeProfile>
+```
+
+二  配置自动发布构件到私服
+
+POM.XML 配置
+
+```
+<distributionManagement>
+	  <repository>
+	    <id>releases</id>
+	    <url>http://localhost:8081/nexus/content/repositories/thirdparty/</url>
+	  </repository>
+</distributionManagement>
+```
+
+在命令行键入：mavn  deploy 则构件自动发布到本地和上传到私服 <http://localhost:8081/nexus/content/repositories/thirdparty> 这个目录下
+
+需要注意2点：
+
+1、发布的版本类型必须和nexus里的Policy类型一致。
+
+2、setting.xml 文件必须配置servers，其中id必须和repository下的id一致。
+
+```
+<servers>
+		<server>
+			<id>releases</id>
+			<username>admin</username>
+			<password>admin123</password>
+		</server>
+		<server>
+			<id>snapshots</id>
+			<username>admin</username>
+			<password>admin123</password>
+		</server>
+		<server>
+			<id>deploymentRepo</id>
+			<username>admin</username>
+			<password>admin123</password>
+		</server>
+</servers>
+```
+
+
+
+##### 常见问题
+
+- 如果出现400，需要注意项目下的pom.xml文件和maven使用的setting.xml文件的配置是否一致。
+- 如果出现401，需要检查maven使用的setting.xml中的帐号和密码是否正确，相应的repository是否为“Allow Redeploy”。
+- 如果使用的intellij、eclipse或myeclipse需要注意ide中使用的setting.xml和maven命令行下的setting.xml是否一致；否则或出现许多莫名其妙的问题
+
+在项目的顶层pom上执行
+mvn versions:set -DnewVersion=1.0.1-SNAPSHOT
+
+mvn versions:revert 退回
+
+这样就可以改变整个项目的版本号了。他会自动更改引用关系的（子模块更改parent节点的version）。（子项目没有version节点）
+
+以下是打包名称：Goldoffice_api-1.0.0-IX-TD-SIT.jar
+
+```
+<finalName>{project.artifactId}-{releaseVersion}-${releaseEnv}</finalName>
+```
+
+project.artifactId：Goldoffice_api，pom定义
+
+releaseVersion：properties定义
+
+releaseEnv：mvn clean install -Dmaven.test.skip=true -DreleaseEnv=${env}传入
+
+```
+git checkout .
+git pull
+env=${1-DEV}
+dos2unix ./version_${env}.properties
+. ./version_${env}.properties
+sed -i "s/<trade.version>.*<\/trade.version>/<trade.version>${tradeVersion}<\/trade.version>/g" pom.xml
+mvn versions:set -DgenerateBackupPoms=false -DnewVersion=${releaseVersion}-${env}-SNAPSHOT
+mvn --update-snapshots clean deploy -Dmaven.test.skip=true -DreleaseEnv=${env}
+```
+
 #### 学习文档
 
 https://blog.csdn.net/column/details/mavenbasic.html
@@ -1143,3 +1479,5 @@ https://blog.csdn.net/woshixuye/article/details/8133050
 
 
 https://www.jianshu.com/p/0906e26abd19
+
+https://www.cnblogs.com/jingmoxukong/p/6050172.html?utm_source=gold_browser_extension

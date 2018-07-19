@@ -14,28 +14,34 @@
 				<repository>
 					<id>releases</id>
 					<name>Team Nexus Releases Repository</name>
-					<url>http://18.179.81.47:8080/nexus/content/repositories/releases/</url>
+					<url>http://192.168.48.131:8081/repository/maven-releases/</url>
 				</repository>
 				<repository>
 					<id>snapshots</id>
 					<name>Team Nexus Snapshots Repository</name>
-					<url>http://18.179.81.47:8080/nexus/content/repositories/snapshots/</url>
-					
+					<url>http://192.168.48.131:8081/repository/maven-snapshots/</url>
+					<releases>
+						<enabled>true</enabled>
+					</releases>
+					<snapshots>
+						<enabled>true</enabled>
+						<updatePolicy>always</updatePolicy>
+					</snapshots>
 				</repository>
 			</repositories>			
 			<pluginRepositories>
 				<pluginRepository>
 					<id>plugin_releases</id>
 					<name>Team Nexus Releases Repository</name>
-					<url>http://18.179.81.47:8080/nexus/content/repositories/releases/</url>
+					<url>http://192.168.48.131:8081/repository/maven-releases/</url>
 					
 				</pluginRepository>
 				<pluginRepository>
 					<id>plugin_snapshots</id>
 					<name>Team Nexus Snapshots Repository</name>
-					<url>http://18.179.81.47:8080/nexus/content/repositories/snapshots/</url>
+					<url>http://192.168.48.131:8081/repository/maven-snapshots/</url>
 					<releases>
-						<enabled>false</enabled>
+						<enabled>true</enabled>
 					</releases>
 					<snapshots>
 						<enabled>true</enabled>
@@ -49,23 +55,23 @@
 	<servers> 
 		<server> 
 			<id>releases</id> 
-			<username>developer</username> 
-			<password>password123</password> 
+			<username>admin</username> 
+			<password>admin123</password> 
 		</server> 
 		<server> 
 			<id>snapshots</id> 
-			<username>developer</username> 
-			<password>password123</password> 
+			<username>admin</username> 
+			<password>admin123</password> 
 		</server> 
 		<server> 
 			<id>plugin_releases</id> 
-			<username>developer</username> 
-			<password>password123</password> 
+			<username>admin</username> 
+			<password>admin123</password> 
 		</server> 
 		<server> 
 			<id>plugin_snapshots</id> 
-			<username>developer</username> 
-			<password>password123</password> 
+			<username>admin</username> 
+			<password>admin123</password> 
 		</server> 
 	</servers>
 	<activeProfiles>

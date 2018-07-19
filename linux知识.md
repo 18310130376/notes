@@ -731,17 +731,57 @@ https://www.cnblogs.com/kevingrace/category/924885.html
 
 #### 常用命令
 
-|             |              |
-| ----------- | ------------ |
-| pidof  java | java的进程ID |
-|             |              |
-|             |              |
-|             |              |
-|             |              |
-|             |              |
-|             |              |
-|             |              |
-|             |              |
+|                                                   |                      |
+| ------------------------------------------------- | -------------------- |
+| pidof  java                                       | java的进程ID         |
+| pkill java                                        | 按照进程名杀死进程   |
+| pgrep -l  java                                    | 指定要查找的进程名称 |
+| jps                                               | 显示java进程         |
+| sudo ln -s /var/myapp/myapp.jar /etc/init.d/myapp | 软链接为服务         |
+| service myapp start                               | 启动服务             |
+|                                                   |                      |
+|                                                   |                      |
+|                                                   |                      |
+
+#### 制作systemd Service
+
+`systemd` is the successor of the System V init system and is now being used by many modern Linux distributions. Although you can continue to use `init.d` scripts with `systemd`, it is also possible to launch Spring Boot applications by using `systemd` ‘service’ scripts.
+
+Assuming that you have a Spring Boot application installed in `/var/myapp`, to install a Spring Boot application as a `systemd` service, create a script named `myapp.service` and place it in `/etc/systemd/system` directory. The following script offers an example:
+
+```
+[Unit]
+Description=myapp
+After=syslog.target
+
+[Service]
+User=myapp
+ExecStart=/var/myapp/myapp.jar
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
+```
+
+| ![[Important]](https://docs.spring.io/spring-boot/docs/2.0.3.RELEASE/reference/htmlsingle/images/important.png) | Important |
+| ------------------------------------------------------------ | --------- |
+| Remember to change the `Description`, `User`, and `ExecStart` fields for your application. |           |
+
+| ![[Note]](https://docs.spring.io/spring-boot/docs/2.0.3.RELEASE/reference/htmlsingle/images/note.png) |
+| ------------------------------------------------------------ |
+| The `ExecStart` field does not declare the script action command, which means that the `run` command is used by default. |
+
+Note that, unlike when running as an `init.d` service, the user that runs the application, the PID file, and the console log file are managed by `systemd` itself and therefore must be configured by using appropriate fields in the ‘service’ script. Consult the [service unit configuration man page](https://www.freedesktop.org/software/systemd/man/systemd.service.html) for more details.
+
+To flag the application to start automatically on system boot, use the following command:
+
+```
+$ systemctl enable myapp.service
+```
+
+Refer to `man systemctl` for more details.
+
+
 
 ### shell编程
 
