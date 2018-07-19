@@ -329,8 +329,6 @@ Dversion表示版本信息，**怎样得到一个jar包准确的版本呢？**
 
 #### pom.xml或settings.xml对nexus的配置
 
-
-
 **一 、在pom中配置Nexus仓库**
 
 ```
@@ -519,6 +517,8 @@ https://blog.csdn.net/u011280083/article/details/78787610
 例如 mvn install -Dmaven.test.skip=true -Poracle 
 其他参数可以通过mvn help 获取
 
+mvn clean package -e    查看详细错误信息
+
 ```
 mvn -version/-v  显示版本信息
 mvn package && java -jar target/gs-spring-boot-docker-0.1.0.jar  //打包并且运行
@@ -559,6 +559,10 @@ mvn install:install-file -DgroupId=com -DartifactId=client -Dversion=0.1.0 -Dpac
 
 mvnDebug tomcat:run
 mvn tomcat:run
+
+----------------------------------更新版本-------------------------------
+
+mvn versions:set -DgenerateBackupPoms=false -DnewVersion=1.0.2
 
 ----------------------------------传参数---------------------------------
 
@@ -1324,15 +1328,51 @@ mvn clean install
 
 ##### 镜像
 
+mirror相当于一个拦截器，它会拦截maven对remote repository的相关请求，把请求里的remote repository地址，重定向到mirror里配置的地址
+
+
+
+流程：先从repositories配置的私有仓库下载①，下载不到就到maven配置的默认仓库(public)②，但是如果配置了mirrorOf=center或者mirrorOf=*的mirrors③，则会把②的请求拦截转向③配置的url（③是②的一个镜像）
+
+多个mirrors按顺序请求（Apache Maven 3.3.9）。
+
+1、在mirrorOf与repositoryId相同的时候优先是使用mirror的地址
+
+2、mirrorOf等于*的时候覆盖所有repository配置（控制台直接请求mirror）
+
+3、存在多个mirror配置的时候mirrorOf等于*放到最后（控制台直接请求mirror）
+
+4、只配置mirrorOf为central的时候可以不用配置repository
+
+
+
 在settings.xml中配置
 
 ```
 <mirrors>
-    <mirror>
-      <id>xx</id>
-      <url>xx</url>
-      <mirrorOf>xx</mirrorOf>
-    </mirror>
+        <!-- 阿里云仓库 -->
+        <mirror>
+            <id>alimaven</id>
+            <mirrorOf>central</mirrorOf>
+            <name>aliyun maven</name>
+            <url>http://maven.aliyun.com/nexus/content/repositories/central/</url>
+        </mirror>
+    
+        <!-- 中央仓库1 -->
+        <mirror>
+            <id>repo1</id>
+            <mirrorOf>central</mirrorOf>
+            <name>repo1</name>
+            <url>http://repo1.maven.org/maven2/</url>
+        </mirror>
+    
+        <!-- 中央仓库2 -->
+        <mirror>
+            <id>repo2</id>
+            <mirrorOf>central</mirrorOf>
+            <name>repo2</name>
+            <url>http://repo2.maven.org/maven2/</url>
+        </mirror>
 </mirrors>
 ```
 
@@ -1464,7 +1504,72 @@ mvn versions:set -DgenerateBackupPoms=false -DnewVersion=${releaseVersion}-${env
 mvn --update-snapshots clean deploy -Dmaven.test.skip=true -DreleaseEnv=${env}
 ```
 
+
+
+#### pom节点说明
+
+
+
+**pom.xml**
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.xrq.withmaven</groupId>
+  <artifactId>withmaven</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <build/>
+</project>
+```
+
+
+
+因为这个配置文件是Maven的核心，因此有必要详细解读一下pom.xml，来先看一下上面的几个：
+
+**1、modelVersion**
+
+　　指定了当前Maven模型的版本号，对于Maven2和Maven3来说，它只能是4.0.0
+
+**2、groupId**
+
+　　顾名思义，这个应该是公司名或是组织名。一般来说groupId是由三个部分组成，每个部分之间以"."分隔，第一部分是项目用途，比如用于商业的就是"com"，用于非营利性组织的就　　是"org"；第二部分是公司名，比如"tengxun"、"baidu"、"alibaba"；第三部分是你的项目名
+
+**3、artifactId**
+
+　　可以认为是Maven构建的项目名，比如你的项目中有子项目，就可以使用"项目名-子项目名"的命名方式
+
+**4、version**
+
+　　版本号，SNAPSHOT意为快照，说明该项目还在开发中，是不稳定的版本。在Maven中很重要的一点是，**groupId、artifactId、version三个元素生成了一个Maven项目的基本坐标**，这非常重要，我在使用和研究Maven的时候多次感受到了这点。
+
+在上面的这些元素之外，还有一些元素，同样罗列一下：
+
+**1、packing**
+
+　　项目打包的类型，可以使jar、war、rar、ear、pom，默认是jar
+
+**2、dependencies和dependency**
+
+　　前者包含后者。前面说了，Maven的一个重要作用就是统一管理jar包，为了一个项目可以build或运行，项目中不可避免的，会依赖很多其他的jar包，在Maven中，这些依赖就被称为dependency。
+
+　　说到这里，就有一个**本地仓库**和**远程仓库**的概念了。官方下载的本地仓库的配置在"%MAVEN_HOME%\conf\settings.xml"里面，找一下"localRepository"就可以了；MyEclipse默认的本地仓库的地址在"{user.home}/.m2/repository"路径下，同样找一下"localRepository"就可以找到MyEclipse默认的本地仓库了。
+
+**3、properties**
+
+　　properties是用来定义一些配置属性的，例如project.build.sourceEncoding（项目构建源码编码方式），可以设置为UTF-8，防止中文乱码，也可定义相关构建版本号，便于日后统一升级。
+
+**4、本地仓库中确定已经有jar包了，工程里面却报错，说找不到jar包，该怎么办？**
+
+应该有很多解决办法，目前解决的一种办法是，MyEclipse->Window->Preferences->搜索Maven->User Settings,Update Settings和Reindex点一下就好了。另外，可以尝试一下把本地Maven仓库内的jar包删除一下，然后重新build workspace，可能也可以。
+
+
+
 #### 学习文档
+
+http://maven.apache.org/guides/mini/guide-mirror-settings.html   //官网
 
 https://blog.csdn.net/column/details/mavenbasic.html
 

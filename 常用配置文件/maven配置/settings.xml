@@ -12,7 +12,7 @@
 		<profile>
 			<repositories>
 				<repository>
-					<id>releases</id>
+					<id>releases</id><!--Maven自带的中央仓库使用的id为central，如果其他仓库声明也用该id，就会覆盖中央仓库的配置-->
 					<name>Team Nexus Releases Repository</name>
 					<url>http://192.168.48.131:8081/repository/maven-releases/</url>
 				</repository>
@@ -103,4 +103,107 @@
             <url>http://repo2.maven.org/maven2/</url>
         </mirror>
     </mirrors>
+	
+<proxies>  
+  <proxy>  
+      <id>xxx</id>  
+      <active>true</active>  
+      <protocol>http</protocol>  
+      <username>用户名</username>  
+      <password>密码</password>  
+      <host>代理服务器地址</host>  
+      <port>代理服务器的端口</port>  
+      <nonProxyHosts>不使用代理的主机</nonProxyHosts>  
+  </proxy>  
+</proxies>
+<!--
+	 <mirror>
+      <id>alimaven</id>
+      <name>aliyun maven</name>
+      <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+      <mirrorOf>central</mirrorOf>
+  </mirror>
+  <mirror>
+      <id>alimaven</id>
+      <mirrorOf>central</mirrorOf>
+     <name>aliyun maven</name>
+     <url>http://maven.aliyun.com/nexus/content/repositories/central/</url>
+ </mirror>
+ 
+ <mirror>
+    <id>ibiblio</id>
+     <mirrorOf>central</mirrorOf>
+     <name>Human Readable Name for this Mirror.</name>
+     <url>http://mirrors.ibiblio.org/pub/mirrors/maven2/</url>
+ </mirror>
+ <mirror>
+     <id>jboss-public-repository-group</id>
+     <mirrorOf>central</mirrorOf>
+     <name>JBoss Public Repository Group</name>
+     <url>http://repository.jboss.org/nexus/content/groups/public</url>
+ </mirror>
+ 
+ <mirror>
+     <id>central</id>
+     <name>Maven Repository Switchboard</name>
+     <url>http://repo1.maven.org/maven2/</url>
+     <mirrorOf>central</mirrorOf>
+ </mirror>
+ <mirror>
+     <id>repo2</id>
+     <mirrorOf>central</mirrorOf>
+     <name>Human Readable Name for this Mirror.</name>
+     <url>http://repo2.maven.org/maven2/</url>
+ </mirror>
+ 
+  spring的libs-release镜像，存放spring项目及其子项目的jar包，以及相关的依赖jar
+    <mirror>  
+        <id>libs-release</id>  
+        <mirrorOf>repo1</mirrorOf>  
+        <url>https://repo.spring.io/libs-release</url>  
+    </mirror>  
+    spring的milestone镜像，存放着spring项目及其子项目的里程碑版本jar包 
+    <mirror>  
+        <id>milestone</id>  
+        <mirrorOf>repo2</mirrorOf>  
+        <url>https://repo.spring.io/milestone</url>  
+    </mirror>  
+    spring的snapshot镜像，存放着spring项目及其子项目的预览版本jar包 
+    <mirror>  
+        <id>snapshot</id>  
+        <mirrorOf>repo3</mirrorOf>  
+        <url>https://repo.spring.io/snapshot</url>  
+    </mirror>  
+ 
+mvnrepository镜像，常用的maven中央仓库jar查询站点，可直接当maven镜像使用
+    <mirror>  
+        <id>mvn</id>  
+        <mirrorOf>mvnrepository</mirrorOf>  
+        <url>http://mvnrepository.com/</url>  
+    </mirror>  
+	
+	
+	
+	<mirror>
+  <id>ui</id>
+  <mirrorOf>central</mirrorOf>
+  <name>Human Readable Name for this Mirror.</name>
+ <url>http://uk.maven.org/maven2/</url>
+</mirror>
+<mirror>
+  <id>sprintio</id>
+  <mirrorOf>central</mirrorOf>
+  <name>Human Readable Name for this Mirror.</name>
+ <url>https://repo.spring.io/libs-snapshot/</url>
+</mirror>
+	
+	
+	
+	
+	
+	
+	
+	
+-->
+	
 </settings>
