@@ -97,7 +97,22 @@ https://www.yiibai.com/git/git_checkout.html
 
 
 
+# github访问慢解决
 
+配置host
+
+windows： C:\Windows\System32\drivers\etc
+
+linux：vi  /etc/hosts
+
+```
+151.101.44.249 github.global.ssl.fastly.net 
+192.30.253.113 github.com
+```
+
+刷新DNS： linux下： sudo /etc/init.d/networking restart
+
+​             windows下： ipconfig /flushdns
 
 
 
