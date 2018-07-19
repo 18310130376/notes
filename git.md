@@ -79,6 +79,26 @@ TortoiseGit-LanguagePack-2.4.0.0-64bit-zh_CN.msi
 
 
 
+# 命令
+
+https://www.yiibai.com/git/git_checkout.html
+
+|                   |                      |
+| ----------------- | -------------------- |
+| git checkout  dev | 切换到dev分支        |
+| git checkout .    | 忽略更改拉取最新代码 |
+|                   |                      |
+|                   |                      |
+|                   |                      |
+|                   |                      |
+|                   |                      |
+|                   |                      |
+|                   |                      |
+
+
+
+
+
 
 
 # 参考
