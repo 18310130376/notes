@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+	 			
+	<!--
+	<localRepository>C:\Users\charles.so\.m2\r2</localRepository>
+	-->
+	 
+	<profiles>
+		<profile>
+			<repositories>
+				<repository>
+					<id>releases</id>
+					<name>Team Nexus Releases Repository</name>
+					<url>http://18.179.81.47:8080/nexus/content/repositories/releases/</url>
+				</repository>
+				<repository>
+					<id>snapshots</id>
+					<name>Team Nexus Snapshots Repository</name>
+					<url>http://18.179.81.47:8080/nexus/content/repositories/snapshots/</url>
+					
+				</repository>
+			</repositories>			
+			<pluginRepositories>
+				<pluginRepository>
+					<id>plugin_releases</id>
+					<name>Team Nexus Releases Repository</name>
+					<url>http://18.179.81.47:8080/nexus/content/repositories/releases/</url>
+					
+				</pluginRepository>
+				<pluginRepository>
+					<id>plugin_snapshots</id>
+					<name>Team Nexus Snapshots Repository</name>
+					<url>http://18.179.81.47:8080/nexus/content/repositories/snapshots/</url>
+					<releases>
+						<enabled>false</enabled>
+					</releases>
+					<snapshots>
+						<enabled>true</enabled>
+						<updatePolicy>always</updatePolicy>
+					</snapshots>
+				</pluginRepository>
+			</pluginRepositories>
+			<id>nexus</id>
+		</profile>
+	</profiles>
+	<servers> 
+		<server> 
+			<id>releases</id> 
+			<username>developer</username> 
+			<password>password123</password> 
+		</server> 
+		<server> 
+			<id>snapshots</id> 
+			<username>developer</username> 
+			<password>password123</password> 
+		</server> 
+		<server> 
+			<id>plugin_releases</id> 
+			<username>developer</username> 
+			<password>password123</password> 
+		</server> 
+		<server> 
+			<id>plugin_snapshots</id> 
+			<username>developer</username> 
+			<password>password123</password> 
+		</server> 
+	</servers>
+	<activeProfiles>
+		<activeProfile>nexus</activeProfile>
+	</activeProfiles>
+	
+	<mirrors>
+        <!-- 阿里云仓库 -->
+        <mirror>
+            <id>alimaven</id>
+            <mirrorOf>central</mirrorOf>
+            <name>aliyun maven</name>
+            <url>http://maven.aliyun.com/nexus/content/repositories/central/</url>
+        </mirror>
+    
+        <!-- 中央仓库1 -->
+        <mirror>
+            <id>repo1</id>
+            <mirrorOf>central</mirrorOf>
+            <name>repo1</name>
+            <url>http://repo1.maven.org/maven2/</url>
+        </mirror>
+    
+        <!-- 中央仓库2 -->
+        <mirror>
+            <id>repo2</id>
+            <mirrorOf>central</mirrorOf>
+            <name>repo2</name>
+            <url>http://repo2.maven.org/maven2/</url>
+        </mirror>
+    </mirrors>
+</settings>
