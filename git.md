@@ -116,6 +116,25 @@ linux：vi  /etc/hosts
 
 
 
+# github大文件上传
+
+git  bash
+
+```
+git config --global http.postBuffer 524288000
+git config --global http.sslVerify false
+```
+
+小乌龟
+
+```
+右键TortoiseGit--settings--Git--Edit systemwide gitconfig--把postBuffer的值修改为524288000
+部分内容如下：
+[http]
+sslCAInfo = D:/programFiles/Git/mingw64/ssl/certs/ca-bundle.crt
+postBuffer=524288000
+```
+
 # 参考
 
 https://www.cnblogs.com/xishuai/category/558994.html

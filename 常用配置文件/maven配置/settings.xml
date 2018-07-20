@@ -7,6 +7,10 @@
 	<!--
 	<localRepository>C:\Users\charles.so\.m2\r2</localRepository>
 	-->
+	
+	<!--配置详解--
+	https://www.cnblogs.com/jingmoxukong/p/6050172.html?utm_source=gold_browser_extension
+	-->
 	 
 	<profiles>
 		<profile>
@@ -21,7 +25,12 @@
 					<name>Team Nexus Snapshots Repository</name>
 					<url>http://192.168.48.131:8081/repository/maven-snapshots/</url>
 					<releases>
-						<enabled>true</enabled>
+						 <!--true或者false表示该仓库是否为下载某种类型构件（发布版，快照版）开启。 -->
+      <enabled>true</enabled>
+      <!--该元素指定更新发生的频率。Maven会比较本地POM和远程POM的时间戳。这里的选项是：always（一直），daily（默认，每日），interval：X（这里X是以分钟为单位的时间间隔），或者never（从不）。 -->
+      <updatePolicy>always</updatePolicy>
+      <!--当Maven验证构件校验文件失败时该怎么做-ignore（忽略），fail（失败），或者warn（警告）。 -->
+      <checksumPolicy>warn</checksumPolicy>
 					</releases>
 					<snapshots>
 						<enabled>true</enabled>
