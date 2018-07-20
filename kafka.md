@@ -247,6 +247,30 @@ Topic:my-replicated-topic       PartitionCount:1        ReplicationFactor:3     
 bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topic my-replicated-topic
 ```
 
+
+
+## 常用命令
+
+|                                                              |                              |
+| ------------------------------------------------------------ | ---------------------------- |
+| ./kafka-topics.sh --list --zookeeper localhost:2181          | 查看有哪些主题               |
+| ./kafka-topics.sh -zookeeper 127.0.0.1:2181 -describe -topic www | 查看topic的详细信息          |
+| ./kafka-reassign-partitions.sh -zookeeper 127.0.0.1:2181 -reassignment-json-file json/partitions-to-move.json -execute | 为topic增加副本              |
+| ./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic testKJ1 | 创建topic                    |
+| ./bin/kafka-topics.sh –zookeeper 127.0.0.1:2181 –alter –partitions 20 –topic testKJ1 | 为topic增加partition         |
+| ./kafka-console-producer.sh --broker-list localhost:9092 --topic testKJ1 | kafka生产者客户端命令        |
+| ./kafka-console-consumer.sh -zookeeper localhost:2181 --from-beginning --topic testKJ1 | kafka消费者客户端命令        |
+| ./kafka-server-start.sh -daemon ../config/server.properties  | kafka服务启动                |
+| ./kafka-run-class.sh kafka.admin.ShutdownBroker --zookeeper 127.0.0.1:2181 --broker #brokerId# --num.retries 3 --retry.interval.ms 60 shutdown broker | 下线broker                   |
+| ./kafka-run-class.sh kafka.admin.DeleteTopicCommand --topic testKJ1 --zookeeper 127.0.0.1:2181 | 删除topic                    |
+| ./kafka-topics.sh --zookeeper localhost:2181 --delete --topic testKJ1 |                              |
+| ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper localhost:2181 --group test --topic testKJ1 | 查看consumer组内消费的offset |
+| ./kafka-consumer-offset-checker.sh --zookeeper 192.168.0.201:12181 --group group1 --topic group1 |                              |
+
+
+
+
+
 # 搭建Kafka开发环境
 
 搭建开发环境需要引入kafka的jar包，一种方式是将Kafka安装包中lib下的jar包加入到项目的classpath中，这种比较简单了。不过我们使用另一种更加流行的方式：使用maven管理jar包依赖。
