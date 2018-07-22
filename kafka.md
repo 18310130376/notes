@@ -76,6 +76,7 @@ Kafka只能保证一个分区之内消息的有序性，`在不同的分区之�
 
 ```
 wget http://archive.apache.org/dist/kafka/0.8.1.1/kafka_2.10-0.8.1.1.tgz
+wget http://mirrors.hust.edu.cn/apache/kafka/1.1.0/kafka_2.12-1.1.0.tgz
 tar -xzf kafka_2.10-0.8.1.1.tgz
 ```
 
@@ -100,11 +101,12 @@ vim config/server.properties
 
 kafka最为重要三个配置依次为：broker.id、log.dir、zookeeper.connect
 
-启动kafka
+启动kafka    （参数-daemon表示后台运行） 
 
 ```
 bin/kafka-server-start.sh -daemon config/server.properties &
 bin/kafka-server-start.sh -daemon config/server1.properties & （一台即可）
+JMX_PORT=9997 bin/kafka-server-start.sh -daemon config/server.properties &
 ```
 
 ```
@@ -154,6 +156,17 @@ ctrl+c可以退出发送
 ```
 bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic test --from-beginning
 ```
+
+
+
+## 删除topic 
+
+- 删除kafka存储目录（server.properties文件log.dirs配置，默认为"/tmp/kafka-logs"）相关topic目录
+- 如果配置了delete.topic.enable=true直接通过命令删除，如果命令删除不掉，直接通过zookeeper-client 删除掉"/brokers/topics/"目录下相关topic节点。
+
+**注意: 如果你要删除一个topic并且重建，那么必须重新启动kafka，否则新建的topic在zookeeper的/brokers/topics/test-topic/目录下没有partitions这个目录，也就是没有分区信息。**
+
+
 
 ## 搭建broker的集群
 
@@ -253,6 +266,9 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 
 |                                                              |                              |
 | ------------------------------------------------------------ | ---------------------------- |
+| bin/kafka-server-start.sh -daemon config/server.properties & |                              |
+| nohup bin/kafka-server-start.sh config/server.properties > /dev/null 2>&1 & |                              |
+| bin/kafka-server-stop.sh                                     |                              |
 | ./kafka-topics.sh --list --zookeeper localhost:2181          | 查看有哪些主题               |
 | ./kafka-topics.sh -zookeeper 127.0.0.1:2181 -describe -topic www | 查看topic的详细信息          |
 | ./kafka-reassign-partitions.sh -zookeeper 127.0.0.1:2181 -reassignment-json-file json/partitions-to-move.json -execute | 为topic增加副本              |
@@ -267,7 +283,62 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 | ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper localhost:2181 --group test --topic testKJ1 | 查看consumer组内消费的offset |
 | ./kafka-consumer-offset-checker.sh --zookeeper 192.168.0.201:12181 --group group1 --topic group1 |                              |
 
+## 配置详解
 
+```properties
+broker.id=0  #当前机器在集群中的唯一标识，和zookeeper的myid性质一样
+port=19092 #当前kafka对外提供服务的端口默认是9092
+host.name=192.168.7.100 #这个参数默认是关闭的，在0.8.1有个bug，DNS解析问题，失败率的问题。
+num.network.threads=3 #这个是borker进行网络处理的线程数
+num.io.threads=8 #这个是borker进行I/O处理的线程数
+log.dirs=/opt/kafka/kafkalogs/ #消息存放的目录，这个目录可以配置为“，”逗号分割的表达式，上面的num.io.threads要大于这个目录的个数这个目录，如果配置多个目录，新创建的topic他把消息持久化的地方是，当前以逗号分割的目录中，那个分区数最少就放那一个
+socket.send.buffer.bytes=102400 #发送缓冲区buffer大小，数据不是一下子就发送的，先回存储到缓冲区了到达一定的大小后在发送，能提高性能
+socket.receive.buffer.bytes=102400 #kafka接收缓冲区大小，当数据到达一定大小后在序列化到磁盘
+socket.request.max.bytes=104857600 #这个参数是向kafka请求消息或者向kafka发送消息的请请求的最大数，这个值不能超过java的堆栈大小
+num.partitions=1 #默认的分区数，一个topic默认1个分区数
+log.retention.hours=168 #默认消息的最大持久化时间，168小时，7天
+message.max.byte=5242880  #消息保存的最大值5M
+default.replication.factor=2  #kafka保存消息的副本数，如果一个副本失效了，另一个还可以继续提供服务
+replica.fetch.max.bytes=5242880  #取消息的最大直接数
+log.segment.bytes=1073741824 #这个参数是：因为kafka的消息是以追加的形式落地到文件，当超过这个值的时候，kafka会新起一个文件
+log.retention.check.interval.ms=300000 #每隔300000毫秒去检查上面配置的log失效时间（log.retention.hours=168 ），到目录查看是否有过期的消息如果有，删除
+log.cleaner.enable=false #是否启用log压缩，一般不用启用，启用的话可以提高性能
+zookeeper.connect=192.168.7.100:12181,192.168.7.101:12181,192.168.7.107:1218 #设置zookeeper的连接端口    （多个使用逗号分隔）
+zookeeper.connection.timeout.ms=6000
+advertised.listeners=PLAINTEXT://192.168.135.133:9092  （如果没配置则使用listeners）
+listeners=PLAINTEXT://:9092  （多个以逗号分隔）
+delete.topic.enable=true   //删除topic
+auto.create.topics.enable=false
+```
+
+我们需要修改 
+
+```properties
+1、broker.id：每台机器不能一样
+2、zookeeper.connect：因为我有3台zookeeper服务器，所以在这里zookeeper.connect设置为3台，必须全部加进去
+3、listeners：在配置集群的时候，必须设置，不然以后的操作会报找不到leader的错误
+broker.id=0  每台服务器的broker.id都不能相同
+#listeners
+listeners=PLAINTEXT://node1:9092
+#日志的目录
+log.dirs=/home/hadoop/app/kafka_2.11-1.0.0/logs/
+#设置zookeeper的连接端口
+zookeeper.connect=192.168.7.100:12181,192.168.7.101:12181,192.168.7.107:12181
+```
+
+hostname和端口是用来建议给生产者和消费者使用的，如果没有设置，则使用listeners，如果listeners没配置则kafka服务将使用java.net.InetAddress.getCanonicalHostName()来获取这个hostname和port，基本就是localhost 。
+
+ 如果你没有配置advertised.listeners，就使用listeners的配置通告给消息的生产者和消费者，这个过程是在生产者和消费者获取源数据 
+
+![img](http://www.aboutyun.com/data/attachment/forum/201409/28/143558xhiezfhyzzderwxd.png) 
+
+Consumer主要配置 
+
+![img](http://www.aboutyun.com/data/attachment/forum/201409/28/143559mzz6kyphyca2rhr2.png) 
+
+Producer主要配置 
+
+![img](http://www.aboutyun.com/data/attachment/forum/201409/28/143559bglynil7c1usij1i.png) 
 
 
 
@@ -277,19 +348,69 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 创建好maven项目后，在pom.xml中添加以下依赖：
 
 ```
+ <dependency>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka_2.12</artifactId>
+        <version>1.1.0</version>
+    </dependency>
 <dependency>
-        <groupId> org.apache.kafka</groupId >
-        <artifactId> kafka_2.10</artifactId >
-        <version> 0.8.0</ version>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka-clients</artifactId>
+        <version>1.1.0</version>
 </dependency>
 ```
+
+# KafkaOffsetMonitor安装部署
+
+下载
+
+```
+https://github.com/quantifind/KafkaOffsetMonitor/releases/download/v0.2.1/KafkaOffsetMonitor-assembly-0.2.1.jar
+```
+
+启动
+
+编写shell启动比较方便
+
+```
+#! /bin/bash
+java -Xms512M -Xmx512M -Xss1024K -XX:PermSize=256m -XX:MaxPermSize=512m -cp KafkaOffsetMonitor-assembly-0.2.1.jar com.quantifind.kafka.offsetapp.OffsetGetterWeb --zk 192.168.135.133:2181 --port 8089 --refresh 10.seconds --retain 7.days 1>/mydata/kafkamonitorlogs/stdout.log 2>/mydata/kafkamonitorlogs/stderr.log &
+```
+
+
+
+# zookeeper在kafka中的作用
+
+一 、**Broker注册** 
+
+Broker在zookeeper中保存为一个临时节点，节点的路径是/brokers/ids/[brokerid],每个节点会保存对应broker的IP以及端口等信息 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Kafka中的消息是否会丢失和重复消费
+
+https://blog.csdn.net/u012050154/article/category/7059799
+
+
 
 
 
 # 参考文档
 
-https://www.cnblogs.com/skying555/p/7903457.html
-
-https://www.cnblogs.com/zhaojiankai/p/7181910.html?utm_source=itdadao&utm_medium=referral
+http://kafka.apache.org/10/documentation.html
 
 https://www.cnblogs.com/zlslch/p/5966004.html
+
+https://www.cnblogs.com/smartloli/category/694246.html

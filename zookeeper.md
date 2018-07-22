@@ -207,8 +207,6 @@ zkServer.sh status zoo3.cfg
 
 配置方式同上 伪集群，只是在每台机器上安装zokkeeeper，建立myid，文件名默认zoo.cfg
 
-
-
 ### 1.4 常用命令
 
 ```
@@ -254,6 +252,28 @@ delete /zk_test
 
 
 
+查看服务启动日志
+
+```
+tail -fn 300 zookeeper-3.4.10/bin/zookeeper.out
+```
+
+查看当前服务是否是leader
+
+```
+zkServer.sh status
+```
+
+停止服务
+
+```
+./zkServer.sh stop
+```
+
+
+
+
+
 #### 节点类型
 
 ZooKeeper中的节点有两种，分别为**临时节点**和**永久节点**。节点的类型在创建时即被确定，并且`不能改变`。
@@ -269,6 +289,26 @@ ZooKeeper中的节点有两种，分别为**临时节点**和**永久节点**。
 #### 观察
 
 客户端可以在节点上设置watch，我们称之为**监视器**。当节点状态发生改变时(Znode的增、删、改)将会触发watch所对应的操作。当watch被触发时，ZooKeeper将会向客户端发送且仅发送一条通知，因为watch只能被触发一次，这样可以减少网络流量
+
+### 1.5 更改日志配置
+
+Zookeeper 默认会将控制台信息输出到启动路径下的 zookeeper.out 中，通过如下方法，可以让 Zookeeper 输出按尺寸切分的日志文件：
+
+1）修改conf/log4j.properties文件，将
+
+​    zookeeper.root.logger=INFO, **CONSOLE**
+
+​    改为
+
+​    zookeeper.root.logger=INFO, **ROLLINGFILE**
+
+2）修改bin/zkEnv.sh文件，将
+
+​    ZOO_LOG4J_PROP="INFO,**CONSOLE**"
+
+​    改为
+
+​    ZOO_LOG4J_PROP="INFO,**ROLLINGFILE**"
 
 # cruator客户端编程
 
