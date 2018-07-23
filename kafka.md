@@ -11,6 +11,36 @@
 9.Procuder API有哪两种？
 10.Kafka存储在硬盘上的消息格式是什么？
 
+
+
+#  Kafka的特性
+
+\- 高吞吐量、低延迟：kafka每秒可以处理几十万条消息，它的延迟最低只有几毫秒，每个topic可以分多个partition, consumer group 对partition进行consume操作。
+
+\- 可扩展性：kafka集群支持热扩展
+
+\- 持久性、可靠性：消息被持久化到本地磁盘，并且支持数据备份防止数据丢失
+
+\- 容错性：允许集群中节点失败（若副本数量为n,则允许n-1个节点失败）
+
+\- 高并发：支持数千个客户端同时读写
+
+
+
+# Kafka的使用场景 
+
+ 日志收集：一个公司可以用Kafka可以收集各种服务的log，通过kafka以统一接口服务的方式开放给各种consumer，例如hadoop、Hbase、Solr等。
+
+\- 消息系统：解耦和生产者和消费者、缓存消息等。
+
+\- 用户活动跟踪：Kafka经常被用来记录web用户或者app用户的各种活动，如浏览网页、搜索、点击等活动，这些活动信息被各个服务器发布到kafka的topic中，然后订阅者通过订阅这些topic来做实时的监控分析，或者装载到hadoop、数据仓库中做离线分析和挖掘。
+
+\- 运营指标：Kafka也经常用来记录运营监控数据。包括收集各种分布式应用的数据，生产各种操作的集中反馈，比如报警和报告。
+
+\- 流式处理：比如spark streaming和storm
+
+\- 事件源
+
 # 基本概念
 
 Kafka是一个分布式的、可分区的、可复制的消息系统。它提供了普通消息系统的功能，但具有自己独特的设计
@@ -430,6 +460,94 @@ Broker在zookeeper中保存为一个临时节点，节点的路径是/brokers/id
 
 https://blog.csdn.net/u012050154/article/category/7059799
 
+
+
+# kafka Consumer均衡算法，partition的个数和消费组组员个数的关系
+
+https://blog.csdn.net/qq_20641565/article/details/59746101
+
+**kafka的Consumer均衡算法**
+
+有一个topic：lijietest，然后这个topic的partition和他们所在的broker的图如下：
+
+![这里写图片描述](https://img-blog.csdn.net/20170302234212764?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvcXFfMjA2NDE1NjU=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+1.其中 broker有两个，也就是服务器有两台。
+
+2.partition有6个，分布按照如图所示，按照哈希取模的算法分配。
+
+3.消费者有8个，他们属于同一个消费组。
+
+**如果按照如图所示，那么这一个消费组中的消费者会怎么取kafka的数据呢？** 
+其实kafka的消费端有一个均衡算法，算法如下：
+
+1.A=(partition数量/同分组消费者总个数) 
+2.M=对上面所得到的A值小数点第一位向上取整 
+3.计算出该消费者拉取数据的patition合集：Ci = [P(M*i ),P((i + 1) * M -1)]
+
+按照如图所示，那么这里：
+
+A=6/8=0.75
+
+M=1
+
+C0=[P(1*0),P((0+1)*1-1)]=[P0,P0] 
+同理：
+
+C1=[P(1*1),P((1+1)*1-1)]=[P1,P1] 
+C2=[P(1*2),P((2+1)*1-1)]=[P2,P2] 
+C3=[P(1*3),P((3+1)*1-1)]=[P3,P3] 
+C4=[P(1*4),P((4+1)*1-1)]=[P4,P4] 
+C5=[P(1*5),P((5+1)*1-1)]=[P5,P5] 
+C6=[P(1*6),P((6+1)*1-1)]=[P6,P6] 
+C7=[P(1*7),P((7+1)*1-1)]=[P7,P7]
+
+那么按照上面的算法： 
+C0消费者消费P0的数据 
+C1消费者消费P1的数据 
+C2消费者消费P2的数据 
+C3消费者消费P3的数据 
+C4消费者消费P4的数据 
+C5消费者消费P5的数据
+
+C6消费者消费P6的数据 
+C7消费者消费P7的数据
+
+但是partition只有P0-P5根本就没有P6和P7，所以这两个消费者相当于是会被闲置的，就相当于占用资源，却没什么用，所以在这里真正起到作用的就是C0-C5。
+
+如下图所示：
+
+![这里写图片描述](https://img-blog.csdn.net/20170302234452253?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvcXFfMjA2NDE1NjU=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+**如果这个消费组里面的消费者少于partition数量呢（比如5个）？**
+
+那么还是依葫芦画瓢，根据上面的算法：
+
+A=6/5=1.2 
+M=2
+
+C0=[P(2*0),P((0+1)*2-1)]=[P0,P1] 
+C1=[P(2*1),P((1+1)*2-1)]=[P2,P3] 
+C2=[P(2*2),P((2+1)*2-1)]=[P4,P5]
+
+C3=[P(2*3),P((3+1)*2-1)]=[P6,P7] 
+C4=[P(2*4),P((4+1)*2-1)]=[P8,P9]
+
+同上面一样C3和C4没有起到任何作用。
+
+如下所示： 
+![这里写图片描述](https://img-blog.csdn.net/20170302234708945?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvcXFfMjA2NDE1NjU=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+**总结：**
+
+1.按照如上的算法，所以如果kafka的消费组需要增加组员，最多增加到和partition数量一致，超过的组员只会占用资源，而不起作用；
+
+2.kafka的partition的个数一定要大于消费组组员的个数，并且partition的个数对于消费组组员取模一定要为0，不然有些消费者会占用资源却不起作用；
+
+3.如果需要增加消费组的组员个数，那么也需要根据上面的算法，调整partition的个数
+
+
+
 # 参考文档
 
 http://kafka.apache.org/10/documentation.html
@@ -437,4 +555,18 @@ http://kafka.apache.org/10/documentation.html
 https://www.cnblogs.com/zlslch/p/5966004.html
 
 https://www.cnblogs.com/zlslch/p/5966004.html
+
+kafka
+
+https://www.cnblogs.com/liuwei6/p/6900686.html
+
+
+
+源码解析
+
+https://blog.csdn.net/wl044090432/article/category/6123025/2
+
+https://www.cnblogs.com/biehongli/p/8335538.html
+
+
 

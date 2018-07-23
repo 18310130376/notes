@@ -763,3 +763,65 @@ Zookeeper机制的特点：
 
 
 
+
+
+# 25、redis面试总结
+
+## （1）什么是redis
+
+[Redis](http://lib.csdn.net/base/redis) 是一个基于内存的高性能分布式key-value[数据库](http://lib.csdn.net/base/mysql)。
+
+## （2）Redis支持的数据类型
+
+Redis通过Key-Value的单值不同类型来区分, 以下是支持的类型: 
+
+String 
+
+List
+
+Set 求交集、并集 
+
+Sorted Set  
+
+hash
+
+## （3）为什么redis需要把所有数据放到内存中
+
+Redis为了达到最快的读写速度将数据都读到内存中，并通过异步的方式将数据写入磁盘。所以redis具有快速和数据持久化的特征。如果不将数据放在内存中，磁盘I/O速度为严重影响redis的性能。在内存越来越便宜的今天，redis将会越来越受欢迎。 如果设置了最大使用的内存，则数据已有记录数达到内存限值后不能继续插入新值。 
+
+## （4）读写分离模型
+
+redis支持主从的模式。原则：Master会将数据同步到slave，而slave不会将数据同步到master。Slave启动时会连接master来同步数据。
+
+这是一个典型的分布式读写分离模型。我们可以利用master来插入数据，slave提供检索服务。这样可以有效减少单个机器的并发访问数量
+
+
+
+通过增加Slave DB的数量，读的性能可以线性增长。为了避免Master DB的单点故障，集群一般都会采用两台Master DB做双机热备，所以整个集群的读和写的可用性都非常高。 读写分离[架构](http://lib.csdn.net/base/architecture)的缺陷在于，不管是Master还是Slave，每个节点都必须保存完整的数据，如果在数据量很大的情况下，集群的扩展能力还是受限于单个节点的存储能力，而且对于Write-intensive类型的应用，读写分离架构并不适合。 
+
+## （5）Redis的回收策略
+
+redis 内存数据集大小上升到一定大小的时候，就会施行数据淘汰策略（回收策略）。redis 提供 6种数据淘汰策略 
+
+- volatile-lru：从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰
+- volatile-ttl：从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰
+- volatile-random：从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰
+- allkeys-lru：从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰
+- allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰
+- no-enviction（驱逐）：禁止驱逐数据
+
+## （6）使用redis有哪些好处
+
+ (1) 速度快，因为数据存在内存中，类似于HashMap，HashMap的优势就是查找和操作的时间复杂度都是O(1)     (2) 支持丰富数据类型，支持string，list，set，sorted set，hash     
+
+(3) 支持事务，操作都是原子性，所谓的原子性就是对数据的更改要么全部执行，要么全部不执行     
+
+(4) 丰富的特性：可用于缓存，消息，按key设置过期时间，过期后将会自动删除 
+
+
+
+## （7）redis相比memcached有哪些优势？ 
+
+(1) memcached所有的值均是简单的字符串，redis作为其替代者，支持更为丰富的数据类型  　　　
+
+(2) redis的速度比memcached快很多 (3) redis可以持久化其数据 
