@@ -385,27 +385,9 @@ java -Xms512M -Xmx512M -Xss1024K -XX:PermSize=256m -XX:MaxPermSize=512m -cp Kafk
 
 Broker在zookeeper中保存为一个临时节点，节点的路径是/brokers/ids/[brokerid],每个节点会保存对应broker的IP以及端口等信息 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Kafka中的消息是否会丢失和重复消费
 
 https://blog.csdn.net/u012050154/article/category/7059799
-
-
-
-
 
 # 参考文档
 
@@ -413,4 +395,5 @@ http://kafka.apache.org/10/documentation.html
 
 https://www.cnblogs.com/zlslch/p/5966004.html
 
-https://www.cnblogs.com/smartloli/category/694246.html
+https://www.cnblogs.com/zlslch/p/5966004.html
+
