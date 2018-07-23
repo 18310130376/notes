@@ -70,6 +70,28 @@ Kafka只能保证一个分区之内消息的有序性，`在不同的分区之�
 
 
 
+# kafka与zookeeper
+
+  一个典型的Kafka集群中包含若干Produce，若干broker（一般broker数量越多，集群吞吐率越高），若干Consumer Group，以及一个Zookeeper集群。Kafka通过Zookeeper管理集群配置，选举leader，以及在Consumer Group发生变化时进行rebalance。Producer使用push模式将消息发布到broker，Consumer使用pull模式从broker订阅并消费消息。
+
+1)Producer端直接连接broker.list列表,从列表中返回TopicMetadataResponse,该Metadata包含Topic下每个partition leader建立socket连接并发送消息.
+
+2)Broker端使用zookeeper用来注册broker信息,以及监控partition leader存活性.
+
+3)Consumer端使用zookeeper用来注册consumer信息,其中包括consumer消费的partition列表等,同时也用来发现broker列表,并和partition leader建立socket连接,并获取消息。
+
+**Zookeeper作用：**管理broker、consumer
+
+创建Broker后，向zookeeper注册新的broker信息，实现在服务器正常运行下的水平拓展。具体的，通过注册watcher，获取partition的信息。
+
+Topic的注册，zookeeper会维护topic与broker的关系，通/brokers/topics/topic.name节点来记录。
+
+Producer向zookeeper中注册watcher,了解topic的partition的消息，以动态了解运行情况，实现负载均衡。Zookeepr不管理producer，只是能够提供当前broker的相关信息。
+
+Consumer可以使用group形式消费kafka中的数据。所有的group将以轮询的方式消费broker中的数据，具体的按照启动的顺序。Zookeeper会给每个consumer group一个ID,即同一份数据可以被不同的用户ID多次消费。因此这就是单播与多播的实现。以单个消费者还是以组别的方式去消费数据，由用户自己去定义。Zookeeper管理consumer的offset跟踪当前消费的offset。
+
+
+
 # 环境搭建
 
 ## 安装
@@ -138,6 +160,14 @@ topic描述
 bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic test
 ```
 
+列出所有的topic
+
+```
+bin/kafka-topics.sh --list --zookeeper localhost:2181
+```
+
+
+
 ## 发送消息
 
 Kafka 使用一个简单的命令行producer，从文件中或者从标准输入中读取消息并发送到服务端。默认的每条命令将发送一条消息
@@ -146,7 +176,8 @@ Kafka 使用一个简单的命令行producer，从文件中或者从标准输入
 
 ```
 bin/kafka-console-producer.sh --broker-list localhost:9092 --topic test 
-This is a messageThis is another message
+This is a message
+This is another message
 ```
 
 ctrl+c可以退出发送
@@ -155,6 +186,12 @@ ctrl+c可以退出发送
 
 ```
 bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic test --from-beginning
+```
+
+新版本
+
+```
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test --from-beginning
 ```
 
 
@@ -241,7 +278,9 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 测试一下容错能力.Broker 0作为leader运行，现在我们kill掉它
 
 ```
-ps -ef | grep kafka | grep server.properties
+linux ： ps -ef | grep kafka | grep server.properties 或者  ps aux | grep server-1.properties
+windows：wmic process where "caption = 'java.exe' and commandline like '%server-1.properties%'" get processid
+
 kill -p pid
 ```
 
@@ -284,6 +323,8 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 | ./kafka-consumer-offset-checker.sh --zookeeper 192.168.0.201:12181 --group group1 --topic group1 |                              |
 
 ## 配置详解
+
+see：http://kafka.apache.org/documentation.html#quickstart
 
 ```properties
 broker.id=0  #当前机器在集群中的唯一标识，和zookeeper的myid性质一样

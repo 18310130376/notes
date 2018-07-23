@@ -972,3 +972,49 @@ public class DubboDemoServiceImpl implements IDubboDemoService{
 }
 ```
 
+
+
+# dubbo白名单（Filter过滤器）
+
+实现com.alibaba.dubbo.rpc.Filter接口
+
+```
+public class AuthorityFilter implements Filter {  
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthorityFilter.class);  
+
+    private IpWhiteList ipWhiteList;  
+
+    //dubbo通过setter方式自动注入  
+    public void setIpWhiteList(IpWhiteList ipWhiteList) {  
+        this.ipWhiteList = ipWhiteList;  
+    }  
+
+    @Override  
+    public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {  
+        if (!ipWhiteList.isEnabled()) {  
+            LOGGER.debug("白名单禁用");  
+            return invoker.invoke(invocation);  
+        }  
+
+        String clientIp = RpcContext.getContext().getRemoteHost();  
+        LOGGER.debug("访问ip为{}", clientIp);  
+        List<String> allowedIps = ipWhiteList.getAllowedIps();  
+        if (allowedIps.contains(clientIp)) {  
+            return invoker.invoke(invocation);  
+        } else {  
+            return new RpcResult();  
+        }  
+    }  
+}
+```
+
+*注意：只能通过setter方式来注入其他的bean，且不要标注注解！dubbo自己会对这些bean进行注入，不需要再标注@Resource让Spring注入*
+
+在resources目录下添加纯文本文件META-INF/dubbo/com.alibaba.dubbo.rpc.Filter，内容如下： xxxFilter=com.xxx.AuthorityFilter 
+
+修改dubbo的provider配置文件，在dubbo:provider中添加配置的filter， 内容如下：
+
+```
+<dubbo:provider filter="xxxFilter" />  
+```
+
