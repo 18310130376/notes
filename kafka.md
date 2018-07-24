@@ -351,6 +351,7 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 | ./kafka-topics.sh --zookeeper localhost:2181 --delete --topic testKJ1 |                              |
 | ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper localhost:2181 --group test --topic testKJ1 | 查看consumer组内消费的offset |
 | ./kafka-consumer-offset-checker.sh --zookeeper 192.168.0.201:12181 --group group1 --topic group1 |                              |
+| ./kafka-topics.sh --alter --topict_test --zookeeper master:2181 --partitions 10 | 添加分区                     |
 
 ## 配置详解
 
@@ -368,6 +369,7 @@ socket.receive.buffer.bytes=102400 #kafka接收缓冲区大小，当数据到达
 socket.request.max.bytes=104857600 #这个参数是向kafka请求消息或者向kafka发送消息的请请求的最大数，这个值不能超过java的堆栈大小
 num.partitions=1 #默认的分区数，一个topic默认1个分区数
 log.retention.hours=168 #默认消息的最大持久化时间，168小时，7天
+log.retention.bytes=-1	控制log文件最大尺寸
 message.max.byte=5242880  #消息保存的最大值5M
 default.replication.factor=2  #kafka保存消息的副本数，如果一个副本失效了，另一个还可以继续提供服务
 replica.fetch.max.bytes=5242880  #取消息的最大直接数
@@ -481,7 +483,7 @@ https://blog.csdn.net/qq_20641565/article/details/59746101
 **如果按照如图所示，那么这一个消费组中的消费者会怎么取kafka的数据呢？** 
 其实kafka的消费端有一个均衡算法，算法如下：
 
-1.A=(partition数量/同分组消费者总个数) 
+1.A=(partition数量/同分组消费者总个数（同groupid的线程数）) 
 2.M=对上面所得到的A值小数点第一位向上取整 
 3.计算出该消费者拉取数据的patition合集：Ci = [P(M*i ),P((i + 1) * M -1)]
 
@@ -548,11 +550,406 @@ C4=[P(2*4),P((4+1)*2-1)]=[P8,P9]
 
 
 
+假设一个topic test 被groupA消费了，现在启动另外一个新的groupB来消费test，默认test-groupB的offset不是0，而是没有新建立，除非当test有数据的时候，groupB会收到该数据，该条数据也是第一条数据，groupB的offset也是刚初始化的ofsert, 除非用显式的用–from-beginnging 来获取从0开始数据 
+
+
+
+# Producer消息发送的应答机制
+
+```
+ 设置发送数据是否需要服务端的反馈,三个值0,1,-1。
+0: producer不会等待broker发送ack。 
+1: 当leader接收到消息之后发送ack。
+-1: 当所有的follower都同步消息成功后发送ack。
+request.required.acks=0。
+```
+
+
+
+# 实战
+
+## 代码配置
+
+第一步：配置num.partitions数量。
+
+注意：在配置文件server.properties中指定了partition的数量num.partitions。这指的是多单个topic的partition数量之和。若有多个broker,可能partition分布在不同的节点上，则多个broker的所有partitioin数量加起来为num.partitions
+
+0.7中producer的配置有几项是相排斥的，设置了其一，就不能设置其二
+比如：
+　　broker.list 与 zk.connect 不能同时设置
+　　broker.list 与 partitioner.class 不能同时设置
+如果这么干，编译时无所谓，运行时会抛异常
+
+
+
+第二步：通过消息的key决定消息落在哪个partition（非必须）
+
+1，指定broker**
+
+props.put("broker.list", "0:10.10.10.10:9092");//直接连接kafka
+设置这项后，就不能设置partitioner.class了，可是我在运行的时候发现，此时所有的数据都发往10.10.10.10的4个分区，并没有只发给一个分区。我换了syncproducer里的send(topic,partitionid,list)都没用。
+**2，指定partition**
+props.put("partitioner.class","com.kafka.myparitioner.CidPartitioner");
+props.put("zk.connect", "10.10.10.10:2181");//连接zk
+
+上面的 com.kafka.myparitioner.CidPartitioner 为自己实现的类，注意要自己实现完整的包名
+CidPartitioner继承了Partitioner类，其中实现的partition方法指定了通过key计算partition的方法
+
+
+
+第三步：在kafka中，同一个topic，被分成了多个partition，这多个partition之间是互相独立的
+
+之所以要分成多个partition，是为了提高并发度，多个partition并行的进行发送/消费，但这却没有办法保证消息的顺序问题。
+
+一个解决办法是，一个topic只用一个partition，但这样很显然限制了灵活性。
+
+还有一个办法就是，所有发送的消息，用同一个key，这样同样的key会落在一个partition里面
+
+总结：
+
+1：分区的总数由server.properties中指定了partition的数量num.partitions决定
+
+2：生产者数据落在哪个partition由消息的key决定
+
+3：如果数据落在同一个partition，就不需要多个consumer组了。
+
+
+
+## 从头开始消费topic全量数据
+
+
+
+消费者要从头开始消费某个topic的全量数据，需要满足2个条件（spring-kafka）：
+
+```
+（1）使用一个全新的"group.id"（就是之前没有被任何消费者使用过）;
+
+（2）指定"auto.offset.reset"参数的值为earliest；
+```
+
+对应的spring-kafka消费者客户端配置参数为：
+
+```
+<!-- 指定消费组名 -->
+<entry key="group.id" value="fg11"/>
+<!-- 从何处开始消费,latest 表示消费最新消息,earliest 表示从头开始消费,none表示抛出异常,默认latest -->
+<entry key="auto.offset.reset" value="earliest"/>
+```
+
+ 
+
+注意：从kafka-0.9版本及以后，kafka的消费者组和offset信息就不存zookeeper了，而是存到broker服务器上，所以，如果你为某个消费者指定了一个消费者组名称（group.id），那么，一旦这个消费者启动，这个消费者组名和它要消费的那个topic的offset信息就会被记录在broker服务器上。
+
+比如我们为消费者A指定了消费者组（group.id）为fg11，那么可以使用如下命令查看消费者组的消费情况：
+
+```
+bin/kafka-consumer-groups.sh --bootstrap-server 172.17.6.10:9092 --describe --group fg11
+```
+
+显示结果如下：
+
+```
+TOPIC   PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG  CONSUMER-ID                                      HOST              CLIENT-ID 
+friend  0          6               6               0    consumer-1-08c856a3-ae39-4f73-a2da-4de1795c6ad4  /192.168.207.127  consumer-1
+friend  1          2               2               0    consumer-1-08c856a3-ae39-4f73-a2da-4de1795c6ad4  /192.168.207.127  consumer-1
+friend  2          4               4               0    consumer-1-08c856a3-ae39-4f73-a2da-4de1795c6ad4  /192.168.207.127  consumer-1
+```
+
+ 
+
+其实friend这个topic共有3个分区，消息总数为12条，其实在消费者A启动之前，这12条消息已经被其他某个组的消费者消费过了。而我们虽然为消费者A指定了一个全新的group.id为fg11，但是如果我们在启动消费者A之前，指定的"auto.offset.reset"参数的值是latest而不是earliest的话（就算你停止消费者，然后改为earliest也是没有用的），启动之后它将不会消费以前的消息，除非friend这个topic的分区中有了新的消息它才会消费。
+
+
+
+所以一定要在消费者启动之前就保证group.id是全新的，而且要指定earliest而不是latest。
+
+
+
+## 指定的分区写入数据
+
+```
+producer.send(new ProducerRecord<String, String>(topic,2, businessKey, messageStr),new Callback() {
+					
+		@Override
+		public void onCompletion(RecordMetadata metadata, Exception exception) {
+		System.out.println("Producer Message: Partition:"+metadata.partition()+",Offset:"+metadata.offset());
+		System.out.println(messageStr);
+}
+```
+
+
+
+## kafka笔记-Kafka在zookeeper中的存储结构
+
+### 一、topic注册信息
+
+/brokers/topics/[topic] 
+
+存储某个topic的partitions所有分配信息
+
+```
+Schema:
+ 
+{
+    "version": "版本编号目前固定为数字1",
+    "partitions": {
+        "partitionId编号": [
+            同步副本组brokerId列表
+        ],
+        "partitionId编号": [
+            同步副本组brokerId列表
+        ],
+        .......
+    }
+}
+ 
+Example:
+{
+"version": 1,
+"partitions": {
+"0": [1, 2],
+"1": [2, 1],
+"2": [1, 2],
+}
+}
+说明：紫红色为patitions编号，蓝色为同步副本组brokerId列表
+```
+
+### 二.partition状态信息
+
+/brokers/topics/[topic]/partitions/[0...N]  其中[0..N]表示partition索引号
+
+/brokers/topics/[topic]/partitions/[partitionId]/state
+
+```
+Schema:
+ 
+{
+"controller_epoch": 表示kafka集群中的中央控制器选举次数,
+"leader": 表示该partition选举leader的brokerId,
+"version": 版本编号默认为1,
+"leader_epoch": 该partition leader选举次数,
+"isr": [同步副本组brokerId列表]
+}
+ 
+ 
+Example:
+ 
+{
+"controller_epoch": 1,
+"leader": 2,
+"version": 1,
+"leader_epoch": 0,
+"isr": [2, 1]
+}
+```
+
+
+
+### 三、Broker注册信息
+
+/brokers/ids/[0...N]                 
+
+每个broker的配置文件中都需要指定一个数字类型的id(全局不可重复),此节点为临时znode(EPHEMERAL)
+
+```
+Schema:
+ 
+{
+    "jmx_port": jmx端口号,
+    "timestamp": kafka broker初始启动时的时间戳,
+    "host": 主机名或ip地址,
+    "version": 版本编号默认为1,
+    "port": kafka broker的服务端端口号,由server.properties中参数port确定
+}
+ 
+ 
+Example:
+ 
+{
+    "jmx_port": 6061,
+    "timestamp":"1403061899859"
+    "version": 1,
+    "host": "192.168.1.148",
+    "port": 9092
+}
+```
+
+
+
+### 四、Kafka Java API操作topic
+
+创建topic
+
+```
+ZkUtils zkUtils = ZkUtils.apply("localhost:2181", 30000, 30000, JaasUtils.isZkSecurityEnabled());
+// 创建一个单分区单副本名为t1的topic
+AdminUtils.createTopic(zkUtils, "t1", 1, 1, new Properties(), RackAwareMode.Enforced$.MODULE$);
+zkUtils.close();
+```
+
+删除topic
+
+```
+ZkUtils zkUtils = ZkUtils.apply("localhost:2181", 30000, 30000, JaasUtils.isZkSecurityEnabled());
+// 删除topic 't1'
+AdminUtils.deleteTopic(zkUtils, "t1");
+zkUtils.close();
+```
+
+查询topic
+
+```
+ZkUtils zkUtils = ZkUtils.apply("localhost:2181", 30000, 30000, JaasUtils.isZkSecurityEnabled());
+// 获取topic 'test'的topic属性属性
+Properties props = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), "test");
+// 查询topic-level属性
+Iterator it = props.entrySet().iterator();
+while(it.hasNext()){
+    Map.Entry entry=(Map.Entry)it.next();
+    Object key = entry.getKey();
+    Object value = entry.getValue();
+    System.out.println(key + " = " + value);
+}
+zkUtils.close();
+```
+
+修改topic
+
+```
+ZkUtils zkUtils = ZkUtils.apply("localhost:2181", 30000, 30000, JaasUtils.isZkSecurityEnabled());
+Properties props = AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic(), "test");
+// 增加topic级别属性
+props.put("min.cleanable.dirty.ratio", "0.3");
+// 删除topic级别属性
+props.remove("max.message.bytes");
+// 修改topic 'test'的属性
+AdminUtils.changeTopicConfig(zkUtils, "test", props);
+zkUtils.close();
+```
+
+
+
+```
+public class AdminClientTest {
+ 
+    private static final String TEST_TOPIC = "test-topic";
+ 
+    public static void main(String[] args) throws Exception {
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092,localhost:9093");
+ 
+        try (AdminClient client = AdminClient.create(props)) {
+            describeCluster(client);
+            createTopics(client);
+            listAllTopics(client);
+            describeTopics(client);
+            alterConfigs(client);
+            describeConfig(client);
+            deleteTopics(client);
+        }
+    }
+ 
+    /**
+     * describe the cluster
+     * @param client
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
+    public static void describeCluster(AdminClient client) throws ExecutionException, InterruptedException {
+        DescribeClusterResult ret = client.describeCluster();
+        System.out.println(String.format("Cluster id: %s, controller: %s", ret.clusterId().get(), ret.controller().get()));
+        System.out.println("Current cluster nodes info: ");
+        for (Node node : ret.nodes().get()) {
+            System.out.println(node);
+        }
+    }
+ 
+    /**
+     * describe topic's config
+     * @param client
+     */
+    public static void describeConfig(AdminClient client) throws ExecutionException, InterruptedException {
+        DescribeConfigsResult ret = client.describeConfigs(Collections.singleton(new ConfigResource(ConfigResource.Type.TOPIC, TEST_TOPIC)));
+        Map<ConfigResource, Config> configs = ret.all().get();
+        for (Map.Entry<ConfigResource, Config> entry : configs.entrySet()) {
+            ConfigResource key = entry.getKey();
+            Config value = entry.getValue();
+            System.out.println(String.format("Resource type: %s, resource name: %s", key.type(), key.name()));
+            Collection<ConfigEntry> configEntries = value.entries();
+            for (ConfigEntry each : configEntries) {
+                System.out.println(each.name() + " = " + each.value());
+            }
+        }
+ 
+    }
+ 
+    /**
+     * alter config for topics
+     * @param client
+     */
+    public static void alterConfigs(AdminClient client) throws ExecutionException, InterruptedException {
+        Config topicConfig = new Config(Arrays.asList(new ConfigEntry("cleanup.policy", "compact")));
+        client.alterConfigs(Collections.singletonMap(
+                new ConfigResource(ConfigResource.Type.TOPIC, TEST_TOPIC), topicConfig)).all().get();
+    }
+ 
+    /**
+     * delete the given topics
+     * @param client
+     */
+    public static void deleteTopics(AdminClient client) throws ExecutionException, InterruptedException {
+        KafkaFuture<Void> futures = client.deleteTopics(Arrays.asList(TEST_TOPIC)).all();
+        futures.get();
+    }
+ 
+    /**
+     * describe the given topics
+     * @param client
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
+    public static void describeTopics(AdminClient client) throws ExecutionException, InterruptedException {
+        DescribeTopicsResult ret = client.describeTopics(Arrays.asList(TEST_TOPIC, "__consumer_offsets"));
+        Map<String, TopicDescription> topics = ret.all().get();
+        for (Map.Entry<String, TopicDescription> entry : topics.entrySet()) {
+            System.out.println(entry.getKey() + " ===> " + entry.getValue());
+        }
+    }
+ 
+    /**
+     * create multiple sample topics
+     * @param client
+     */
+    public static void createTopics(AdminClient client) throws ExecutionException, InterruptedException {
+        NewTopic newTopic = new NewTopic(TEST_TOPIC, 3, (short)3);
+        CreateTopicsResult ret = client.createTopics(Arrays.asList(newTopic));
+        ret.all().get();
+    }
+ 
+    /**
+     * print all topics in the cluster
+     * @param client
+     * @throws ExecutionException
+     * @throws InterruptedException
+     */
+    public static void listAllTopics(AdminClient client) throws ExecutionException, InterruptedException {
+        ListTopicsOptions options = new ListTopicsOptions();
+        options.listInternal(true); // includes internal topics such as __consumer_offsets
+        ListTopicsResult topics = client.listTopics(options);
+        Set<String> topicNames = topics.names().get();
+        System.out.println("Current topics in this cluster: " + topicNames);
+    }
+}
+```
+
+
+
+
+
 # 参考文档
 
 http://kafka.apache.org/10/documentation.html
-
-https://www.cnblogs.com/zlslch/p/5966004.html
 
 https://www.cnblogs.com/zlslch/p/5966004.html
 
@@ -564,9 +961,9 @@ https://www.cnblogs.com/liuwei6/p/6900686.html
 
 源码解析
 
-https://blog.csdn.net/wl044090432/article/category/6123025/2
+http://www.cnblogs.com/huxi2b/p/6124937.html
 
-https://www.cnblogs.com/biehongli/p/8335538.html
+
 
 
 

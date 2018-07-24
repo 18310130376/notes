@@ -69,3 +69,31 @@ wget http://apache.fayea.com/tomcat/tomcat-7/v7.0.75/bin/apache-tomcat-7.0.75.ta
 
 
 https://www.cnblogs.com/wade-luffy/category/853135.html
+
+
+
+### 三 、线程异常
+
+```
+	protected void start() {
+		Assert.notNull(connector, "connector is null");
+		thread = new Thread(new Runnable() {
+			public void run() {
+				process();
+			}
+		});
+		thread.setUncaughtExceptionHandler(handler);
+		thread.start();
+		running = true;
+		logger.info("start the canal thread!");
+	}
+```
+
+```
+protected Thread.UncaughtExceptionHandler handler = new Thread.UncaughtExceptionHandler() {
+		public void uncaughtException(Thread t, Throwable e) {
+			logger.error("parse events has an error", e);
+		}
+};
+```
+
