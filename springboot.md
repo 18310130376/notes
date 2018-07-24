@@ -1,3 +1,7 @@
+# 新版本 Spring Boot 2.0 
+
+
+
 see:https://github.com/vector4wang/spring-boot-quick
 
 see:https://www.cnblogs.com/sunny3096/category/1034222.html
@@ -884,3 +888,4 @@ java -Xms256m -Xmx512m -jar -Dlogging.file=/var/logs/ebag-school.log LK-school-1
 | ${project.packaging} 打包类型，缺省为jar;                    |      |
 | ${project.version}表示项目版本,与${version}相同;             |      |
 | ${basedir}表示项目根目录,即包含pom.xml文件的目录;            |      |
+
