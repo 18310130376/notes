@@ -606,6 +606,30 @@ mvn test -Penv=test
 
 假设两台机器A，B部署同样的项目，发布时只需要在一台机器上A上deploy，此时A的target有了jar，执行运行。远程仓库有了jar，给第三方提供依赖。此时部署B时只需要mvn clean install 在B上打同样的jar包就可以，不用deploy到远程仓库了。
 
+
+
+#### maven多模块打包
+
+首先切换到工程的根目录
+
+单独构建模块jsoft-web，同时会构建jsoft-web模块依赖的其他模块
+
+mvn install -pl jsoft-web -am
+单独构建模块jsoft-common，同时构建依赖模块jsoft-common的其他模块 
+
+mvn install -pl jsoft-common -am -amd
+
+
+按照上面的配置好以后，执行下面的命令就好了
+
+  mvn clean package
+1
+但是如果使用了多个模块，上面的命令是会吧全部的模块都执行打包的，如果只是打包某个模块的话，可以用
+
+  mvn -pl A -am install
+
+
+
 #### maven打包 install package deploy区别
 
 mvn clean package依次执行了clean、resources、compile、testResources、testCompile、test、jar(打包)等７个阶段。
