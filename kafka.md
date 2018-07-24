@@ -415,6 +415,19 @@ Producer主要配置
 
 
 
+写入数据配置
+
+```
+props.put("compression.type", "gzip");
+props.put("linger.ms", "50");
+props.put("acks", "all");
+props.put("retries ", 30);
+props.put("reconnect.backoff.ms ", 20000);
+props.put("retry.backoff.ms", 20000);
+```
+
+
+
 # 搭建Kafka开发环境
 
 搭建开发环境需要引入kafka的jar包，一种方式是将Kafka安装包中lib下的jar包加入到项目的classpath中，这种比较简单了。不过我们使用另一种更加流行的方式：使用maven管理jar包依赖。
@@ -461,6 +474,12 @@ Broker在zookeeper中保存为一个临时节点，节点的路径是/brokers/id
 # Kafka中的消息是否会丢失和重复消费
 
 https://blog.csdn.net/u012050154/article/category/7059799
+
+# 消息重试对顺序消息的影响
+
+对于一个有着先后顺序的消息A、B，正常情况下应该是A先发送完成后再发送B，但是在异常情况下，在A发送失败的情况下，B发送成功，而A由于重试机制在B发送完成之后重试发送成功了。 这时对于本身顺序为AB的消息顺序变成了BA 
+
+max.in.flight.requests.per.connection = 1（若没有启用retries，则不必调整该参数）如果您没有启动retries亦或是调整之后还发现乱序，可以结合日志进一步研究发生乱序的原因。 
 
 
 
@@ -584,7 +603,7 @@ request.required.acks=0。
 
 第二步：通过消息的key决定消息落在哪个partition（非必须）
 
-1，指定broker**
+**1，**指定broker**
 
 props.put("broker.list", "0:10.10.10.10:9092");//直接连接kafka
 设置这项后，就不能设置partitioner.class了，可是我在运行的时候发现，此时所有的数据都发往10.10.10.10的4个分区，并没有只发给一个分区。我换了syncproducer里的send(topic,partitionid,list)都没用。
@@ -944,6 +963,63 @@ public class AdminClientTest {
 ```
 
 
+
+# 名词概念
+
+## Offset
+
+Offset专指Partition以及User Group而言，记录某个user group在某个partiton中当前已经消费到达的位置。
+
+## User group
+
+为了便于实现MQ中的多播，重复消费等引入的概念。如果ConsumerA以及ConsumerB同在一个UserGroup，那么ConsumerA消费的数据ConsumerB就无法消费了。
+
+即：所有usergroup中的consumer使用一套offset。
+
+User1，User2同属一个userGroup时，即表示二者共用一套Offset。因每个partition 的offset只能由一个线程维护，因此注定了每个UserGroup里只能有一个消费线程对一个partition进行消费。
+
+同样，如果希望实现多播，那就User1和User2用两个userGroup。
+
+## Broker
+
+物理概念，指服务于Kafka的一个node。
+
+## topic
+
+MQ中的抽象概念，是一个消费标示。用于保证Producer以及Consumer能够通过该标示进行对接。可以理解为一种Naming方式。
+
+## partition
+
+Topic的一个子概念，一个topic可具有多个partition，但Partition一定属于一个topic。
+
+值得注意的是：
+
+- 在实现上都是以每个Partition为基本实现单元的。
+- 消费时，每个消费线程最多只能使用一个partition。
+- 一个topic中partition的数量，就是每个user group中消费该topic的最大并行度数量。
+
+## 副本问题的提出
+
+日志副本策略是可靠性的核心问题之一，其实现方式也是多种多样的。包括无主模型，通过paxos之类的协议保证消息顺序，但更简单直接的方式是使用主从结构，主决定顺序，从拷贝主的信息。
+
+如果主不挂，从节点没有存在的意义。但主挂了时，我们需要从备份节点中选出一个主。与此同时，更重要的是：保证一致性。在这里一致性是指:
+
+```
+主ack了的消息，kafka切换主之后，依然可被消费。
+主没有ack的消息，kafka切换主之后，依然没有被存储。
+```
+
+因此这里产生了一个trade off：Leader应该什么时候ack呢？
+
+这个问题简直是分布式环境里永恒（最坑爹）的主题之一了。其引申出的本质问题是，你到底要什么？
+
+- 要可靠性
+
+当然可以，leader收到消息之后，等follower 返回ok了ack，慢死。但好处是，主挂了，哪个follower都可以做主，大家数据都一样嘛
+
+- 要速度
+
+当然可以，leader收到消息写入本地就ack，然后再发给follower。问题也很显而易见，最坏得情况下，有个消息leader返回ack了，但follower因为各种原因没有写入，主挂了，丢数据了。
 
 
 
