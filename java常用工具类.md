@@ -608,6 +608,33 @@ public class Client{
 
 
 
+# 单例
+
+```java
+package com.audition;
+public class Singleton {
+    
+	private Singleton() {
+        
+	}
+	private static Singleton singleton = null;
+	
+	public static Singleton newInstance() {
+		
+		if(singleton == null) {
+			synchronized (Singleton.class) {
+				if(singleton == null) {
+					singleton = new Singleton();
+				}
+			}
+		}
+		return singleton;
+	}
+}
+```
+
+
+
 # 文件夹监听变化
 
 ```java
@@ -1135,6 +1162,140 @@ public class ThreadLocalDemo implements Runnable{
 
 
 
+# 同步代码块
+
+一  ：所谓加锁，就是为了防止多个线程同时操作一份数据，如果多个线程操作的数据都是各 自的，那么就没有加锁的必要 
+
+二  ：共享数据的锁对于访问他们的线程来说必须是同一份，否则锁只能私有的锁，各锁个的， 起不到保护共享数据的目的，试想一下将 Object lock 的定义放到 run 方法里面，每次都 会实例化一个 lock，每个线程获取的锁都是不一样的，也就没有争抢可言，说的在通俗 一点甲楼有一个门上了锁，A 要进门，乙楼有一个门上了锁 B 要进门，A 和 B 抢的不是 一个门，因此不存在数据保护或者共享；
+
+三  ：锁的定义可以是任意的一个对象，该对象可以不参与任何运算，只要保证在访问的多个 线程看来他是唯一的即可； 
+
+```java
+package com.stydy;
+
+public class TicketWindow2 implements Runnable {
+
+	private int max_value = 0;
+	private Object lock = new Object();
+
+	@Override
+	public void run() {
+		while (true) {
+			synchronized (lock) {//每次只能有一个线程进行访问,加在临界点这里
+				if (max_value > 50)
+					break;
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+
+				}
+				System.out.println(Thread.currentThread().getName() + ":"+ max_value++);
+			}
+			//其他线程才有可能获取到前一个线程所释放掉的锁，重新执行代码逻辑
+		}
+	}
+}
+```
+
+```java
+package com.stydy;
+
+public class Bank2 {
+	public static void main(String[] args)
+	{
+	TicketWindow2 tw2 = new TicketWindow2();
+	Thread t1 = new Thread(tw2);
+	Thread t2 = new Thread(tw2);
+	Thread t3 = new Thread(tw2);
+	t1.start();
+	t2.start();
+	t3.start();
+	}
+}
+```
+
+方式二
+
+```java
+package com.stydy;
+
+public class TicketWindow2 implements Runnable {
+
+	private int max_value = 0;
+
+	public void run() {
+		while (true) {
+			if (ticket())
+				break;
+		}
+	}
+	
+	private synchronized boolean ticket() {
+		if (max_value > 500) {
+			return true;
+		}
+		try {
+			Thread.sleep(10);
+		} catch (InterruptedException e) {
+		}
+		System.out
+				.println(Thread.currentThread().getName() + ":" + max_value++);
+		return false;
+	}
+}
+```
+
+
+
+# 静态锁
+
+静态锁，锁是类的字节码信息，因此如果一个类的函数为静态方法，那么我们需要通过 该类的 class 信息进行加锁； 
+
+# 死锁
+
+假设有两个线程 A 和 B，其中 A 持有 B 想要的锁，而 B 持有 A 想要的锁，两个都在等 待各自释放所需要的锁，这样的情况很容易引起死锁现象的发生
+
+
+
+# yield 
+
+线程的 yield 方法就是短暂放弃 CPU 执行权，但是它刹那点就和其他线程争抢 CPU 执行 权 
+
+```javascript
+thread.yield ()
+```
+
+# Join 
+
+线程的 Join 方法就是临时加入一个线程，等到该线程执 行结束之后才能运行主线程 
+
+# 线程出现异常捕获 
+
+```java
+package com.wenhuisoft.chapter7;
+
+public class FetalException {
+	static class MyRunnable implements Runnable {
+		public void run() {
+			throw new Error();
+		}
+	}
+
+	public static void main(String[] args) {
+		Thread t = new Thread(new MyRunnable());
+		t.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+			public void uncaughtException(Thread t, Throwable e) {
+				System.out.println(t.getName());
+				System.out.println(e);
+			}
+		});
+		t.start();
+	}
+}
+```
+
+
+
 # 线程管理
 
 Executors提供创线程池的方式：
@@ -1150,3 +1311,149 @@ ScheduledExecutorService product = Executors.newScheduledThreadPool(1)
 
 
 ThreadPoolExecutor提供了线程池监控相关方法
+
+
+
+# 抽象类
+
+```java
+package com.stydy;
+
+public abstract class Diagram {
+
+	abstract protected void doBusiness(int size);
+	
+	abstract protected void afterDoBusiness();
+
+	public final void exec(String msg) {
+		int len = msg.getBytes().length;
+		doBusiness(len);
+		afterDoBusiness();
+	}
+}
+```
+
+```java
+package com.stydy;
+
+public class StarDiagram extends Diagram {
+
+	@Override
+	protected void doBusiness(int size) {
+		System.out.println("doBusiness");
+	}
+
+	@Override
+	protected void afterDoBusiness() {
+		System.out.println("afterDoBusiness");
+	}
+}
+```
+
+```java
+package com.stydy;
+
+public class TemplateTest {
+
+	public static void main(String[] args) {
+		Diagram diagram = new StarDiagram();
+		diagram.exec("wangwenjun");
+	}
+}
+```
+
+
+
+# 设计模式
+
+## 策略模式
+
+```java
+package com.wenhuisoft.chapter2;
+/**
+* 策略接口，主要是规范或者让结构程序知道如何进行调用
+*/
+interface CalcStrategy
+{
+int calc(int x,int y);
+}
+/**
+* 程序的结构，里面约束了整个程序的框架和执行的大概流程，但并未涉及到业务层面的东西
+* 只是将一个数据如何流入如何流出做了规范，只是提供了一个默认的逻辑实现
+* @author Administrator
+*/
+class Calculator
+{
+private int x = 0;
+private int y = 0;
+private CalcStrategy strategy = null;
+public Calculator(int x,int y)
+{
+this.x = x;
+this.y = y;
+}
+public Calculator(int x,int y,CalcStrategy strategy)
+{
+this(x,y);
+this.strategy = strategy;
+}
+public int calc(int x,int y)
+{
+   return x+y;
+}
+    
+/**
+* 只需关注接口，并且将接口用到的入参传递进去即可，并不关心到底具体是要如何进行业务封装
+* @return
+*/
+public int result()
+{
+if(null!=strategy)
+{
+return strategy.calc(x, y);
+}
+return calc(x, y);
+}
+```
+
+```java
+class AddStrategy implements CalcStrategy
+{
+public int calc(int x, int y)
+{
+return x+y;
+}
+}
+class SubStrategy implements CalcStrategy
+{
+public int calc(int x, int y)
+{
+return x-y;
+}
+}
+```
+
+```java
+public class StrategyTest
+{
+public static void main(String[] args)
+{
+//没有任何策略时的结果
+Calculator c = new Calculator(30, 24);
+System.out.println(c.result());
+//传入减法策略的结果
+Calculator c1 = new Calculator(10,30,new SubStrategy());
+System.out.println(c1.result());
+//看到这里就可以看到策略模式强大了，算法可以随意设置，系统的结构并不会发生任何变化
+Calculator c2 = new Calculator(30, 40, new CalcStrategy()
+{
+public int calc(int x, int y)
+{
+return ((x+10)-(y*3))/2;
+}
+});
+System.out.println(c2.result());
+  }  
+}
+```
+
