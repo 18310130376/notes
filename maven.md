@@ -1604,6 +1604,19 @@ mvn --update-snapshots clean deploy -Dmaven.test.skip=true -DreleaseEnv=${env}
 </mirror>
 ```
 
+#### maven 错误解决办法集
+
+一、mavenFailed to execute goal org.apache.maven.plugins:maven-surefire-plugin解决方法
+
+1、测试代码没有获得通过，可以尝重命名test包下的类名，然后再执行你的操作试试。
+2、选中maven项目，右键>属性>java构建路径>源代码，然后把里面几个文件夹全部删除，然后再重新添加之前删掉的文件夹，再执行你的操作
+二、Could not calculate build plan: Plugin org.apache.maven.plugins:maven-resources-plugin:2.6 or one of
+1、查看windows -> Preferences -> maven 的settings.xml文件中.m2的位置
+2、然后将.m2\repository\org\apache\maven\plugins目录下的文件夹全部删除
+3、选中maven项目，右键--》maven--》update project 让maven重新下载依赖包
+三、Failure to transfer org.apache.maven.plugins:maven-surefire-plugin:pom:2.7.1 from
+选中maven项目，右键--》maven--》update project 让maven重新下载依赖包
+
 
 
 #### 学习文档
