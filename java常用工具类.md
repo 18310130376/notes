@@ -1314,6 +1314,223 @@ ThreadPoolExecutor提供了线程池监控相关方法
 
 
 
+## Java线程池
+
+`线程池`：顾名思义，用一个池子装载多个线程，使用池子去管理多个线程。
+
+`问题来源`：应用大量通过new Thread()方法创建执行时间短的线程，较大的消耗系统资源并且系统的响应速度变慢。
+
+`解决办法`：使用线程池管理短时间执行完毕的大量线程，通过重用已存在的线程，降低线程创建和销毁造成的消耗，提高系统响应速度。
+
+Executors静态方法：创建线程池
+
+
+
+| 方法                             | 描述                                                         | 返回对象                 |
+| -------------------------------- | ------------------------------------------------------------ | ------------------------ |
+| newCachedThreadPool              | 创建有缓存功能的线程池， 无界线程池，可以进行自动线程回收    | ExecutorService          |
+| newFixedThreadPool               | 创建固定大小的线程池                                         | ExecutorService          |
+| newSingleThreadExecutor          | 创建单线程的线程池 。单个线程的线程池，即线程池中每次只有一个线程工作，单线程串行执行任务 | ExecutorService          |
+| newScheduledThreadPool           | 创建固定大小的线程池，指定延迟                               | ScheduledExecutorService |
+| newSingleThreadScheduledExecutor | 创建单线程的线程池，指定延迟                                 | ScheduledExecutorService |
+
+线程池使用方法：
+
+| 对象            |                        |                                      |
+| --------------- | ---------------------- | ------------------------------------ |
+| ExecutorService | submit(Runnable task)  | 提交任务 ，有返回值 返回future       |
+| ExecutorService | execute(Runnable task) | 执行任务 ，没有返回值                |
+| ExecutorService | shutdown               | 关闭线程池，但是会执行完已提交的任务 |
+| ExecutorService | shutdownNow            | 关闭线程池，关闭所有任务             |
+|                 |                        |                                      |
+
+
+
+​       1、corePoolSize(线程池基本大小) >= 0;【当前最大并行运行线程数】
+
+　　2、maximumPoolSize(线程池最大大小) >= 1;【当前最大创建线程数】
+
+　　3、keepAliveTime(线程存活保持时间) >= 0;【线程在线程池空闲时间超过这个时间，会被终止掉】
+
+　　4、workQueue(任务队列)不能为空；【用于传输和保存等待执行任务的阻塞队列】
+
+　　5、handler(线程饱和策略)不能为空。【当线程池和队列已满的处理策略】
+
+
+
+ Executors类提供静态工厂方法默认参数
+
+| 工厂方法                                 | corePoolSize | maximumPoolSize   | KeepAliveTime | workQueue           |
+| ---------------------------------------- | ------------ | ----------------- | ------------- | ------------------- |
+| nreCachedThreadPool()                    | 0            | Integer.MAX_VALUE | 60L           | SyschronousQueue    |
+| newFixedThreadPool(int nThreads)         | nThreads     | nThreads          | 0             | LindedBlockingQueue |
+| newSingleThreadExecutor()                | 1            | 1                 | 0             | LindedBlockingQueue |
+| newScheduledThreadPool(int corePoolSize) | corePoolSize | Integer.MAX_VALUE | 0             | DelayedWorkQueue    |
+| newSingleThreadScheduledExecutor()       | 1            | Integer.MAX_VALUE | 0             | DelayedWorkQueue    |
+
+
+
+
+
+## 定时任务
+
+方式一：
+
+```java
+ScheduledExecutorService newScheduledThreadPool = Executors.newScheduledThreadPool(1);
+		newScheduledThreadPool.scheduleAtFixedRate(command, initialDelay, period, unit)
+```
+
+方式二：
+
+```java
+ScheduledThreadPoolExecutor scheduledThreadPoolExecutor= new ScheduledThreadPoolExecutor(1);
+		scheduledThreadPoolExecutor.scheduleAtFixedRate(command, initialDelay, period, unit)
+```
+
+
+
+## BlockingQueue
+
+### SynchronousQueue
+
+直接提交策略
+
+首先SynchronousQueue是`无界`的，也就是说他存数任务的能力是没有限制的，但是由于该Queue本身的特性，**在某次添加元素后必须等待其他线程取走后才能继续添加**。在这里不是核心线程便是新创建的线程，但是我们试想一样下，下面的场景
+
+### LinkedBlockingQueue
+
+无界队列策略
+
+### ArrayBlockingQueue
+
+有界队列
+
+
+
+## Java 线程池运行状态
+
+总线程数 = 排队线程数 + 活动线程数 + 执行完成的线程数。
+
+```java
+package com.audition;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+public class ExecutorServiceTest {
+	
+	private static ExecutorService es = new ThreadPoolExecutor(50, 100, 0L, TimeUnit.MILLISECONDS,
+			new LinkedBlockingQueue<Runnable>(100000));
+
+	public static void main(String[] args) throws Exception {
+		for (int i = 0; i < 100000; i++) {
+			es.execute(() -> {
+				
+			});
+		}
+
+		ThreadPoolExecutor tpe = ((ThreadPoolExecutor) es);
+
+		while (true) {
+
+			int queueSize = tpe.getQueue().size();
+			System.out.println("当前排队线程数：" + queueSize);
+
+			int activeCount = tpe.getActiveCount();
+			System.out.println("当前活动线程数：" + activeCount);
+
+			long completedTaskCount = tpe.getCompletedTaskCount();
+			System.out.println("执行完成线程数：" + completedTaskCount);
+
+			long taskCount = tpe.getTaskCount();
+			System.out.println("总线程数：" + taskCount);
+
+			Thread.sleep(3000);
+		}
+	}
+}
+```
+
+```java
+package com.audition;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+public class ExecutorServiceTest {
+
+	static ExecutorService executorService = Executors.newFixedThreadPool(30);
+
+	final static CountDownLatch latch = new CountDownLatch(1) {
+
+		@Override
+		public void await() throws InterruptedException {
+			super.await();
+			System.out.println("-----------all finished--------");
+		}
+	};
+
+	public static void main(String[] args) throws InterruptedException {
+
+		for (int i = 0; i < 100; i++) {
+			executorService.submit(new CustomerThread());
+		}
+		isAllTaskFinished();
+		latch.await();
+	}
+
+	public static void isAllTaskFinished() throws InterruptedException {
+
+		ThreadPoolExecutor tpe = ((ThreadPoolExecutor) executorService);
+
+		boolean isFinished = false;
+
+		while (!isFinished) {
+
+			int queueSize = tpe.getQueue().size();
+			System.out.println("当前排队线程数：" + queueSize);
+			int activeCount = tpe.getActiveCount();
+			System.out.println("当前活动线程数：" + activeCount);
+			long completedTaskCount = tpe.getCompletedTaskCount();
+			System.out.println("执行完成线程数：" + completedTaskCount);
+			long taskCount = tpe.getTaskCount();
+			System.out.println("总线程数：" + taskCount);
+			if (queueSize == 0 && activeCount == 0 && (taskCount == (queueSize + activeCount + completedTaskCount))) {
+				latch.countDown();
+				isFinished = true;
+				System.out.println("======线程执行完毕======");
+			}
+		}
+	}
+
+	static class CustomerThread implements Runnable {
+
+		@Override
+		public void run() {
+
+			try {
+				TimeUnit.SECONDS.sleep(1);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			for (int i = 0; i < 100; i++) {
+				System.out.println("***");
+			}
+		}
+	}
+}
+```
+
+
+
+
+
 # 抽象类
 
 ```java

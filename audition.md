@@ -342,7 +342,7 @@ Runnable接口中的run()方法的返回值是void，它做的事情只是纯粹
 # 42、wait()与sleep()的区别
 
 - wait 方法和之前的 sleep 一样就是放弃 CPU 执行权，但是他和 sleep 不一样的地方是需 要等待另外一个持有相同锁的线程对其进行唤醒操作，并且 wait 方法必须有一个同步锁， 
-- 
+- ​
 - sleep()来自Thread类，和wait()来自Object类。调用sleep()方法的过程中，线程`不会释放对象锁`。而 调用 `wait 方法线程会释放对象锁`
 - sleep()睡眠后`出让`系统资源（CPU），wait让其他线程可以占用CPU
 - sleep(milliseconds)需要指定一个睡眠时间，时间一到会`自动唤醒`.而wait()需要配合`notify()或者notifyAll()`使用
