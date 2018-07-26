@@ -1,0 +1,76 @@
+
+一、关闭服务
+
+首先执行sudo -s
+
+1.关闭Canal Server
+cd /usr/local/canal-1/bin/
+./stop.sh
+大约10s过后
+ps -ef|grep canal 查看路径为/usr/local/canal-1/bin的canal进程是否已经关闭，如果没有，手动kill掉
+
+2.关闭Canal client
+ps -ef|grep canal
+kill掉com.gwghk.ix.data.monitor.canal.CanalClient进程
+
+3.关闭Kafka Server
+cd /usr/local/kafka-2/bin/
+./kafka-server-stop.sh
+大约10s过后
+ps -ef|grep kafka 查看路径为/usr/local/kafka-2/bin/的kafka进程是否已经关闭，如果没有，手动kill掉
+
+4.关闭Kafka Consumer(tomcat)
+cd /opt/tomcat-branch-sync/bin/
+./shutdown.sh
+大约半分钟过后
+ps -ef|grep tomcat 查看路径为/opt/tomcat-branch-sync/bin的tomcat进程是否已经关闭，如果没有，手动kill掉
+
+
+二、启动服务
+
+首先执行
+sudo -s
+source /etc/profile
+
+1.启动kafka server
+cd /usr/local/kafka-2/bin/
+nohup ./kafka-server-start.sh ../config/server.properties >/dev/null 2>&1 &
+ps -ef|grep kafka 查看路径为/usr/local/kafka-2/bin/的kafka进程是否启动成功
+
+2.启动kafka consumer
+cd /workspace/data_sync/
+./build-ix-aws.sh
+
+待执行完后
+tail -f /opt/tomcat-branch-sync/logs/catalina.out 查看tomcat日志
+没有报错，且5分钟之内有类似
+INFO[Thread-7]DataSyncAllBaseTableConsumer:30: insert t_test_canal_heartbeat {"id":"218213","x":"2017-07-13 02:15:32"}
+的日志生成，则说明kafka consumer（tomcat）正确启动
+
+3.启动canal server
+cd /usr/local/canal-1/bin/
+./startup.sh
+
+tail -fn 100 ../logs/canal/canal.log
+最后一行看到类似以下日志，则说明启动成功
+2017-05-31 07:53:43.138 [main] INFO  com.alibaba.otter.canal.deployer.CanalLauncher - ## the canal server is running now ......
+注意日期应该是启动当天
+
+tail -fn 100 ../logs/ixtrade/ixtrade.log
+日志没有一直报错，则说明启动成功
+
+4.启动canal client
+cd /workspace/data_monitor/
+./build-ix-aws.sh
+
+待执行完后
+tail -fn 100 /log/data_monitor/data_monitor_info.log
+出现类似
+7-13 13:08:24  INFO[main]CanalClient:351: start the canal thread!
+或者
+7-13 02:30:17  INFO[Thread-2]CanalClient:30: TABLE_IX_TRADE_ALL_BASE|218228|{"action":"INSERT","data":{"id":"218228","x":"2017-07-13 02:30:17"},"dbName":"ix_test","keyName":"id","keyValue":"218228","sqlType":{"id":4,"x":93},"table":"t_test_canal_heartbeat"}
+的日志，则说明canal client启动成功
+注意日期应该是启动当天
+
+
+

@@ -1059,6 +1059,105 @@ public class CustomerRunable implements Runnable {
 
 
 
+# Semaphore
+
+Java并发包中的信号量Semaphore实际上是一个功能完毕的计数信号量，从概念上讲，它维护了一个许可集合，对控制一定资源的消费与回收有着很重要的意义。Semaphore可以控制某个资源被同时访问的任务数，它通过acquire（）获取一个许可，release（）释放一个许可。如果被同时访问的任务数已满，则其他acquire的任务进入等待状态，直到有一个任务被release掉，它才能得到许可
+
+
+
+Semaphore管理一系列许可证。每个acquire方法阻塞，直到有一个许可证可以获得然后拿走一个许可证；每个release方法增加一个许可证，这可能会释放一个阻塞的acquire方法。然而，其实并没有实际的许可证这个对象，Semaphore只是维持了一个可获得许可证的数量。 
+Semaphore经常用于限制获取某种资源的线程数量。下面举个例子，比如说操场上有5个跑道，一个跑道一次只能有一个学生在上面跑步，一旦所有跑道在使用，那么后面的学生就需要等待，直到有一个学生不跑了
+
+```java
+package com.audition;
+
+import java.util.concurrent.Semaphore;
+
+public class SemaphoreTest {
+	public static void main(String[] args) {
+		int N = 8; // 工人数
+		Semaphore semaphore = new Semaphore(5); // 机器数目 Semaphore可以控制某个资源被同时访问的任务数
+		for (int i = 0; i < N; i++)
+			new Worker(i, semaphore).start();
+	}
+
+	static class Worker extends Thread {
+		private int num;
+		private Semaphore semaphore;
+
+		public Worker(int num, Semaphore semaphore) {
+			this.num = num;
+			this.semaphore = semaphore;
+		}
+
+		@Override
+		public void run() {
+			try {
+				semaphore.acquire();//acquire（）获取一个许可
+				System.out.println("工人" + this.num + "占用一个机器在生产...");
+				Thread.sleep(2000);//release（）释放一个许可
+				System.out.println("工人" + this.num + "释放出机器");
+				semaphore.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+}
+```
+
+
+
+```java
+package com.audition;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+
+public class SemaphoreTest {
+	public static void main(String[] args) {
+		
+		ExecutorService newFixedThreadPool = Executors.newFixedThreadPool(10);
+		//Semaphore这个参数是同一时间内，最多允许多少个线程同时执行acquire方法和release方法之间的代码
+		Semaphore semaphore = new Semaphore(5);
+		
+		for(int i =0 ;i < 10 ;i ++) {
+			newFixedThreadPool.execute(new Task(i,semaphore));
+		}
+	}
+	
+	
+	static class Task implements Runnable{
+		
+		private int num;
+		private Semaphore semaphore;
+		
+		public Task(int num,Semaphore semaphore) {
+			this.num = num;
+			this.semaphore = semaphore;
+		}
+		
+		@Override
+		public void run() {
+			try {
+                
+				semaphore.acquire();
+				System.out.println("==="+num+":占用");
+				Thread.sleep(2000);
+				System.out.println("==="+num+"释放");
+				semaphore.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+}
+```
+
+
+
 # ThreadLocal
 
 ```java
@@ -1247,6 +1346,82 @@ public class TicketWindow2 implements Runnable {
 
 
 
+# volatile
+
+```java
+package com.audition;
+
+import java.util.concurrent.CountDownLatch;
+
+public class Counter {
+	public static volatile int num = 0;
+    //使用CountDownLatch来等待计算线程执行完
+    static CountDownLatch countDownLatch = new CountDownLatch(30);
+    
+    Object obj = new Object();
+    
+    public static void main(String []args) throws InterruptedException {
+        //开启30个线程进行累加操作
+        for(int i=0;i<30;i++){
+            new Thread(){
+                public void run(){
+                    for(int j=0;j<10000;j++){
+                    	synchronized (Object.class) {/**如果不加会造成结果错误，因为num不是原子操作**/
+                    		num++;//自加操作
+						}
+                    }
+                    countDownLatch.countDown();
+                }
+            }.start();
+        }
+        //等待计算线程执行完
+        countDownLatch.await();
+        System.out.println(num);
+    }
+}
+```
+
+以上问题由于num++不是原子操作，所以需要加锁，可以使用下面方式解决。
+
+```java
+package com.audition;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class Counter {
+	
+	public static AtomicInteger num = new AtomicInteger(0);
+
+	static CountDownLatch countDownLatch = new CountDownLatch(30);
+    
+    Object obj = new Object();
+    
+    public static void main(String []args) throws InterruptedException {
+        for(int i=0;i<30;i++){
+            new Thread(){
+                public void run(){
+                    for(int j=0;j<10000;j++){
+                    	 num.incrementAndGet();//原子性的num++,通过循环CAS方式
+                    }
+                    countDownLatch.countDown();
+                }
+            }.start();
+        }
+        countDownLatch.await();
+        System.out.println(num);
+    }
+}
+```
+
+
+
+
+
+
+
+
+
 # 静态锁
 
 静态锁，锁是类的字节码信息，因此如果一个类的函数为静态方法，那么我们需要通过 该类的 class 信息进行加锁； 
@@ -1391,6 +1566,55 @@ ScheduledThreadPoolExecutor scheduledThreadPoolExecutor= new ScheduledThreadPool
 
 
 ## BlockingQueue
+
+FIFO，poll后就从队列删除
+
+```java
+package com.audition;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+
+public class C extends B{
+	
+	public static void main(String[] args) {
+	
+		Queue quene = new ArrayBlockingQueue<>(10);
+		quene.add("1234");
+		quene.add("456");
+		System.out.println(quene.size());
+		System.out.println(quene.poll());
+		System.out.println(quene.size());
+		System.out.println(quene.poll());
+		System.out.println(quene.size());
+	}
+}
+
+2
+1234
+1
+456
+0
+```
+
+```java
+package com.audition;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+
+public class QueueTest {
+	
+	public static void main(String[] args) {
+	
+		Queue quene = new ArrayBlockingQueue<>(10);
+		System.out.println(quene.poll()); // null
+		quene.remove(); //java.util.NoSuchElementException
+	}
+}
+```
+
+
 
 ### SynchronousQueue
 
@@ -1730,6 +1954,101 @@ return ((x+10)-(y*3))/2;
 });
 System.out.println(c2.result());
   }  
+}
+```
+
+
+
+## 观察者设计模式
+
+```java
+//抽象观察者角色
+public interface Watcher
+{
+    public void update(String str);
+
+}
+```
+
+```java
+//抽象主题角色，watched：被观察
+public interface Watched
+{
+    public void addWatcher(Watcher watcher);
+
+    public void removeWatcher(Watcher watcher);
+
+    public void notifyWatchers(String str);
+
+}
+```
+
+```java
+//定义具体观察者
+public class ConcreteWatcher implements Watcher
+{
+
+    @Override
+    public void update(String str)
+    {
+        System.out.println(str);
+    }
+
+}
+```
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class ConcreteWatched implements Watched
+{
+    // 存放观察者
+    private List<Watcher> list = new ArrayList<Watcher>();
+
+    @Override
+    public void addWatcher(Watcher watcher)
+    {
+        list.add(watcher);
+    }
+
+    @Override
+    public void removeWatcher(Watcher watcher)
+    {
+        list.remove(watcher);
+    }
+
+    @Override
+    public void notifyWatchers(String str)
+    {
+        // 自动调用实际上是主题进行调用的
+        for (Watcher watcher : list)
+        {
+            watcher.update(str);
+        }
+    }
+
+}
+
+```
+
+```java
+public class Test
+{
+    public static void main(String[] args)
+    {
+        Watched girl = new ConcreteWatched();
+        
+        Watcher watcher1 = new ConcreteWatcher();
+        Watcher watcher2 = new ConcreteWatcher();
+        Watcher watcher3 = new ConcreteWatcher();
+        
+        girl.addWatcher(watcher1);
+        girl.addWatcher(watcher2);
+        girl.addWatcher(watcher3);
+        
+        girl.notifyWatchers("开心");
+    }
 }
 ```
 

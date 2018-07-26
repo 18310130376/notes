@@ -1,0 +1,24 @@
+﻿prd环境 
+10.100.6.194
+canal server:10930
+kafka server:10940
+10.100.6.195
+kafka consumer（server_1）
+canal monitor
+10.100.6.198
+canal server:10930
+kafka server:10940
+10.100.6.199
+kafka consumer（server_2）
+canal monitor
+
+zookeeper:10.100.6.193:10950,10.100.6.194:10950,10.100.6.195:10950
+
+
+sit环境
+172.27.3.30
+canal server:10930
+canal monitor
+kafka server:10940
+kafka consumer
+zookeeper:172.27.3.30:10950

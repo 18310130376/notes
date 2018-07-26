@@ -1,0 +1,57 @@
+﻿一、日常监控
+1、需要定期（每天）地查看consumer消费日志。tail -f /log/data_sync/data_sync_goldoffice_info.log观察每分钟的心跳消费是否正常。以uat为例，uat需要监听四个mysql数据源，所以每分钟正常情况下会有四条心跳数据被消费。
+tail -f /log/data_sync/data_sync_goldoffice_error.log查看是否有消费异常日志。
+
+2、kafka server日志目录：/usr/local/kafka_2.11/logs/server.log和/usr/local/kafka_2.11/logs/controller.log。如果有报错提示kafka 已经shutdown，一般情况下重启就可以解决。
+
+3、canal server日志目录：/usr/local/canal/logs/canal/canal.log和/usr/local/canal/logs/ixtrade/ixtrade.log。
+
+4、canal client日志目录：/log/data_monitor/data_monitor_info.log。
+
+其中1需要每天都查看，2、3、4一周左右查看一次即可
+
+
+二、常见问题
+======================kafka consumer=========================
+1、org.postgresql.util.PSQLException: ERROR: column "review" of relation "t_item_user" does not exist日志报数据库字段不存在，在数据库加上对应字段即可，注意trade_ix和admin都要加 
+2、org.apache.kafka.clients.consumer.CommitFailedException，表示consumer每次从kafka server poll下来的记录数量多，没有在指定的时间内完成消费并向kafka提交commit。如果频繁出现这个异常，要考虑到ConsumerThread类重新设置max.poll.records，减少每次poll的记录数。
+3、org.apache.kafka.common.errors.WakeupException这个异常可以不用处理。当tomcat被shutdown的时候，线程池通过wakeup方法来抛出异常，打断kafka consumer的阻塞轮询，跳出循环后关闭consumer线程。
+4、如果启动了之后，日志报无法注入某些bo的类，要在applicationContext-data-sync.xml里面手动添加对应的bean（这个很坑，对bo代码依赖严重，待转dubbo）。classNotFound一样的，要添加pom依赖。
+5、consumer tomcat启动了之后，因为消费者数量和分区数量多的关系，有时候会有五分钟以内的延迟才会开始消费数据（有消费日志），这个在目前来说还属于正常范围。如果超过了五分钟还没有消费，且没有报错，首先看看monitor日志有没有最新解析日志，如果没有就从monitor找问题。如果monitor有新的解析日志，就要看kafka server的日志，有可能是某个异常导致kafka server被shutdown了，这时候重启kafka server即可。
+6、consumer tomcat启动之后，如果发现报数据库连接池无法初始化、连不上，有可能是build脚本执行错了，比如在prd执行了build sit脚本。停掉tomcat，重新build。
+7、如果心跳消费记录数不正常，就表示kafka部分分区已经堆积了不少数据，用top命令查看，应该会发现数据库连接数很多，占用大量cpu。之前有大量行情或者交易数据的时候会出现这个问题，如果没有伴随其它报错的话，可以等待消费完成。如果频繁有比如CommitFailedException之类的异常出现，可以考虑将max.poll.records设置小点，重启consumer，保证每次poll都能完成commit。
+
+======================kafka server=========================
+1、kafka server报以下错误，在/etc/hosts文件添加ip-10.98.2.33映射到对应的ip（10.98.2.33）即可解决。
+Caused by: java.net.UnknownHostException: ip-10.98.2.33: ip-10.98.2.33: unknown error
+2、kafka server的broker.id配置，改成新的值后，要删除对应log.dir（/tmp/kafka-logs）里面的文件，不然kafka启动会报错。然而，
+log.dir里面的文件存着kafka的消息记录，不能乱删，所以最好不要修改已经在运行的kafka的broker.id。
+3、kafka broker数量太少，启动报错后，可以修改server.properties的default.replication.factor配置，再重启
+4、kafka server异常重启时，必须要先启动leader的server，待稳定后再启动其它server。最好把一个启动稳定了再启动剩余的。
+5、如果要更换kafka的log.dir，先关闭canal client（数据入口），确认kafka数据已经被consumer消费完，再把log.dir改到指定目录
+6、kafka server的其它报错，一般都可以通过重启来暂时修复
+
+
+========================canal=============================
+1、monitor日志报com.alibaba.otter.canal.protocol.exception.CanalClientException: no alive canal server 表示canal server正在重启或者已经挂了。
+2、canal server日志报failure:java.net.NoRouteToHostException: No route to host，检查mysql服务是否正常，网络是否通畅。
+3、mysql磁盘满了的情况，canal写不进心跳，会导致canal被mysql断开连接。重启canal过后数据同步服务可能仍然不能正常，即使每个模块都没有报错，这时可以重启下kafka。如果重启canal之前，部分binlog已经被清除，比如4个数据源，只有1个数据源的binlog位点还能找到，这时启动canal并不会报错。但只有那个binlog位点能找到的数据源会被canal正常监听，其余数据源监听处于假死状态，不报错但是监听不到。这时需要先停掉canal，然后在zookeeper上重新指定一个每个数据源都有binlog的时间戳，再启动canal。如果无法确定这个时间戳，也是先停掉canal，把zookeeper上canal节点数据删除后再重启canal，只解析最新位点，会有数据丢失!慎用!!
+4、canal每次将解析过journalname存储到zk上面，第二次parse数据的时候会从zk去拿一次journalname，如果找不到则从master去找first index file。
+如果数据库管理员手动清理过日志或者磁盘过满自动清理日志都会出现这样问题，解决办法类似第三点
+java.io.IOException: Received error packet: errno = 1236, sqlstate = HY000 errmsg = Could not find first log file name in binary log index file
+binlog一般是建议使用mysql命令行进行删除，就会同步修改index文件
+5、一旦canal解析位点和消费位点的记录被删除（file模式是删除meta.dat、memory模式是重启canal，group模式是删除zk节点），
+解析位点会被重新指向canal重启后（重新监听mysql后？）的最新binlog position，
+消费位点会被重新指向canal重启后最新解析到的位点，不管canal client什么时候去读取
+6、如果mysql断电等异常重启后，旧的binlog文件没有正常写入结束标记，就生成新的binlog，会导致canal无法解析到正确的binlog位点从而报错。
+解决办法：
+先停掉canal
+1）如果当前报错的数据源地址和zookeeper上canal节点下cursor节点的sourceAddress一致，则将cursor节点下journalName和position的值修改为重启之后新生成的binlog信息（position设为4）。
+2）如果当前报错的数据源地址和zookeeper上canal节点下cursor节点的sourceAddress不一致，则先确认重启后的binlog生成时间T1，然后将cursor节点下的timestamp设置为T1+61s
+然后启动canal
+
+三、注意事项
+1、查看kafka分区的leader命令。进到/usr/local/kafka_2.11/bin目录，执行./kafka-topics.sh --describe --zookeeper 192.168.35.110:10950 --topic TABLE_IX_TRADE_ALL_BASE
+2、查看kafka分区偏移量命令。进到/usr/local/kafka_2.11/bin目录，执行./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper 192.168.35.110:10950 --group bo_01 --topic TABLE_IX_TRADE_ALL_BASE
+3、consumer的tomcat建议用shutdown的方式来关闭，用kill -9 的方式不会触发consumer的钩子，这个钩子会对consumer做一些关闭清理工作。
+4、kafka server和canal server也不建议用kill -9 方式关闭，用自带的stop脚本

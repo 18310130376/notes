@@ -322,6 +322,16 @@ short s1= 1; s1 += 1; 该段代码是否有错，有的话怎么改？
 | long   | 8    | 64     |
 | double | 8    | 64     |
 
+
+
+# int 和 Integer 哪个会占用更多的内存
+
+Integer 对象会占用更多的内存。Integer 是一个对象，需要存储对象的元数据。但是 int 是一个原始类型的数据，所以占用的空间更少
+
+
+
+
+
 # 38、调用System.gc()会发生什么
 
 通知GC开始工作，但是GC真正开始的时间不确定。
@@ -827,3 +837,241 @@ redis 内存数据集大小上升到一定大小的时候，就会施行数据�
 (1) memcached所有的值均是简单的字符串，redis作为其替代者，支持更为丰富的数据类型  　　　
 
 (2) redis的速度比memcached快很多 (3) redis可以持久化其数据 
+
+
+
+# 26 Java 中的 TreeMap 是采用什么树实现的
+
+Java 中的 TreeMap 是使用红黑树实现的。
+
+
+
+# 27 ArrayList 和 HashMap 的默认大小是多数
+
+ArrayList 的默认大小是 10 个元素
+
+HashMap 的默认大小是16个元素
+
+
+
+# 28 GET和POST 的区别
+
+|                  | GET                                                          | POST                                                         |
+| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 后退按钮/刷新    | 无害                                                         | 数据会被重新提交（浏览器应该告知用户数据会被重新提交）。     |
+| 书签             | 可收藏为书签                                                 | 不可收藏为书签                                               |
+| 缓存             | 能被缓存                                                     | 不能缓存                                                     |
+| 编码类型         | application/x-www-form-urlencoded                            | application/x-www-form-urlencoded 或 multipart/form-data。为二进制数据使用多重编码。 |
+| 历史             | 参数保留在浏览器历史中。                                     | 参数不会保存在浏览器历史中。                                 |
+| 对数据长度的限制 | 是的。当发送数据时，GET 方法向 URL 添加数据；URL 的长度是受限制的（URL 的最大长度是 2048 个字符）。 | 无限制。                                                     |
+| 对数据类型的限制 | 只允许 ASCII 字符。                                          | 没有限制。也允许二进制数据。                                 |
+| 安全性           | 与 POST 相比，GET 的安全性较差，因为所发送的数据是 URL 的一部分。在发送密码或其他敏感信息时绝不要使用 GET ！ | POST 比 GET 更安全，因为参数不会被保存在浏览器历史或 web 服务器日志中。 |
+| 可见性           | 数据在 URL 中对所有人都是可见的。                            | 数据不会显示在 URL 中。                                      |
+
+# 29 一条sql执行过长的时间，如何优化
+
+1、查看sql是否涉及多表的联表或者子查询，如果有，看是否能进行业务拆分，相关字段冗余或者合并成临时表（业务和算法的优化）
+
+2、涉及链表的查询，是否能进行分表查询，单表查询之后的结果进行字段整合
+
+3、如果以上两种都不能操作，非要链表查询，那么考虑对相对应的查询条件做索引。加快查询速度
+
+4、针对数量大的表进行历史表分离（如交易流水表）
+
+5、数据库主从分离，读写分离，降低读写针对同一表同时的压力，至于主从同步，mysql有自带的binlog实现 主从同步
+
+6、explain分析sql语句，查看执行计划，分析索引是否用上，分析扫描行数等等
+
+7、查看mysql执行日志，看看是否有其他方面的问题
+
+个人理解：从根本上来说，查询慢是占用mysql内存比较多，那么可以从这方面去酌手考虑
+
+
+
+# 30 Mysql的事物隔离级别
+
+Mysql的事物隔离级别 其实跟 Spring的事物隔离级别一样，都是
+
+1、Read Uncommitted（读取未提交内容），
+
+ 2、Read Committed（读取提交内容），
+
+3、Repeatable Read（可重读），
+
+4、Serializable（可串行化）
+
+# 31 数据库事务是什么,并分别说明ACID
+
+事务,是指作为单个逻辑工作单元执行的一系列操作.事务处理可以确保除非事务性单元内的所有操作都成功完成,否则不会永久更新面向数据的资源.通过将一组相关操作组合为一个要么全部成功要么全部失败的单元,可以简化错误恢复并使应用程序更加可靠. 
+事务的四个特性ACID,分别表示：
+
+原子性(atomicity):一个事务或者完全发生,或者完全不发生; 
+一致性(consistency):事务把数据库从一个一致状态转变到另一个状态; 
+隔离性(isolation):在事务提交之前,其他事务觉察不到事务的影响; 
+持久性(durability):一旦事务提交,它是永久的.
+
+
+
+# 32 Dubbo中zookeeper做注册中心，如果注册中心集群都挂掉，发布者和订阅者之间还能通信么
+
+可以的，启动dubbo时，消费者会从zk拉取注册的生产者的地址接口等数据，缓存在本地。每次调用时，按照本地存储的地址进行调用
+
+
+
+# 33 Dubbo在安全机制方面是如何解决的
+
+Dubbo通过Token令牌防止用户绕过注册中心直连，然后在注册中心上管理授权。Dubbo还提供服务黑白名单，来控制服务所允许的调用方。
+
+# 34 zookeeper是如何保证事务的顺序一致性的 
+
+zookeeper采用了递增的事务Id来标识，所有的proposal都在被提出的时候加上了zxid，zxid实际上是一个64位的数字，高32位是epoch用来标识leader是否发生改变，如果有新的leader产生出来，epoch会自增，低32位用来递增计数。当新产生proposal的时候，会依据数据库的两阶段过程，首先会向其他的server发出事务执行请求，如果超过半数的机器都能执行并且能够成功，那么就会开始执行 
+
+# 35 默认使用什么序列化框架，你知道的还有哪些
+
+默认使用Hessian序列化，还有Duddo、FastJson、Java自带序列化。
+
+# 36  dubbo服务提供者能实现失效踢出是什么原理
+
+服务失效踢出基于zookeeper的临时节点原理。
+
+# 37   画一画服务注册与发现的流程图
+
+![img](https://images2018.cnblogs.com/blog/1254220/201806/1254220-20180612095859810-1306765019.png)
+
+
+
+# 38  springboot+springcloud相关面试题
+
+## 一 、什么是springboot
+
+用来简化spring应用的初始搭建以及开发过程 使用特定的方式来进行配置（properties或yml文件） 
+
+​      创建独立的spring引用程序 main方法运行
+
+​       嵌入的Tomcat 无需部署war文件
+
+​       简化maven配置
+
+​       自动配置spring添加对应功能starter自动化配置
+
+​      简化spring配置，用javaConfig配置
+
+​      约定优于配置，比如包接口，配置结构，属性文件读取
+
+​      微服务监控
+
+## 二、springboot常用的starter有哪些
+
+ spring-boot-starter-web 嵌入tomcat和web开发需要servlet与jsp支持
+ spring-boot-starter-data-jpa 数据库支持
+ spring-boot-starter-data-redis redis数据库支持
+ spring-boot-starter-data-solr solr支持
+ mybatis-spring-boot-starter 第三方的mybatis集成starter
+
+ spring-boot-starter-dubbo
+
+## 三 、springboot自动配置的原理
+
+在spring程序main方法中 添加@SpringBootApplication或者@EnableAutoConfiguration
+
+会自动去maven中读取每个starter中的spring.factories文件  该文件里配置了所有需要被创建spring容器中的bean
+
+## 四  springboot读取配置文件的方式
+
+springboot默认读取配置文件为application.properties或者是application.yml
+
+
+
+## 五 springboot如何添加【修改代码】自动重启功能
+
+  添加开发者工具集=====spring-boot-devtools
+
+## 六 什么是微服务
+
+分布式：分散压力。
+
+微服务：分散能力。
+
+
+
+ 以前的模式是 所有的代码在同一个工程中 部署在同一个服务器中 同一个项目的不同模块不同功能互相抢占资源
+
+​        微服务 将工程根据不同的业务规则拆分成微服务 微服务部署在不同的机器上 服务之间进行相互调用
+
+​        Java微服务的框架有 dubbo（只能用来做微服务），spring cloud（提供了服务的发现，断路器等）
+
+
+
+## 七 springcloud如何实现服务的注册和发现
+
+服务在发布时 指定对应的服务名（服务名包括了IP地址和端口） 将服务注册到注册中心（eureka或者zookeeper）
+
+​        这一过程是springcloud自动实现 只需要在main方法添加@EnableDisCoveryClient  同一个服务修改端口就可以启动多个实例
+
+​        调用方法：传递服务名称通过注册中心获取所有的可用实例 通过负载均衡策略调用（ribbon和feign）对应的服务
+
+
+
+## 八 ribbon和feign区别
+
+ Ribbon添加maven依赖 spring-starter-ribbon 使用@RibbonClient(value="服务名称") 使用RestTemplate调用远程服务对应的方法
+
+feign添加maven依赖 spring-starter-feign 服务提供方提供对外接口 调用方使用 在接口上使用@FeignClient("指定服务名")
+
+
+
+Ribbon和Feign都是用于调用其他服务的，不过方式不同。
+
+​        1.启动类使用的注解不同，Ribbon用的是@RibbonClient，Feign用的是@EnableFeignClients。
+
+​        2.服务的指定位置不同，Ribbon是在@RibbonClient注解上声明，Feign则是在定义抽象方法的接口中使用@FeignClient声明。
+
+​        3.调用方式不同，Ribbon需要自己构建http请求，模拟http请求然后使用RestTemplate发送给其他服务，步骤相当繁琐。
+
+​        Feign则是在Ribbon的基础上进行了一次改进，采用接口的方式，将需要调用的其他服务的方法定义成抽象方法即可，
+
+​        不需要自己构建http请求。不过要注意的是抽象方法的注解、方法签名要和提供服务的方法完全一致。
+
+
+
+## 九 springcloud断路器的作用
+
+ 当一个服务调用另一个服务由于网络原因或者自身原因出现问题时 调用者就会等待被调用者的响应 当更多的服务请求到这些资源时
+
+​                导致更多的请求等待 这样就会发生连锁效应（雪崩效应） 断路器就是解决这一问题
+
+​                断路器有完全打开状态
+
+​                        一定时间内 达到一定的次数无法调用 并且多次检测没有恢复的迹象 断路器完全打开，那么下次请求就不会请求到该服务
+
+​                半开
+
+​                    短时间内 有恢复迹象 断路器会将部分请求发给该服务 当能正常调用时 断路器关闭
+
+​                关闭
+
+​                  当服务一直处于正常状态 能正常调用 断路器关闭
+
+## 十  微服务技术栈有哪些
+
+
+
+| **微服务条目**                           | **落地技术**                                                 | **备注** |
+| ---------------------------------------- | ------------------------------------------------------------ | -------- |
+| 服务开发                                 | SpringBoot、Spring、SpringMVC                                |          |
+| 服务配置与管理                           | Netflix公司的Archaius、阿里的Diamond等                       |          |
+| 服务注册与发现                           | Eureka、Consul、Zookeeper等                                  |          |
+| 服务调用                                 | Rest、RPC、GRP C                                             |          |
+| 服务熔断器                               | Hystrix、Envoy等                                             |          |
+| 负载均衡                                 | Ribbon、Nginx等                                              |          |
+| 服务接口调用（客户端调用服务的简化工具） | Feign等                                                      |          |
+| 消息队列                                 | Kafka、RabbitMQ、ActiveMQ等                                  |          |
+| 服务配置中心管理                         | SpringCloudConfig、Cherf等                                   |          |
+| 服务路由（API网关）                      | Zuul等                                                       |          |
+| 服务监控                                 | Zabbix、Nagios、Metrics、Spectator等                         |          |
+| 全链路追踪                               | Zipkin、Brave、Kubernetes等                                  |          |
+| 服务部署                                 | Docker、OpenStack、Kubernetes等                              |          |
+| 数据流操作开发包                         | SpringCloud Stream(封装与Redis、Rabbit、Kafka等发送接收消息) |          |
+| 事件消息总线                             | Spring Cloud Bus                                             |          |
+
+ 
