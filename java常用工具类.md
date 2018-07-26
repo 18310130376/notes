@@ -1394,13 +1394,72 @@ ScheduledThreadPoolExecutor scheduledThreadPoolExecutor= new ScheduledThreadPool
 
 ### SynchronousQueue
 
-直接提交策略
+同步队列：直接提交策略
 
 首先SynchronousQueue是`无界`的，也就是说他存数任务的能力是没有限制的，但是由于该Queue本身的特性，**在某次添加元素后必须等待其他线程取走后才能继续添加**。在这里不是核心线程便是新创建的线程，但是我们试想一样下，下面的场景
 
+  SynchronousQueue是这样一种阻塞队列，其中每个 put 必须等待一个 take，反之亦然。同步队列没有任何内部容量，甚至连一个队列的容量都没有
+
+```java
+package com.audition;
+
+import java.util.concurrent.SynchronousQueue;
+
+public class ExecutorServiceTest {
+
+	public static void main(String[] args) throws InterruptedException {
+		SynchronousQueue<Integer> queue = new SynchronousQueue<Integer>();
+	
+		new Product(queue).start();
+		new Customer(queue).start();
+	}
+	static class Product extends Thread{
+		
+		int rand = 0;
+		
+		SynchronousQueue<Integer> queue;
+		public Product(SynchronousQueue<Integer> queue){
+			this.queue = queue;
+		}
+		@Override
+		public void run(){
+			while(true){
+				rand++;
+				try {
+					queue.put(rand);
+					System.out.println("生产了一个产品："+rand);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	static class Customer extends Thread{
+		SynchronousQueue<Integer> queue;
+		public Customer(SynchronousQueue<Integer> queue){
+			this.queue = queue;
+		}
+		@Override
+		public void run(){
+			while(true){
+				try {
+					Integer take = queue.take();
+					System.out.println("消费了一个产品:"+take);
+					System.out.println("------------------------------------------");
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+}
+```
+
+
+
 ### LinkedBlockingQueue
 
-无界队列策略
+延迟 无界队列策略
 
 ### ArrayBlockingQueue
 
