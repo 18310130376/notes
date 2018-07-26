@@ -1591,6 +1591,21 @@ mvn --update-snapshots clean deploy -Dmaven.test.skip=true -DreleaseEnv=${env}
 
 
 
+#### 解决Maven下载依赖慢
+
+打开setting.xml文件，找到mirrors节点添加阿里镜像库地址
+
+```xml
+<mirror>
+      <id>alimaven</id>
+      <name>aliyun maven</name>      
+      <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+      <mirrorOf>central</mirrorOf>
+</mirror>
+```
+
+
+
 #### 学习文档
 
 http://maven.apache.org/guides/mini/guide-mirror-settings.html   //官网
