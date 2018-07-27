@@ -418,6 +418,124 @@ public class FutureTest {
 }
 ```
 
+
+
+方式三：
+
+```java
+// 创建一个线程池
+ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+// 存储执行结果的List
+List<Future<String>> results = new ArrayList<Future<String>>();
+
+// 提交10个任务
+for ( int i=0; i<10; i++ ) {
+    Future<String> result = executorService.submit( new Callable<String>(){
+        public String call(){
+            int sleepTime = new Random().nextInt(1000);
+            Thread.sleep(sleepTime);
+            return "线程"+i+"睡了"+sleepTime+"秒";
+        }
+    } );
+    // 将执行结果存入results中
+    results.add( result );
+}
+
+// 获取10个任务的返回结果
+for ( int i=0; i<10; i++ ) {
+    // 获取包含返回结果的future对象
+    Future<String> future = results.get(i);
+    // 从future中取出执行结果（若尚未返回结果，则get方法被阻塞，直到结果被返回为止）
+    String result = future.get();
+    System.out.println(result);
+}
+```
+
+此方法的弊端：
+
+1. 需要自己创建容器维护所有的返回结果，比较麻烦；
+2. 从list中遍历的每个Future对象并不一定处于完成状态，这时调用get()方法就会被阻塞住，如果系统是设计成每个线程完成后就能根据其结果继续做后面的事，这样对于处于list后面的但是先完成的线程就会增加了额外的等待时间。
+
+方式四：
+
+```java
+// 创建一个线程池
+ExecutorService executorService = Executors.newFixedThreadPool(10);
+
+// 创建存储任务的容器
+List<Callable<String>> tasks = new ArrayList<Callable<String>>();
+
+// 提交10个任务
+for ( int i=0; i<10; i++ ) {
+    Callable<String> task = new Callable<String>(){
+        public String call(){
+            int sleepTime = new Random().nextInt(1000);
+            Thread.sleep(sleepTime);
+            return "线程"+i+"睡了"+sleepTime+"秒";
+        }
+    };
+    executorService.submit( task );
+    // 将task添加进任务队列
+    tasks.add( task );
+}
+
+// 获取10个任务的返回结果
+List<Future<String>> results = executorService.invokeAll( tasks );
+
+// 输出结果
+for ( int i=0; i<10; i++ ) {
+    // 获取包含返回结果的future对象
+    Future<String> future = results.get(i);
+    // 从future中取出执行结果（若尚未返回结果，则get方法被阻塞，直到结果被返回为止）
+    String result = future.get();
+    System.out.println(result);
+}
+```
+
+本方法能解决第一个弊端，即并不需要自己去维护一个存储返回结果的容器。当我们需要获取线程池所有的返回结果时，只需调用invokeAll函数即可。 
+但是，这种方式需要你自己去维护一个用于存储任务的容器。
+
+
+
+方式五：
+
+```java
+ExecutorService exec = Executors.newFixedThreadPool(10);
+
+final BlockingQueue<Future<Integer>> queue = new LinkedBlockingDeque<Future<Integer>>(  
+                10);  
+        //实例化CompletionService  
+        final CompletionService<Integer> completionService = new ExecutorCompletionService<Integer>(  
+                exec, queue); 
+
+// 提交10个任务
+for ( int i=0; i<10; i++ ) {
+    executorService.submit( new Callable<String>(){
+        public String call(){
+            int sleepTime = new Random().nextInt(1000);
+            Thread.sleep(sleepTime);
+            return "线程"+i+"睡了"+sleepTime+"秒";
+        }
+    } );
+}
+
+// 输出结果
+for ( int i=0; i<10; i++ ) {
+    // 获取包含返回结果的future对象（若整个阻塞队列中还没有一条线程返回结果，那么调用take将会被阻塞，当然你可以调用poll，不会被阻塞，若没有结果会返回null，poll和take返回正确的结果后会将该结果从队列中删除）
+    Future<String> future = completionService.take();
+    // 从future中取出执行结果，这里存储的future已经拥有执行结果，get不会被阻塞
+    String result = future.get();
+    System.out.println(result);
+}
+```
+
+
+
+
+
+
+
 # CompletionService
 
 ```java
@@ -1443,6 +1561,44 @@ thread.yield ()
 # Join 
 
 线程的 Join 方法就是临时加入一个线程，等到该线程执 行结束之后才能运行主线程 
+
+在某些情况下，主线程创建并启动了子线程，如果子线程中需要进行大量的耗时运算，主线程往往将早于子线程结束之前结束，如果主线程想等待子线程执行完毕后，获得子线程中的处理完的某个数据，就要用到join方法了，方法join（）的作用是等待线程对象
+
+```java
+package com.audition;
+
+public class JoinTest {
+	
+	public static class MyThread extends Thread {
+		@Override
+		public void run() {
+			
+			try {
+				int m = (int) (Math.random() * 10000);
+				System.out.println("我在子线程中会随机睡上0-9秒，时间为="+m);
+				Thread.sleep(m);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	public static void main(String[] args) throws InterruptedException {
+		MyThread myThread =new MyThread();
+		myThread.start();
+		myThread.join();
+		//myThread.join(1000);//等待子线程100秒，效果等同于sleep
+		System.out.println("正常情况下肯定是我先执行完，但是加入join后，main主线程会等待子线程执行完毕后才执行");
+	}
+}
+```
+
+
+
+
+
+
+
+
 
 # 线程出现异常捕获 
 
