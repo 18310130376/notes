@@ -599,3 +599,19 @@ https://www.cnblogs.com/qiyebao/p/5253933.html
 see：https://www.cnblogs.com/sunny1009/articles/7887568.html
 
 https://blog.csdn.net/rogerxue12345/article/details/80512196
+
+elk：
+
+https://www.cnblogs.com/davidgu/p/6639307.html
+
+https://blog.csdn.net/qq1032355091/article/details/53082405
+
+http://www.cnblogs.com/ginb/tag/elasticsearch/
+
+http://1028826685.iteye.com/blog/2306570
+
+https://www.sojson.com/blog/87.html
+
+https://www.cnblogs.com/a-du/p/7736181.html
+
+https://blog.csdn.net/ljc2008110/article/details/48652937
