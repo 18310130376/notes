@@ -451,6 +451,36 @@ test.name=sherry.prod
 test.age=20.prod
 ```
 
+### 方式三
+
+原理：指定文件内容拷贝到新的文件中
+
+```xml
+<plugin>
+				<groupId>com.coderplus.maven.plugins</groupId>
+				<artifactId>copy-rename-maven-plugin</artifactId>
+				<version>1.0</version>
+				<executions>
+					<execution>
+						<id>copy-file</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy</goal>
+						</goals>
+						<configuration>
+							<fileSets>
+								<fileSet>								<sourceFile>src/main/resources/release/init_${releaseEnv}.properties</sourceFile>
+<destinationFile>${basedir}/target/classes/init.properties</destinationFile>
+								</fileSet>
+							</fileSets>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+```
+
+
+
 # 参考文档
 
 https://blog.csdn.net/column/details/zkn-springboot.html?&page=2
@@ -460,3 +490,5 @@ http://blog.didispace.com/categories/Spring-Boot/
 源码例子：https://gitee.com/didispace/SpringBoot-Learning
 
 http://blog.didispace.com/spring-boot-run-backend/
+
+https://blog.csdn.net/k21325/article/details/52789829

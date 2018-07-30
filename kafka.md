@@ -153,6 +153,14 @@ vim config/server.properties
 
 kafka最为重要三个配置依次为：broker.id、log.dir、zookeeper.connect
 
+```
+zookeeper.connect=172.27.3.18:2181
+# Timeout in ms for connecting to zookeeper
+zookeeper.connection.timeout.ms=6000
+delete.topic.enable=true
+zookeeper.session.timeout.ms=30000
+```
+
 启动kafka    （参数-daemon表示后台运行） 
 
 ```

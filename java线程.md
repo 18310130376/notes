@@ -1627,6 +1627,62 @@ public class FetalException {
 
 
 
+# addShutdownHook
+
+当下列情况出现时被调用
+
+1. 程序正常退出
+2. 使用System.exit()
+3. 终端使用Ctrl+C触发的中断
+4. 系统关闭
+5. OutOfMemory宕机
+6. 使用Kill pid命令干掉进程（注：在使用kill -9 pid时，是不会被调用的）
+
+```java
+package com.audition;
+
+public class TestRuntimeShutdownHook {
+	 public static void main(String[] args) {  
+		  
+	        Thread shutdownHookOne = new Thread() {  
+	            public void run() {  
+	                System.out.println("shutdownHook one...");  
+	            }  
+	        };  
+	        Thread shutdownHookTwo = new Thread() {  
+	            public void run() {  
+	                System.out.println("shutdownHook two...");  
+	            }  
+	        }; 
+	        Runtime.getRuntime().addShutdownHook(shutdownHookOne);  
+	        Runtime.getRuntime().addShutdownHook(shutdownHookTwo);  
+	        new Thread() {  
+	            public void run() {  
+	                try {  
+	                    Thread.sleep(1000);  
+	                } catch (InterruptedException e) {  
+	                    e.printStackTrace();  
+	                }  
+	                System.out.println("thread one doing something...");  
+	            }  
+	        }.start();  
+	  
+	        new Thread() {  
+	            public void run() {  
+	                try {  
+	                    Thread.sleep(2000);  
+	                } catch (InterruptedException e) {  
+	                    e.printStackTrace();  
+	                }  
+	                System.out.println("thread two doing something...");  
+	            }  
+	        }.start();  
+	    }  
+}
+```
+
+
+
 # 线程管理
 
 Executors提供创线程池的方式：
