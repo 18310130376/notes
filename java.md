@@ -66,7 +66,11 @@ wget http://apache.fayea.com/tomcat/tomcat-7/v7.0.75/bin/apache-tomcat-7.0.75.ta
 
 2、打包是没有指定主类，可以用java -cp xxx.jar 主类名称（绝对路径）
 
+```
+java -cp $CLASSPATH:/home/cys/lib/javacsv.jar:/home/cys/test/CsvTest CsvTest
 
+nohup java -cp ./${jarName}:./config/:$JAR_CLASSPATH  com.gwghk.ix.data.monitor.canal.CanalClient &
+```
 
 https://www.cnblogs.com/wade-luffy/category/853135.html
 

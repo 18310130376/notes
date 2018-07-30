@@ -11,11 +11,13 @@ mvn spring-boot:run
 
 # 二、属性配置
 
-## @value赋值给静态变量
+## @value赋值
+
+###  一、给静态变量赋值
 
 @Value必须修饰在方法上，且set方法不能有static  
 
-```
+```java
 package com.integration.boot.config;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -27,15 +29,94 @@ public class StaticProperties {
 	public static String  SPRING_APPLICATION_NAME;
 	
 	@Value("${spring.application.name}")
+    @Value("${spring.application.name:abc}") //如果没设置值则用默认值
 	private void setApplicationName(String applicationName){
 		this.SPRING_APPLICATION_NAME = applicationName;
 	}
 }
 ```
 
+### 二、注入普通字符串
+
+```java
+@Value("normal")
+private String normal; // 注入普通字符串
+```
+
+### 三 、注入操作系统属性
+
+```java
+@Value("#{systemProperties['os.name']}")
+private String systemPropertiesName; // 注入操作系统属性
+```
+
+### 四 、注入表达式结果
+
+```java
+@Value("#{ T(java.lang.Math).random() * 100.0 }")
+private double randomNumber; //注入表达式结果
+```
+
+### 五 、注入其他Bean属性
+
+```java
+@Value("#{beanInject.another}")
+    private String fromAnotherBean; //注入其他Bean属性：注入beanInject对象的属性another，类具体定义见下面
+```
+
+### 六 、注入文件资源
+
+```java
+@Value("classpath:com/hry/spring/configinject/config.txt")
+private Resource resourceFile; // 注入文件资源
+```
+
+### 七、 指定文件的属性
+
+```java
+<util:properties id="settings" location="WEB-INF/classes/META-INF/spring/test.properties" />
+
+   private String imageDir;   
+
+   @Value("#{settings['test.abc']}")     
+    public void setImageDir(String val) {     
+        this.imageDir = val;     
+    }
+```
+
+
+
+## @PropertySource
+
+```java
+@Component
+//引入外部配置文件组：${app.configinject}的值来自config.properties。
+@PropertySource({"classpath:com/hry/spring/configinject/config.properties",
+    "classpath:com/hry/spring/configinject/config_${anotherfile.configinject}.properties"})
+public class ConfigurationFileInject{
+    @Value("${app.name}")
+    private String appName; // 这里的值来自application.properties，spring boot启动时默认加载此文件
+
+    @Value("${book.name}")
+    private String bookName; // 注入第一个配置外部文件属性
+
+    @Value("${book.name.placeholder}")
+    private String bookNamePlaceholder; // 注入第二个配置外部文件属性
+
+    @Autowired
+    private Environment env;  // 注入环境变量对象，存储注入的属性值
+}
+```
+
+
+
+
+
+## Environment
+
 ## @ConfigurationProperties 
 
-```
+```java
 
 @ConfigurationProperties(locations = "classpath:mail.properties", ignoreUnknownFields = false, 
                          prefix = "mail")
