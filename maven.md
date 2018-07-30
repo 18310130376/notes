@@ -46,7 +46,7 @@ source /etc/profile   /  source ~/.bashrc
 export JAVA_HOME=/opt/jdk1.8.0_131
 export M2_HOME=/opt/apache-maven-3.3.9
 export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
-export PATH=$JAVA_HOME/bin:$M2_HOME/bin:$PAT
+export PATH=$JAVA_HOME/bin:$M2_HOME/bin:$PATH
 ```
 
 ```

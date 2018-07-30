@@ -270,7 +270,7 @@ public class Animal {
 }
 ```
 
-```
+```java
 package com.boot.web;
 
 public class Cat extends Animal{
@@ -280,7 +280,7 @@ public class Cat extends Animal{
 }
 ```
 
-```
+```java
 package com.boot.web;
 
 public class Dog extends Animal{
@@ -662,92 +662,6 @@ public class BlockingQueueTest {
             }
         }).start();
     }
-}
-```
-
-
-
-# 回调
-
-```
-package com.audition;
-
-public interface ICallBack<T> {
-	public void onSuccess(T result);  
-    public void onFailure(T result);  
-}
-```
-
-```java
-package com.audition;
-
-import java.util.Random;
-
-public class Server {
-
-    public void doRequest(ICallBack<String> callBack) {  
-        boolean result = getDoRequestResult();  
-        if(result)  
-            callBack.onSuccess("服务器Message：成功！");  
-        else  
-            callBack.onFailure("服务器Message：失败！");  
-    }  
-  
-    private boolean getDoRequestResult() {  
-        System.out.println("服务器正在处理...");  
-        int status = Math.abs(new Random().nextInt());  
-        return status % 2 == 0 ? false : true;  
-    }  
-}
-```
-
-```java
-package com.audition;
-
-public class Client{
-
-	 public static void main(String[] args) {  
-	        Server server = new Server();
-	        server.doRequest(new ICallBack<String>() {  
-	  
-	            @Override  
-	            public void onSuccess(String result) {  
-	                System.out.println(result);  
-	            }  
-	            
-				@Override
-				public void onFailure(String result) {
-					System.out.println(result);  
-				}  
-	        });  
-	    }  
-}
-```
-
-
-
-# 单例
-
-```java
-package com.audition;
-public class Singleton {
-    
-	private Singleton() {
-        
-	}
-	private static Singleton singleton = null;
-	
-	public static Singleton newInstance() {
-		
-		if(singleton == null) {
-			synchronized (Singleton.class) {
-				if(singleton == null) {
-					singleton = new Singleton();
-				}
-			}
-		}
-		return singleton;
-	}
 }
 ```
 
@@ -2024,6 +1938,52 @@ public class ExecutorServiceTest {
 
 
 
+# StopWatch
+
+有时我们在做开发的时候需要记录每个任务执行时间，或者记录一段代码执行时间，最简单的方法就是打印当前时间与执行完时间的差值，然后这样如果执行大量测试的话就很麻烦，并且不直观，如果想对执行的时间做进一步控制，则需要在程序中很多地方修改，目前spring-framework提供了一个StopWatch类可以做类似任务执行时间控制，也就是封装了一个对开始时间，结束时间记录操作的Java类，小例一则如下
+
+```java
+package com.example.stopwatch;
+
+import org.springframework.util.StopWatch;
+
+
+public class TestStopWatch {
+    private void test() throws InterruptedException {
+        StopWatch sw = new StopWatch();
+
+        sw.start("起床");
+        Thread.sleep(1000);
+        sw.stop();
+
+        sw.start("洗漱");
+        Thread.sleep(2000);
+        sw.stop();
+        
+       logger.info("耗时间：" + sw.getTotalTimeMillis());
+        
+        sw.start("锁门");
+        Thread.sleep(500);
+        sw.stop();
+
+        System.out.println(sw.prettyPrint());
+        System.out.println(sw.getTotalTimeMillis());
+        System.out.println(sw.getLastTaskName());
+        System.out.println(sw.getLastTaskInfo());
+        System.out.println(sw.getTaskCount());
+    }
+
+    public static void main(String []argv) throws InterruptedException {
+        TestStopWatch testStopWatch = new TestStopWatch();
+        testStopWatch.test();
+    }
+}
+```
+
+
+
+
+
 
 
 # 抽象类
@@ -2079,6 +2039,8 @@ public class TemplateTest {
 # 设计模式
 
 ## 策略模式
+
+http://www.runoob.com/design-pattern/design-pattern-tutorial.html
 
 ```java
 package com.wenhuisoft.chapter2;
@@ -2261,6 +2223,88 @@ public class Test
         
         girl.notifyWatchers("开心");
     }
+}
+```
+
+## 回调
+
+```java
+package com.audition;
+
+public interface ICallBack<T> {
+	public void onSuccess(T result);  
+    public void onFailure(T result);  
+}
+```
+
+```java
+package com.audition;
+
+import java.util.Random;
+
+public class Server {
+
+    public void doRequest(ICallBack<String> callBack) {  
+        boolean result = getDoRequestResult();  
+        if(result)  
+            callBack.onSuccess("服务器Message：成功！");  
+        else  
+            callBack.onFailure("服务器Message：失败！");  
+    }  
+  
+    private boolean getDoRequestResult() {  
+        System.out.println("服务器正在处理...");  
+        int status = Math.abs(new Random().nextInt());  
+        return status % 2 == 0 ? false : true;  
+    }  
+}
+```
+
+```java
+package com.audition;
+
+public class Client{
+
+	 public static void main(String[] args) {  
+	        Server server = new Server();
+	        server.doRequest(new ICallBack<String>() {  
+	  
+	            @Override  
+	            public void onSuccess(String result) {  
+	                System.out.println(result);  
+	            }  
+	            
+				@Override
+				public void onFailure(String result) {
+					System.out.println(result);  
+				}  
+	        });  
+	    }  
+}
+```
+
+## 单例
+
+```java
+package com.audition;
+public class Singleton {
+    
+	private Singleton() {
+        
+	}
+	private static Singleton singleton = null;
+	
+	public static Singleton newInstance() {
+		
+		if(singleton == null) {
+			synchronized (Singleton.class) {
+				if(singleton == null) {
+					singleton = new Singleton();
+				}
+			}
+		}
+		return singleton;
+	}
 }
 ```
 
