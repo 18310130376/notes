@@ -59,6 +59,64 @@ vi .gitconfig
 
 
 
+# 编译安装
+
+卸载自带的git
+
+```
+yum remove git
+```
+
+下载最新版git
+
+```
+wget https://github.com/git/git/archive/v2.9.2.tar.gz
+```
+
+解压
+
+```
+# tar zxvf v2.9.2.tar.gz
+# cd git-2.9.2
+```
+
+编译安装
+
+```
+# make configure
+# ./configure --prefix=/usr/local/git --with-iconv=/usr/local/libiconv
+# make all doc
+# sudo make install install-doc install-html
+```
+
+修改环境变量
+
+```
+# sudo vim /etc/profile
+```
+
+在最后一行添加
+
+```
+export PATH=/usr/local/git/bin:$PATH
+```
+
+保存后使其立即生效
+
+```
+# source /etc/profile
+```
+
+查看是否安装成功
+
+```
+#git --version
+```
+
+
+
+
+
 # Tortoisegit使用教程
 
 1.安装Git及Tortoisegit先上图，首先需要把123按顺序安装了
