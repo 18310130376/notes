@@ -3,6 +3,7 @@
 ```
 java -jar springboot-release.jar
 java -jar springboot-release.jar  --spring.prifiles.active=dev &
+nohup java -jar yourapp.jar &
 mvn spring-boot:run
 ```
 
@@ -453,3 +454,9 @@ test.age=20.prod
 # 参考文档
 
 https://blog.csdn.net/column/details/zkn-springboot.html?&page=2
+
+http://blog.didispace.com/categories/Spring-Boot/
+
+源码例子：https://gitee.com/didispace/SpringBoot-Learning
+
+http://blog.didispace.com/spring-boot-run-backend/
