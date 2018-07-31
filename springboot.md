@@ -89,10 +89,13 @@ private Resource resourceFile; // 注入文件资源
 ## @PropertySource
 
 ```java
-@Component
+@Component   // 或者 @Configuration
 //引入外部配置文件组：${app.configinject}的值来自config.properties。
 @PropertySource({"classpath:com/hry/spring/configinject/config.properties",
     "classpath:com/hry/spring/configinject/config_${anotherfile.configinject}.properties"})
+
+//@PropertySource(value = "application.properties", ignoreResourceNotFound = true)
+
 public class ConfigurationFileInject{
     @Value("${app.name}")
     private String appName; // 这里的值来自application.properties，spring boot启动时默认加载此文件
@@ -138,7 +141,7 @@ public class MailProperties {
 
 # 三 、Configuration声明bean
 
-```
+```java
 package com.dxz.demo.configuration;
 
 import org.springframework.context.annotation.Configuration;
@@ -153,7 +156,7 @@ public class TestConfiguration {
 
 测试
 
-```
+```java
 package com.dxz.demo.configuration;
 
 import org.springframework.context.ApplicationContext;

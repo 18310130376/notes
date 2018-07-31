@@ -729,6 +729,14 @@ firewall-cmd --zone=public --remove-port=80/tcp --permanent
 
 
 
+```
+iptables -L  列出iptables规则
+iptables -F  清除iptables内置规则
+iptables -X  清除iptables自定义规则
+```
+
+
+
 #### 文件双机备份
 
 图片上传双机互备（rsync+inotify）
