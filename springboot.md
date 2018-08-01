@@ -767,7 +767,371 @@ public class UserConrollerTest {
 
 
 
-七   https://mp.weixin.qq.com/s/hAJmvrYfS6OehMYVgqpqkw
+# 七  、开发环境热部署
+
+目前发现问题，引入后dubbo消费报错。
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-devtools</artifactId>
+        <optional>true</optional>
+    </dependency>
+</dependencies>
+```
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <configuration>
+                <fork>true</fork>
+            </configuration>
+        </plugin>
+</plugins>
+</build>
+```
+
+
+
+# 八 、Api签名
+
+## 方案一
+
+调用方和服务端约定secretKey=2Rv3grt8gP2QHcivuJy9tQ4mZCBGKt
+
+调用方：
+
+对参数按照规则排序，如a=b&c=d&e=f,加上约定参数key=secretKey。
+
+调用方最终参数形式如：sign=md5(a=b&c=d&e=f&key=secretKey).toUpperCase()
+
+```json
+{
+    'a':'b',
+    'c':'d',
+    'e':'f',
+    'sign':sign
+}
+```
+
+服务端：
+
+sign=md5(a=b&c=d&e=f&key=secretKey).toUpperCase()，获取的结果和客户端参数sign对比，一致则通过。
+
+```java
+private String signParameters(TreeMap<String, String> params)
+			throws NoSuchAlgorithmException, UnsupportedEncodingException {
+
+		String sign = params.entrySet().stream().map(e -> e.getKey() + '=' + e.getValue())
+				.collect(Collectors.joining("&"));
+		LOGGER.info("sign before without key {{}}", sign);
+		sign += "&key=" + secretKey;
+
+		return HashUtil.md5(sign).toUpperCase();
+}
+```
+
+## 方案二
+
+
+
+## 方案三
+
+JWT
+
+
+
+# 九、 RSA加解密
+
+```java
+/**
+ * 
+ */
+package com.boot.util;
+
+import java.security.InvalidKeyException;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
+public class RSAUtil {
+
+	public static final String KEY_ALGORITHM = "RSA";
+	/** 貌似默认是RSA/NONE/PKCS1Padding，未验证 */
+	public static final String CIPHER_ALGORITHM = "RSA";
+	public static final String PUBLIC_KEY = "publicKey";
+	public static final String PRIVATE_KEY = "privateKey";
+
+	static String publicKeyStr = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCHM9qA9gJoKc7XgXeaO3qrio3fP2KvNeOeLl4uivL7I7yrhkoQ3Y9hxXcP+x7asA6+Cztu6hle2z5DyAG2usMIsilzpOpiW9DaSeA/sdgPR9RaJBGxCk9tt3Jq9qh90kT5x+z8rQh1LcLeY6Wk5RIhAMOw4PaDeD21ucvBQ7D8+QIDAQAB";
+	static String privateKeyStr = "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAIcz2oD2AmgpzteBd5o7equKjd8/Yq81454uXi6K8vsjvKuGShDdj2HFdw/7HtqwDr4LO27qGV7bPkPIAba6wwiyKXOk6mJb0NpJ4D+x2A9H1FokEbEKT223cmr2qH3SRPnH7PytCHUtwt5jpaTlEiEAw7Dg9oN4PbW5y8FDsPz5AgMBAAECgYB1sRy+7+eudt5YWJodhzNEikrvkES+UoG+m4xepZPYLAa7pR1qSwPaT0NShP4ZzfI3Wp208lF9cgpkhIGBaFgHQLhuS+/JIFXdKuJQdsl0lUkwkJZDdX+D97PoWJ11QU/BRaI8bGia/EAULh49VJ5HTx+RS/oEkmwFLY6RPW6PxQJBAMERTooyxdOjwIMaZKMUhlHmZyurxZO4Qyz/ZW3XZwV+qom7nLy3N/29Bm6JUxH4wHF16BRjz9cSGZi+DuypqCsCQQCzRfKMSag5uTiXpPPmOITjJXjVhMCWZaepQ784MEVxUm33WluPh3Qi1rFeo2Mw/XmcaFNFvn3Qpy4udDUA0plrAkEAptcH4hFCN0QZBrJ2KR+Be6D5oxmLYb4n/uithCBSnML7KI8CQWqrbhA9UKRHLw6hbusPJR+j6h1wFTiYuRdbhQJAerANDSs/gLmc3FMcQ9s8PoOfjWi7sHHDa1ic3eRTMfm6nkRtUu3dchZB7sWclaNy/bJ8AsgaLJitR0dqGrUGHwJAFvRtzbIkChbDSYFt5SgF8FDP93ec3oKkW3O2JfXRuPYWQI7FhqszxXaBdyDo5J8FkbF894l0oqLEfPDxMbgH2w==";
+
+	/** RSA密钥长度必须是64的倍数，在512~65536之间。默认是1024 */
+	public static final int KEY_SIZE = 1024;
+
+	public static final String PLAIN_TEXT = "abc123!";
+
+	public static void main(String[] args) {
+
+		String password = "123456";
+
+		PublicKey publicKey = restorePublicKey(Base64.getDecoder().decode(publicKeyStr.getBytes()));
+		// 加密
+		byte[] encodedText = RSAEncode(publicKey, password.getBytes());
+		System.out.println("RSA encoded: " + Base64.getEncoder().encodeToString(encodedText));
+
+		// 解密
+		PrivateKey privateKey = restorePrivateKey(Base64.getDecoder().decode(privateKeyStr));
+		// 密文
+		String test1 = "S0PnJL8Ac+StEAir3mr6z0I9wGzQrqcQglPMXe5XExODaCfXsWCdiq4Ve+lv9QaAtOpzHtDWA44S5fSD87iAjcGK8PxMpDNjYGv8OE2fphYx+8UlM2ExPHMDbMNTRpmaMRUXS3byI8kk6Ct/cJ/zjjAQ8+rR5EwYGMEjOZV8ghs=";
+		System.out.println("RSA decoded: " + RSADecode(privateKey, Base64.getDecoder().decode(test1)));
+		System.out.println("RSA decoded: " + RSADecode(privateKey, encodedText));
+	}
+
+	public static PrivateKey getPrivateKey() {
+		return restorePrivateKey(Base64.getDecoder().decode(privateKeyStr));
+	}
+
+	/**
+	 * 生成密钥对。注意这里是生成密钥对KeyPair，再由密钥对获取公私钥
+	 * @return
+	 */
+	public static Map<String, byte[]> generateKeyBytes() {
+
+		try {
+			KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(KEY_ALGORITHM);
+			keyPairGenerator.initialize(KEY_SIZE);
+			KeyPair keyPair = keyPairGenerator.generateKeyPair();
+			RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+			RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+
+			Map<String, byte[]> keyMap = new HashMap<String, byte[]>();
+
+			System.out.println(Base64.getEncoder().encodeToString(publicKey.getEncoded()));
+			System.out.println(Base64.getEncoder().encodeToString(privateKey.getEncoded()));
+
+			keyMap.put(PUBLIC_KEY, publicKey.getEncoded());
+			keyMap.put(PRIVATE_KEY, privateKey.getEncoded());
+			return keyMap;
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * 还原公钥，X509EncodedKeySpec 用于构建公钥的规范
+	 * @param keyBytes
+	 * @return
+	 */
+	public static PublicKey restorePublicKey(byte[] keyBytes) {
+		X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(keyBytes);
+
+		try {
+			KeyFactory factory = KeyFactory.getInstance(KEY_ALGORITHM);
+			PublicKey publicKey = factory.generatePublic(x509EncodedKeySpec);
+			return publicKey;
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * 还原私钥，PKCS8EncodedKeySpec 用于构建私钥的规范
+	 * @param keyBytes
+	 * @return
+	 */
+	public static PrivateKey restorePrivateKey(byte[] keyBytes) {
+		PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(keyBytes);
+		try {
+			KeyFactory factory = KeyFactory.getInstance(KEY_ALGORITHM);
+			PrivateKey privateKey = factory.generatePrivate(pkcs8EncodedKeySpec);
+			return privateKey;
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * @param key
+	 * @param plainText
+	 * @return
+	 */
+	public static byte[] RSAEncode(PublicKey key, byte[] plainText) {
+
+		try {
+			Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
+			cipher.init(Cipher.ENCRYPT_MODE, key);
+			return cipher.doFinal(plainText);
+		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
+				| BadPaddingException e) {
+			e.printStackTrace();
+		}
+		return null;
+
+	}
+
+	/**
+	 * @param key
+	 * @param encodedText
+	 * @return
+	 */
+	public static String RSADecode(PrivateKey key, byte[] encodedText) {
+
+		try {
+			Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			return new String(cipher.doFinal(encodedText));
+		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
+				| BadPaddingException e) {
+			e.printStackTrace();
+		}
+		return null;
+
+	}
+}
+```
+
+
+
+
+
+# 十 、属性文件加密
+
+```xml
+<dependency>
+    <groupId>org.jasypt</groupId>
+    <artifactId>jasypt</artifactId>
+    <version>1.9.0</version>
+</dependency>
+```
+
+
+
+```java
+package com.boot.util;
+import org.jasypt.util.text.BasicTextEncryptor;
+import org.junit.Test;
+
+public class EncypterTest {
+	
+	private String password = "password";
+	
+	 /**
+	  * 解密
+	  * **/
+	 @org.junit.Test
+	 public void decrypt() {
+		 BasicTextEncryptor textEncryptor = new BasicTextEncryptor();  
+		 textEncryptor.setPassword(password);  
+	     String oldPassword = textEncryptor.decrypt("A/muZ2yRS9wQoph5gSvOlw==");  
+	     System.out.println(oldPassword);  
+		 
+	 }
+	 
+	 /**
+	  * 加密
+	  * **/
+	 @Test
+	 public void encrypt() {
+		  BasicTextEncryptor textEncryptor = new BasicTextEncryptor();  
+	      textEncryptor.setPassword(password);  
+	      String newPassword = textEncryptor.encrypt("123456");  
+	      System.out.println(newPassword);  
+	 }
+}
+```
+
+# 十一  、DES加密
+
+```java
+package com.boot.util;
+
+import java.security.Key;
+import java.security.SecureRandom;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+
+import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;  
+   
+public class DESUtils {  
+   
+    private static Key key;  
+    private static String KEY_STR = "myKey";
+    private static String CHARSETNAME = "UTF-8";
+    private static String ALGORITHM = "DES";
+   
+    static {  
+        try {  
+            KeyGenerator generator = KeyGenerator.getInstance(ALGORITHM);  
+            generator.init(new SecureRandom(KEY_STR.getBytes()));  
+            key = generator.generateKey();  
+            generator = null;  
+        } catch (Exception e) {  
+            throw new RuntimeException(e);  
+        }  
+    }  
+ 
+    public static String getEncryptString(String str) {  
+        BASE64Encoder base64encoder = new BASE64Encoder();  
+        try {  
+            byte[] bytes = str.getBytes(CHARSETNAME);  
+            Cipher cipher = Cipher.getInstance(ALGORITHM);  
+            cipher.init(Cipher.ENCRYPT_MODE, key);  
+            byte[] doFinal = cipher.doFinal(bytes);  
+            return base64encoder.encode(doFinal);  
+        } catch (Exception e) {  
+            throw new RuntimeException(e);  
+        }  
+    }  
+    
+    public static String getDecryptString(String str) {  
+        BASE64Decoder base64decoder = new BASE64Decoder();  
+        try {  
+            byte[] bytes = base64decoder.decodeBuffer(str);  
+            Cipher cipher = Cipher.getInstance(ALGORITHM);  
+            cipher.init(Cipher.DECRYPT_MODE, key);  
+            byte[] doFinal = cipher.doFinal(bytes);  
+            return new String(doFinal, CHARSETNAME);  
+        } catch (Exception e) {  
+            throw new RuntimeException(e);  
+        }  
+    }  
+   
+    public static void main(String[] args) {
+    	
+    	String str = "root";
+    	System.out.println(getEncryptString(str));
+    	System.out.println(getDecryptString("WnplV/ietfQ="));
+  }
+    
+}   
+```
+
+
 
 
 
