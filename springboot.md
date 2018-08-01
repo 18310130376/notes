@@ -1896,7 +1896,237 @@ public class ServerConfig {
 }
 ```
 
+# 二十二、JWT 实现 RESTful Api 权限控制
 
+https://blog.csdn.net/sxdtzhaoxinguo/article/details/77965226
+
+http://www.leftso.com/blog/384.html
+
+
+
+# 二十三、spring boot 导入本地jar包
+
+导入本地包
+
+```xml
+<!--本地包-->
+<dependency>
+    <groupId>leftso</groupId>
+    <artifactId>common</artifactId>
+    <version>1.0</version>
+    <scope>system</scope>
+    <systemPath>${project.basedir}/lib/Common.jar</systemPath>
+</dependency>
+```
+
+打包的时候讲本地jar包打入war中还需要添加一个war的打包插件，配置如下： 
+
+```xml
+ <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <configuration>
+                    <webResources>
+                        <resource>
+                            <directory>${project.basedir}/lib</directory>
+                            <targetPath>WEB-INF/lib/</targetPath>
+                            <includes>
+                                <include>**/*.jar</include>
+                            </includes>
+                        </resource>
+                    </webResources>
+                </configuration>
+ </plugin>
+```
+
+
+
+# 二十四、Jersey2.x实现JAX-RS
+
+```xml
+<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jersey</artifactId>
+</dependency>
+```
+
+```java
+public class JerseyResourceConfig extends ResourceConfig {
+	public JerseyResourceConfig() {
+		register(RequestContextFilter.class);
+		// 配置那个包下面的会被Jersey扫描
+		packages("com.leftso.rest");
+	}
+}
+```
+
+```java
+@Configuration
+public class JerseyConfig {
+
+	@Bean
+	public ServletRegistrationBean jerseyServlet() {
+		ServletRegistrationBean registration = new ServletRegistrationBean(new ServletContainer(), "/rest/*");
+		// our rest resources will be available in the path /rest/*
+		registration.addInitParameter(ServletProperties.JAXRS_APPLICATION_CLASS, JerseyResourceConfig.class.getName());
+		return registration;
+	}
+}
+```
+
+
+
+```java
+@Path("/")
+public class RestResource {
+
+	@Path("/hello") // 具体路径
+	@GET // 请求方式
+	@Produces(MediaType.APPLICATION_JSON) // 返回的格式
+	// @Consumes()//接受指定的MIME格式
+	public Map<String, Object> hello() {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("code", "1");
+		map.put("codeMsg", "success");
+		return map;
+	}
+}
+```
+
+
+
+# 二十五、spring boot RPC 框架 Hessian
+
+## 服务端
+
+```xml
+<dependency>
+			<groupId>com.caucho</groupId>
+			<artifactId>hessian</artifactId>
+			<version>4.0.51</version>
+</dependency>
+```
+
+
+
+```java
+package net.xqlee.project.service;
+
+public interface HelloWorldService {
+	String sayHello(String name);
+}
+```
+
+
+
+```java
+package net.xqlee.project.service;
+
+import org.springframework.stereotype.Service;
+
+@Service("HelloWorldService")
+public class HelloWorldServiceServiceImp implements HelloWorldService {
+
+	@Override
+	public String sayHello(String name) {
+		return "Hello, " + name;
+	}
+}
+```
+
+
+
+```java
+@SpringBootApplication
+public class DemoSpringbootRpcHessianApplication {
+	@Autowired
+	private HelloWorldService helloWorldService;
+
+	public static void main(String[] args) {
+		SpringApplication.run(DemoSpringbootRpcHessianApplication.class, args);
+	}
+
+	// 发布服务
+	@Bean(name = "/HelloWorldService")
+	public HessianServiceExporter accountService() {
+		HessianServiceExporter exporter = new HessianServiceExporter();
+		exporter.setService(helloWorldService);
+		exporter.setServiceInterface(HelloWorldService.class);
+		return exporter;
+	}
+}
+```
+
+
+
+## 客户端
+
+```xml
+<dependency>
+			<groupId>com.caucho</groupId>
+			<artifactId>hessian</artifactId>
+			<version>4.0.51</version>
+		</dependency>
+		<!-- 本地引入hessian服务端的接口 -->
+		<dependency>
+			<groupId>net.xqlee.project</groupId>
+			<artifactId>rpc-hessian-demo</artifactId>
+			<version>1.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/rpc-hessian-demo-interface.jar</systemPath>
+</dependency>
+```
+
+```java
+@SpringBootApplication
+public class DemoSpringbootRpcHessianClientApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(DemoSpringbootRpcHessianClientApplication.class, args);
+	}
+
+	@Bean
+	public HessianProxyFactoryBean helloClient() {
+		HessianProxyFactoryBean factory = new HessianProxyFactoryBean();
+		factory.setServiceUrl("http://localhost:8083/HelloWorldService");
+		factory.setServiceInterface(HelloWorldService.class);
+		return factory;
+	}
+```
+
+
+
+```java
+@RestController
+public class DemoHessianController {
+
+	@Autowired
+	HelloWorldService helloWorldService;
+
+	@GetMapping("/rpchello.do")
+	public Object rpcSayHello(String name) {
+		return helloWorldService.sayHello(name);
+	}
+}
+```
+
+
+
+# 二十六、easypoi导入excel文件
+
+http://www.leftso.com/blog/326.html
+
+```
+<dependency>
+	<groupId>cn.afterturn</groupId>
+	<artifactId>easypoi-web</artifactId>
+	<version>3.0.3</version>
+</dependency>
+```
+
+
+
+# 二十七、 spring boot项目中使用logback日志
 
 
 

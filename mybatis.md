@@ -36,3 +36,14 @@
 
 
 https://blog.csdn.net/liyanlei5858/article/details/79066790
+
+
+
+# 一、spring boot 1.5.2整合mybaties日志打印出sql语句
+
+在application.properties文件中配置
+
+```
+logging.level.com.leftso.mapper=DEBUG   //com.leftso.mapper为mapper所在的包路径
+```
+
