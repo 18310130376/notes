@@ -1810,6 +1810,98 @@ https://blog.csdn.net/forezp/article/details/71023510
 
 
 
+# 二十一、启动时执行程序
+
+我们可以通过实现ApplicationRunner和CommandLineRunner，来实现，他们都是在SpringApplication 执行之后开始执行的 .
+
+## 方式一
+
+```java
+import org.springframework.boot.CommandLineRunner;  
+import org.springframework.core.annotation.Order;  
+import org.springframework.stereotype.Component; 
+
+@Component  
+@Order(value=1)
+public class MyStartupRunnerTest implements CommandLineRunner  
+{  
+    @Override  
+    public void run(String... args) throws Exception  
+    {  
+        System.out.println(">>>>This is MyStartupRunnerTest Order=1. Only testing CommandLineRunner...<<<<");  
+    }  
+}
+```
+
+```java
+import org.springframework.core.Ordered;
+
+@Component  
+public class MyStartupRunnerTest2 implements ApplicationRunner,Ordered  
+{  
+
+  @Autowired  
+  private SampleService sampleService;  
+
+    @Override
+    public int getOrder(){
+        return 1;//通过设置这里的数字来知道指定顺序
+    }
+
+   @Override
+    public void run(ApplicationArguments var1) throws Exception{
+        System.out.println("MyApplicationRunner class will be execute when the project was started!");
+    }
+}  
+```
+
+CommandLineRunner接口的运行顺序是依据@Order注解的value由小到大执行，即value值越小优先级越高。 
+
+## 方式二
+
+有时候我们需要在spring boot容器启动并加载完后，开一些线程或者一些程序来干某些事情。这时候我们需要配置ContextRefreshedEvent事件来实现我们要做的事情 
+
+```java
+@Component
+public class ApplicationStartup implements ApplicationListener<ContextRefreshedEvent>{
+    public void onApplicationEvent(ContextRefreshedEvent event)
+      {
+        //在容器加载完毕后获取dao层来操作数据库
+        OSSVideoRepository ossVideoRepository = (OSSVideoRepository)event.getApplicationContext().getBean(OSSVideoRepository.class);
+        //在容器加载完毕后获取配置文件中的配置
+        ServerConfig serverConfig = (ServerConfig)event.getApplicationContext().getBean(ServerConfig.class);
+        
+        ServerFileScanner fileScanner = new ServerFileScanner(
+                ossVideoRepository, serverConfig.getScanpath());
+        //在容器加载完毕后启动线程
+        Thread thread = new Thread(fileScanner);
+        thread.start();
+      }
+}
+```
+
+
+
+```java
+@Component
+@ConfigurationProperties(prefix = "server")
+public class ServerConfig {
+    private String aliyunossEndpoint;
+    private String aliyunossAccessKeyId;
+    private String aliyunossAccessKeySecret;
+    private String aliyunossBucketName;
+    private String scanpath;
+
+   ......getter  setter..........
+}
+```
+
+
+
+
+
+
+
 # 参考文档
 
 https://blog.csdn.net/column/details/zkn-springboot.html?&page=2
