@@ -565,6 +565,212 @@ test.age=20.prod
 
 
 
+# 五 、添加https支持
+
+## 一 、 证书生成
+
+java自带的命令：
+
+```java
+keytool -genkey -alias tomcat  -storetype PKCS12 -keyalg RSA -keysize 2048  -keystore keystore.p12 -validity 3650
+```
+
+当前用户目录下会生成一个keystore.p12文件，将这个文件拷贝到我们项目的根目录下，然后修改application.properties文件，添加HTTPS支持。在application.properties中添加如下代码
+
+```
+server.ssl.key-store=keystore.p12
+server.ssl.key-store-password=111111
+server.ssl.keyStoreType=PKCS12
+server.ssl.keyAlias:tomcat
+server.port=8084
+```
+
+## 二 、http请求不跳转成https访问
+
+```java
+package com.integration.boot.config;
+
+import org.apache.catalina.connector.Connector;
+import org.springframework.boot.context.embedded.EmbeddedServletContainerFactory;
+import org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class HttpsSupport {
+	
+	@Bean
+	public EmbeddedServletContainerFactory servletContainerFactory(){
+	 
+	TomcatEmbeddedServletContainerFactory tomcatConfig = new TomcatEmbeddedServletContainerFactory();
+	 
+	tomcatConfig.addAdditionalTomcatConnectors(this.newHttpConnector());
+	return tomcatConfig;
+	}
+	 
+	private Connector newHttpConnector() {
+	Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
+	connector.setScheme("http");
+	connector.setPort(8083);
+	connector.setSecure(false);
+	return connector;
+	 
+	}
+}
+```
+
+注意：connector.setPort(8083);端口和配置文件的server.port不能一样。其实server.port不用配置
+
+此时访问：
+
+http://localhost:8083/getUserInfo    可以访问
+
+https://localhost:8080/getUserInfo  可以访问
+
+http://localhost:8080/getUserInfo  不可以访问
+
+## 三 、将http请求强制跳转到https
+
+有时候我们的一些旧业务是使用的http，但是新业务以及将来的框架都必须强制使用https，那就需要做一下跳转，把收到的http请求强制跳转到https上面。
+
+```
+server.port=8443
+```
+
+```java
+package com.integration.boot.config;
+
+import org.apache.catalina.Context;
+import org.apache.catalina.connector.Connector;
+import org.apache.catalina.deploy.SecurityCollection;
+import org.apache.catalina.deploy.SecurityConstraint;
+import org.springframework.boot.context.embedded.EmbeddedServletContainerFactory;
+import org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class TomcatConfig {
+
+	@Bean
+	public EmbeddedServletContainerFactory servletContainerFactory(){
+	 
+	TomcatEmbeddedServletContainerFactory tomcatConfig = new TomcatEmbeddedServletContainerFactory(){
+	 
+	@Override
+	 
+	protected void postProcessContext(Context context) {
+	 
+	SecurityConstraint securityConstraint = new SecurityConstraint();
+	 
+	securityConstraint.setUserConstraint("CONFIDENTIAL");
+	 
+	SecurityCollection collection = new SecurityCollection();
+	collection.addPattern("/*");
+	//另外还可以配置哪些请求必须走https，这表示以/home/开头的请求必须走https
+	collection.addPattern("/home/*");
+	 
+	securityConstraint.addCollection(collection);
+	 
+	context.addConstraint(securityConstraint);
+	}
+	};
+	 
+	tomcatConfig.addAdditionalTomcatConnectors(this.newHttpConnector());
+	return tomcatConfig;
+	}
+	 
+	private Connector newHttpConnector() {
+	 
+	Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
+	connector.setScheme("http");
+	connector.setPort(8081);
+	connector.setSecure(false);
+	//如果只需要支持https访问，这里把收到的http请求跳转到https的端口
+	connector.setRedirectPort(8443);
+	return connector;
+	}
+}
+```
+
+
+
+此时访问 
+
+http://localhost:8081/getUserInfo    会跳转到 https://localhost:8443/getUserInfo
+
+
+
+# 六 、单元测试
+
+引入依赖
+
+```xml
+<dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+</dependency>
+```
+
+测试代码
+
+```java
+package springBoot;
+
+import javax.ws.rs.core.MediaType;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+import com.integration.boot.Application;
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringBootTest(classes=Application.class)
+public class UserConrollerTest {
+	@Test
+	public void contextLoads() {
+		
+	}
+	private MockMvc mockMvc;
+	  
+    @Autowired  
+    private WebApplicationContext wac;
+
+    @Before
+    public void setup() {  
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();  
+    }  
+
+    @Test  
+    public void getUserInfoTest() throws Exception {  
+    	  String uri = "/getUserInfo";
+          MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders.get(uri).param("username", "123").content("").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+        		  .accept(MediaType.APPLICATION_JSON))
+                  .andReturn();
+          String content = mvcResult.getResponse().getContentAsString();
+          System.out.println(content);
+    }  
+}
+```
+
+
+
+
+
+七   https://mp.weixin.qq.com/s/hAJmvrYfS6OehMYVgqpqkw
+
+
+
 # 参考文档
 
 https://blog.csdn.net/column/details/zkn-springboot.html?&page=2
