@@ -73,20 +73,34 @@ private Resource resourceFile; // 注入文件资源
 
 ### 七、 指定文件的属性
 
-```java
+@Value("#{configProperties['t1.msgname']}")这种形式的配置中有“configProperties”，其实它指定的是配置文件的加载对象：配置如下
+
+```xml
+<bean id="settings" class="org.springframework.beans.factory.config.PropertiesFactoryBean">  
+        <property name="locations">  
+            <list>  
+                <value>classpath:/config/t1.properties</value>  
+            </list>  
+        </property>  
+</bean> 
+
+或者
 <util:properties id="settings" location="WEB-INF/classes/META-INF/spring/test.properties" />
+```
 
-   private String imageDir;   
+```java
 
-   @Value("#{settings['test.abc']}")     
+ private String imageDir;   
+
+ @Value("#{settings['test.abc']}")     
     public void setImageDir(String val) {     
         this.imageDir = val;     
-    }
+  }
 ```
 
 
 
-## @PropertySource
+## @PropertySource自定义配置文件
 
 ```java
 @Component   // 或者 @Configuration
@@ -111,9 +125,39 @@ public class ConfigurationFileInject{
 }
 ```
 
+或者ConfigurationProperties注入实体
 
+```java
+@Configuration
+@PropertySource(value = "classpath:test.properties")
+@ConfigurationProperties(prefix = "com.forezp")
+public class User {
+    private String name;
+    private int age;
 
+    public String getName() {
+        return name;
+    }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+}
+```
+
+如果实体不加@Component，则在启动类上加：
+
+```java
+@EnableConfigurationProperties({User.class，ConfigurationFileInject.class})
+```
 
 ## Environment
 
@@ -123,6 +167,7 @@ public class ConfigurationFileInject{
 
 @ConfigurationProperties(locations = "classpath:mail.properties", ignoreUnknownFields = false, 
                          prefix = "mail")
+@Component
 public class MailProperties { 
   public static class Smtp {  
     private boolean auth;  
@@ -136,6 +181,40 @@ public class MailProperties {
   private String password; 
 }
 ```
+
+注意点：类上必须加 @Component（用下面方式可以不加@Component）
+
+如果在类上不加 @Component，则需要在启动类上加入：
+
+```java
+@SpringBootApplication
+@EnableConfigurationProperties({ConfigBean.class})
+public class Application{
+
+    private static final Log logger = LogFactory.getLog(Application.class);
+    
+    @Bean
+    public CountDownLatch closeLatch() {
+        return new CountDownLatch(1);
+    }
+    
+    public static void main(String[] args) throws InterruptedException {
+
+    	  ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
+          logger.info("======dubbo-consumer started successfull ======");
+          CountDownLatch closeLatch = context.getBean(CountDownLatch.class);
+          closeLatch.await();
+    }
+}
+```
+
+
+
+
+
+
+
+
 
 
 
@@ -1019,6 +1098,8 @@ public class RSAUtil {
 
 # 十 、属性文件加密
 
+## 一、普通java项目
+
 ```xml
 <dependency>
     <groupId>org.jasypt</groupId>
@@ -1062,6 +1143,45 @@ public class EncypterTest {
 	 }
 }
 ```
+
+
+
+## 二、springBoot项目
+
+```xml
+<dependency>
+    <groupId>com.github.ulisesbocchio</groupId>
+    <artifactId>jasypt-spring-boot-starter</artifactId>
+    <version>1.5-java7</version>
+</dependency>
+```
+
+配置文件中：
+
+```properties
+spring.datasource.password=ENC(zjdITWU2MWpHaOdcF8nG+w==) //需要解密的配置使用ENC()将其包围
+jasypt.encryptor.password=f6car  //加解密所需要的密钥 
+```
+
+如何获得密文？
+
+用方式一或者如下方式
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringBootTest(classes = Application.class)
+public class JasyptTest {
+    @Autowired
+    private StringEncryptor stringEncryptor;
+ 
+    @Test
+    public void testEnvironmentProperties() {
+        System.out.println(stringEncryptor.encrypt("123456"));
+    }
+}
+```
+
+使用时@value注入或者其他方式获取`spring.datasource.password`，拿到的直接就是明文。
 
 # 十一  、DES加密
 
@@ -1131,7 +1251,562 @@ public class DESUtils {
 }   
 ```
 
+BASE64Encoder一致报错，eclipse选中项目--->buildpath-->libraries ---> jre system library ---> access rules---> edit ---> add ---> accessble ---> ** ---> ok
 
+
+
+# 十二  、JDBC返回对象
+
+```java
+import org.springframework.jdbc.core.RowMapper;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+/**
+ * @author dalaoyang
+ * @project springboot_learn
+ * @package com.dalaoyang.entity
+ * @email yangyang@dalaoyang.cn
+ * @date 2018/7/25
+ */
+public class User implements RowMapper<User> {
+    private int id;
+    private String user_name;
+    private String pass_word;
+
+    public User(int id, String user_name, String pass_word) {
+        this.id = id;
+        this.user_name = user_name;
+        this.pass_word = pass_word;
+    }
+
+    public User() {
+    }
+
+    public User(String user_name, String pass_word) {
+        this.user_name = user_name;
+        this.pass_word = pass_word;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getUser_name() {
+        return user_name;
+    }
+
+    public void setUser_name(String user_name) {
+        this.user_name = user_name;
+    }
+
+    public String getPass_word() {
+        return pass_word;
+    }
+
+    public void setPass_word(String pass_word) {
+        this.pass_word = pass_word;
+    }
+
+    @Override
+    public User mapRow(ResultSet resultSet, int i) throws SQLException {
+        User user = new User();
+        user.setId(resultSet.getInt("id"));
+        user.setUser_name(resultSet.getString("user_name"));
+        user.setPass_word(resultSet.getString("pass_word"));
+        return user;
+    }
+}
+```
+
+```java
+public User getUserById(Integer id){
+        String sql = "SELECT * FROM USER WHERE ID = ?";
+        User user= jdbcTemplate.queryForObject(sql,new User(),new Object[]{id});
+        return user;
+ }
+```
+
+
+
+# 十三 、整合springSecurity
+
+## 一、 介绍
+
+  Spring Security是一个能够为基于Spring的企业应用系统提供声明式的安全访问控制解决方案的安全框架。它提供了一组可以在Spring应用上下文中配置的Bean，充分利用了Spring IoC，DI（控制反转Inversion of Control ,DI:Dependency Injection 依赖注入）和AOP（面向切面编程）功能，为应用系统提供声明式的安全访问控制功能，减少了为企业系统安全控制编写大量重复代码的工作。
+
+## 二、 环境搭建
+
+  建立springboot2项目,加入security依赖,mybatis依赖
+
+```java
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+   <groupId>org.mybatis.spring.boot</groupId>
+   <artifactId>mybatis-spring-boot-starter</artifactId>
+   <version>1.3.2</version>
+</dependency>
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+数据库为传统的用户--角色--权限，权限表记录了url和method，springboot配置文件如下：
+
+```java
+mybatis:
+  type-aliases-package: com.example.demo.entity
+server:
+  port: 8081
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=utf-8&useSSL=true
+    username: root
+    password: 123456
+  http:
+    encoding:
+      charset: utf-8
+      enabled: true
+```
+
+springboot启动类中加入如下代码,设置路由匹配规则。
+
+```java
+@Override
+protected void configurePathMatch(PathMatchConfigurer configurer) {
+    configurer.setUseSuffixPatternMatch(false) //设置路由是否后缀匹配，譬如/user能够匹配/user.,/user.aa
+        .setUseTrailingSlashMatch(false); //设置是否后缀路径匹配，比如/user能够匹配/user,/user/
+}
+```
+
+## 三、 security配置
+
+  默认情况下security是无需任何自定义配置就可使用的，我们不考虑这种方式，直接讲如何个性化登录过程。
+
+#### 1、 建立security配置文件,目前配置文件中还没有任何配置。
+
+```java
+@Configuration
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+}
+```
+
+#### 2、 个性化登录，security中的登录如下：
+
+![img](data:image/jpeg;base64,/9j/4QAYRXhpZgAASUkqAAgAAAAAAAAAAAAAAP/sABFEdWNreQABAAQAAAAZAAD/4QOTaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLwA8P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/PiA8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJBZG9iZSBYTVAgQ29yZSA1LjMtYzAxMSA2Ni4xNDU2NjEsIDIwMTIvMDIvMDYtMTQ6NTY6MjcgICAgICAgICI+IDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+IDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdFJlZj0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlUmVmIyIgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6MTdFRTJGMTQ4RTFFMTFFOEFCNzlFMzVDMTkzNERBNDIiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MTdFRTJGMTM4RTFFMTFFOEFCNzlFMzVDMTkzNERBNDIiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiBXaW5kb3dzIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InV1aWQ6ZmFmNWJkZDUtYmEzZC0xMWRhLWFkMzEtZDMzZDc1MTgyZjFiIiBzdFJlZjpkb2N1bWVudElEPSI2NDVGMTQxMkU0QjRCRTBBNTU0N0YyN0YzNjBGQUNFMSIvPiA8ZGM6Y3JlYXRvcj4gPHJkZjpTZXE+IDxyZGY6bGk+ZnhiPC9yZGY6bGk+IDwvcmRmOlNlcT4gPC9kYzpjcmVhdG9y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)
+
+- security需要一个user的实体类实现`UserDetails`接口,该实体类最后与系统中用户的实体类分开，代码如下：
+
+```java
+public class SecurityUser implements UserDetails{
+    private static final long serialVersionUID = 1L;
+    private String password;
+    private String name;
+    List<GrantedAuthority> authorities;
+    
+    public User(string name,string password) {
+        this.id = id;
+        this.password = password;
+        this.name = name;
+        this.age = age;
+    }
+
+    public void setAuthorities(List<GrantedAuthority> authorities) {
+        this.authorities = authorities;
+    }
+
+    @Override
+    public Collection<GrantedAuthority> getAuthorities() {
+        return this.authorities;
+    }
+
+    @Override //获取校验用户名
+    public String getUsername() {
+        return String.valueOf(this.id);
+    }
+
+    @Override //获取校验用密码
+    public String getPassword() {
+        return password;
+    }
+
+    @Override //账户是否未过期
+    public boolean isAccountNonExpired() {
+        // TODO Auto-generated method stub
+        return true;
+    }
+
+    @Override  //账户是否未锁定
+    public boolean isAccountNonLocked() {
+        // TODO Auto-generated method stub
+        return true;
+    }
+
+    @Override  //帐户密码是否未过期，一般有的密码要求性高的系统会使用到，比较每隔一段时间就要求用户重置密码
+    public boolean isCredentialsNonExpired() {
+        // TODO Auto-generated method stub
+        return true;
+    }
+
+    @Override //账户是否可用
+    public boolean isEnabled() {
+        // TODO Auto-generated method stub
+        return true;
+    }
+}
+```
+
+- 编写了实体类还需要编写一个服务类SecurityService实现`UserDetailsService`接口，重写loadByUsername方法，通过这个方法根据用户名获取用户信息，代码如下：
+
+```java
+@Component
+public class SecurityUserService implements UserDetailsService {
+    @Autowired
+    private JurisdictionMapper jurisdictionMapper;
+    @Autowired
+    private UserMapper userMapper;
+    private Logger log = LoggerFactory.getLogger(this.getClass());
+
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        log.info("登录用户id为：{}",username);
+        int id = Integer.valueOf(username);
+        User user = userMapper.getById(id);
+        if(user==null) {
+            //抛出错误，用户不存在
+            throw new UsernameNotFoundException("用户名 "+username+"不存在");
+        }
+        //获取用户权限
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        List<Jurisdiction> jurisdictions = jurisdictionMapper.selectByUserId(id);
+        for(Jurisdiction item : jurisdictions) {
+            GrantedAuthority authority = new MyGrantedAuthority(item.getMethod(),item.getUrl());
+            authorities.add(authority);
+        }
+        SecurityUser securityUser = new SecurityUser(user.getName(),user.getPassword(),authority):
+        user.setAuthorities(authorities);
+        return securityUser;
+    }
+}
+```
+
+- 通常我们会对密码进行加密，所有还要编写一个passwordencode类，实现PasswordEncoder接口，代码如下：
+
+```java
+@Component
+public class MyPasswordEncoder implements PasswordEncoder {
+    private Logger log = LoggerFactory.getLogger(this.getClass());
+
+    @Override //不清楚除了在下面方法用到还有什么用处
+    public String encode(CharSequence rawPassword) {
+        return StringUtil.StringToMD5(rawPassword.toString());
+    }
+
+    //判断密码是否匹配
+    @Override
+    public boolean matches(CharSequence rawPassword, String encodedPassword) {
+        return encodedPassword.equals(this.encode(rawPassword));
+    }
+}
+```
+
+#### 3、 编辑配置文件
+
+- 编写config Bean以使用上面定义的验证逻辑,securityUserService、myPasswordEncoder通过@Autowired引入。
+
+```java
+@Override
+protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+    auth.userDetailsService(securityUserService)
+        .passwordEncoder(myPasswordEncoder);
+}
+```
+
+- 然后编写configure Bean（和上一个不一样，参数不同），实现security验证逻辑,代码如下：
+
+```java
+@Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+        .csrf() //跨站
+        .disable() //关闭跨站检测
+        .authorizeRequests()//验证策略策略链
+            .antMatchers("/public/**").permitAll()//无需验证路径
+           .antMatchers("/login").permitAll()//放行登录
+            .antMatchers(HttpMethod.GET, "/user").hasAuthority("getAllUser")//拥有权限才可访问
+            .antMatchers(HttpMethod.GET, "/user").hasAnyAuthority("1","2")//拥有任一权限即可访问
+            //角色类似，hasRole(),hasAnyRole()
+            .anyRequest().authenticated()
+        .and()
+        .formLogin()
+            .loginPage("/public/unlogin") //未登录跳转页面,设置了authenticationentrypoint后无需设置未登录跳转页面
+            .loginProcessingUrl("/public/login")//处理登录post请求接口，无需自己实现
+            .successForwardUrl("/success")//登录成功转发接口
+            .failureForwardUrl("/failed")//登录失败转发接口
+            .usernameParameter("id") //修改用户名的表单name，默认为username
+            .passwordParameter("password")//修改密码的表单name，默认为password
+        .and()
+        .logout()//自定义登出
+            .logoutUrl("/public/logout") //自定义登出api，无需自己实现
+            .logoutSuccessUrl("public/logoutSuccess")
+    }
+```
+
+到这里便可实现security与springboot的基本整合。
+
+## 四、实现记住我功能
+
+#### 1、 建表
+
+  记住我功能需要数据库配合实现，首先要在数据库建一张表用户保存cookie和用户名，数据库建表语句如下：不能做修改
+
+```java
+CREATE TABLE `persistent_logins` (
+  `username` varchar(64) NOT NULL,
+  `series` varchar(64) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `last_used` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`series`)
+)
+```
+
+#### 2、 编写rememberMeservice Bean
+
+  代码如下：
+
+```java
+    @Bean
+    public RememberMeServices rememberMeServices(){
+        JdbcTokenRepositoryImpl jdbcTokenRepository = new JdbcTokenRepositoryImpl();
+        jdbcTokenRepository.setDataSource(dataSource);
+        PersistentTokenBasedRememberMeServices rememberMeServices =
+                new PersistentTokenBasedRememberMeServices("INTERNAL_SECRET_KEY",securityUserService,jdbcTokenRepository);
+        //还可设置许多其他属性
+       rememberMeServices.setCookieName("kkkkk"); //客户端cookie名
+        return rememberMeServices;
+    }
+```
+
+dataSource为@Autowired引入
+
+#### 3、 配置文件设置remember
+
+  在config(HttpSecurity http)中加入记住我功能
+
+```java
+.rememberMe()
+    .rememberMeServices(rememberMeServices())
+    .key("INTERNAL_SECRET_KEY")
+```
+
+在登录表单中设置remember-me即可实现记住我功能。
+
+
+
+
+
+# 十四、 springboot全家桶
+
+每个子项目会配有一篇博客文章的详细讲解 
+
+| 项目名称                | 文章地址                                                     |
+| ----------------------- | ------------------------------------------------------------ |
+| springboot-thymeleaf    | [集成Thymeleaf构建Web应用](https://www.xncoding.com/2017/07/01/spring/sb-thymeleaf.html) |
+| springboot-mybatis      | [集成MyBatis](https://www.xncoding.com/2017/07/02/spring/sb-mybatis.html) |
+| springboot-hibernate    | [集成Hibernate](https://www.xncoding.com/2017/07/03/spring/sb-hibernate.html) |
+| springboot-mongodb      | [集成MongoDB](https://www.xncoding.com/2017/07/04/spring/sb-mongodb.html) |
+| springboot-restful      | [实现RESTful接口](https://www.xncoding.com/2017/07/05/spring/sb-restful.html) |
+| springboot-resttemplate | [使用RestTemplate](https://www.xncoding.com/2017/07/06/spring/sb-restclient.html) |
+| springboot-shiro        | [集成Shiro权限管理](https://www.xncoding.com/2017/07/07/spring/sb-shiro.html) |
+| springboot-swagger2     | [集成Swagger2自动生成API文档](https://www.xncoding.com/2017/07/08/spring/sb-swagger2.html) |
+| springboot-jwt          | [集成JWT实现接口权限认证](https://www.xncoding.com/2017/07/09/spring/sb-jwt.html) |
+| springboot-multisource  | [多数据源配置](https://www.xncoding.com/2017/07/10/spring/sb-multisource.html) |
+| springboot-schedule     | [定时任务](https://www.xncoding.com/2017/07/12/spring/sb-schedule.html) |
+| springboot-websocket    | [使用WebScoket实时通信](https://www.xncoding.com/2017/07/15/spring/sb-websocket.html) |
+| springboot-socketio     | [集成SocketIO实时通信](https://www.xncoding.com/2017/07/16/spring/sb-socketio.html) |
+| springboot-async        | [异步线程池](https://www.xncoding.com/2017/07/20/spring/sb-async.html) |
+| springboot-starter      | [教你自己写starter](https://www.xncoding.com/2017/07/22/spring/sb-starter.html) |
+| springboot-aop          | [使用AOP](https://www.xncoding.com/2017/07/24/spring/sb-aop.html) |
+| springboot-transaction  | [声明式事务](https://www.xncoding.com/2017/07/26/spring/sb-transaction.html) |
+| springboot-cache        | [使用缓存](https://www.xncoding.com/2017/07/28/spring/sb-cache.html) |
+| springboot-redis        | [Redis数据库](https://www.xncoding.com/2017/07/30/spring/sb-redis.html) |
+| springboot-batch        | [批处理](https://www.xncoding.com/2017/08/01/spring/sb-batch.html) |
+| springboot-rabbitmq     | [使用消息队列RabbitMQ](https://www.xncoding.com/2017/08/06/spring/sb-rabbitmq.html) |
+| springboot-echarts      | [集成Echarts导出图片](https://www.xncoding.com/2017/08/19/spring/sb-echarts.html) |
+
+GitHub地址：<https://github.com/yidao620c/SpringBootBucket>
+
+码云地址：<https://gitee.com/yidao620/springboot-bucket>
+
+
+
+# 十五 、springboot整合docker
+
+参考git目录下Spring Cloud与Docker微服务架构实战.pdf。
+
+
+
+# 十六、异步
+
+启动类上增加：@EnableAsync，增加bean：getAsyncExecutor
+
+```java
+@SpringBootApplication
+@EnableAsync
+public class Application{
+
+    private static final Log logger = LogFactory.getLog(Application.class);
+    
+    @Bean
+    public CountDownLatch closeLatch() {
+        return new CountDownLatch(1);
+    }
+    
+    public static void main(String[] args) throws InterruptedException {
+
+    	  ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
+          logger.info("======dubbo-consumer started successfull ======");
+          CountDownLatch closeLatch = context.getBean(CountDownLatch.class);
+          closeLatch.await();
+    }
+    
+    @Bean
+    public Executor getAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(3);
+        executor.setMaxPoolSize(3);
+        executor.setQueueCapacity(500);
+        executor.setThreadNamePrefix("GithubLookup-");
+        executor.initialize();
+        return executor;
+    }
+}
+```
+
+声明异步方法
+
+```java
+@Service
+public class GitHubLookupService {
+
+	private static final Logger logger = LoggerFactory.getLogger(GitHubLookupService.class);
+
+    private final RestTemplate restTemplate;
+
+    public GitHubLookupService(RestTemplateBuilder restTemplateBuilder) {
+        this.restTemplate = restTemplateBuilder.build();
+    }
+
+	@Async
+    public Future<Map<String,Object>> findUser(String user) throws InterruptedException {
+		Thread.sleep(3000);
+		logger.info("Looking up " + user);
+		System.out.println(Thread.currentThread().getName());
+		Map<String,Object> forObject = new HashMap<>();
+		forObject.put("name", user);
+        return new AsyncResult<>(forObject);
+    }
+}
+```
+
+调用上面方法，下面的方法和上面的异步方法最好不在一个类中。
+
+```java
+@Service
+public class CallGitHubLookupService {
+
+  @Autowired
+  private GitHubLookupService gitHubLookupService;
+  
+  private static final Logger logger = LoggerFactory.getLogger(CallGitHubLookupService.class);
+    
+    public void getResult() throws InterruptedException, ExecutionException {
+    	 Future<Map<String,Object>> page1 = gitHubLookupService.findUser("PivotalSoftware");
+         Future<Map<String,Object>> page2 = gitHubLookupService.findUser("CloudFoundry");
+         Future<Map<String,Object>> page3 = gitHubLookupService.findUser("Spring-Projects");
+
+         while (!(page1.isDone() && page2.isDone() && page3.isDone())) {
+             Thread.sleep(10);
+         }
+         logger.info("--> " + page1.get());//阻塞
+         logger.info("--> " + page2.get());//阻塞
+         logger.info("--> " + page3.get());//阻塞
+    }
+}
+```
+
+测试
+
+```java
+ @Test
+    public void getResult() throws InterruptedException, ExecutionException {
+    	callGitHubLookupService.getResult();
+    }
+```
+
+
+
+# 十七、定时任务
+
+第一步：启动类上加  `@EnableScheduling`
+
+```java
+@SpringBootApplication
+@EnableScheduling
+public class SpringbootSchedulingTasksApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringbootSchedulingTasksApplication.class, args);
+    }
+}
+```
+
+第二步：创建一个定时任务，每过5s在控制台打印当前时间
+
+```java
+@Component
+public class ScheduledTasks {
+
+  private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+
+    @Scheduled(fixedRate = 5000)
+    public void reportCurrentTime() {
+        System.out.println("The time is now "+ dateFormat.format(new Date()));
+    }
+}
+```
+
+通过在方法上加@Scheduled注解，表明该方法是一个调度任务。
+
+- @Scheduled(fixedRate = 5000) ：上一次开始执行时间点之后5秒再执行
+- @Scheduled(fixedDelay = 5000) ：上一次执行完毕时间点之后5秒再执行
+- @Scheduled(initialDelay=1000, fixedRate=5000) ：第一次延迟1秒后执行，之后按fixedRate的规则每5秒执行一次
+- @Scheduled(cron=” /5 “) ：通过cron表达式定义规则，什么是cro表达式，自行搜索引擎。
+
+
+
+# 十八、集成ApiDoc
+
+https://blog.csdn.net/forezp/article/details/71023579
+
+# 十九 、集成swagger2
+
+https://blog.csdn.net/forezp/article/details/71023536
+
+# 二十 、spring Restdocs创建API文档
+
+https://blog.csdn.net/forezp/article/details/71023510
 
 
 
@@ -1142,6 +1817,8 @@ https://blog.csdn.net/column/details/zkn-springboot.html?&page=2
 http://blog.didispace.com/categories/Spring-Boot/
 
 源码例子：https://gitee.com/didispace/SpringBoot-Learning
+
+​                   https://gitee.com/forezp/SpringBootLearning
 
 http://blog.didispace.com/spring-boot-run-backend/
 

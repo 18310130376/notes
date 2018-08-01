@@ -1214,3 +1214,21 @@ public class DubboServiceFactory {
 }
 ```
 
+
+
+# dubbo消费端直连
+
+`客户端`和`服务端`统一配置
+
+```java
+spring.dubbo.registry.address=N/A
+spring.dubbo.protocol.port=20882  //只需服务端配置
+```
+
+客户端注入时指定提供者地址
+
+```java
+@Reference(url="dubbo://127.0.0.1:20882/com.integration.boot.provider.service.IUserProviderService")
+private IUserProviderService userProviderService;
+```
+
