@@ -265,7 +265,16 @@ private Resource resourceFile; // 注入文件资源
   }
 ```
 
+### 八、属性拼接
 
+application.properties
+
+```properties
+aaaa=4789
+test.abc=123${aaaa}
+```
+
+获取test.abc的值应为1234789
 
 ## @PropertySource自定义配置文件
 
