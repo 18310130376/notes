@@ -523,6 +523,7 @@ mvn clean package -e    查看详细错误信息
 mvn -version/-v  显示版本信息
 mvn package && java -jar target/gs-spring-boot-docker-0.1.0.jar  //打包并且运行
 mvn package docker:build -DpushImage
+mvn package -Dmaven.test.skip=true
 mvn dependency:list   查看当前项目已被解析的依赖
 mvn dependency:tree  //查看依赖树
 mvn dependency:analyze  //分析项目依赖
@@ -566,7 +567,8 @@ mvn versions:set -DgenerateBackupPoms=false -DnewVersion=1.0.2
 
 ----------------------------------传参数---------------------------------
 
-mvn -DpropertyName=propertyValue clean package
+mvn  clean package -DpropertyName=propertyValue （pom取值${propertyName}）
+
 如果propertyName不存在pom.xml，它将被设置。
 如果propertyName已经存在pom.xml，其值将被作为参数传递的值覆盖-D
 要发送多个变量，请使用多个空格分隔符加-D

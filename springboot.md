@@ -1,13 +1,87 @@
 # 一、运行方式
 
-```
-java -jar springboot-release.jar
+### 启动
+
+```java
+java -jar springboot-release.jar --server.port=9090
 java -jar springboot-release.jar  --spring.prifiles.active=dev &
 nohup java -jar yourapp.jar &
+java -jar yourapp.jar &
 mvn spring-boot:run
+ps aux | grep spring | xargs kill -9
+
+java -jar myapp.jar --debug
+或者
+application.properties配置  debug=true
 ```
 
+### 停止服务
 
+```shell
+ps -ef|grep java 
+##拿到对于Java程序的pid
+kill -9 pid
+```
+
+如果配置下面方式，则可以把jar包当做linux服务
+
+```xml
+<plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+    <configuration>
+        <executable>true</executable>
+    </configuration>
+</plugin>
+```
+
+启动方式：
+
+1、 可以直接`./yourapp.jar` 来启动
+
+2、注册为服务
+
+也可以做一个软链接指向你的jar包并加入到`init.d`中，然后用命令来启动。
+
+init.d 例子:
+
+```
+ln -s /var/yourapp/yourapp.jar /etc/init.d/yourapp
+chmod +x /etc/init.d/yourapp
+```
+
+这样就可以使用`stop`或者是`restart`命令去管理你的应用。
+
+```
+/etc/init.d/yourapp start|stop|restart
+```
+
+或者
+
+```
+service yourapp start|stop|restart
+```
+
+### 生产运维
+
+查看JVM参数的值
+
+可以根据java自带的jinfo命令：
+
+```
+jinfo -flags pid
+```
+
+来查看jar 启动后使用的是什么gc、新生代、老年代分批的内存都是多少，示例如下：
+
+```
+-XX:CICompilerCount=3 -XX:InitialHeapSize=234881024 -XX:MaxHeapSize=3743416320 -XX:MaxNewSize=1247805440 -XX:MinHeapDeltaBytes=524288 -XX:NewSize=78118912 -XX:OldSize=156762112 -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseFastUnorderedTimeStamps -XX:+UseParallelGC
+```
+
+- `-XX:CICompilerCount` ：最大的并行编译数
+- `-XX:InitialHeapSize` 和 `-XX:MaxHeapSize` ：指定JVM的初始和最大堆内存大小
+- `-XX:MaxNewSize` ： JVM堆区域新生代内存的最大可分配大小
+- `-XX:+UseParallelGC` ：垃圾回收使用Parallel收集器
 
 # 二、属性配置
 
@@ -2132,7 +2206,258 @@ http://www.leftso.com/blog/326.html
 
 # 二十八 、filter和拦截器
 
+# 二十九、静态资源映射
 
+```java
+1. classpath:/META-INF/resources/index.html
+2. classpath:/resources/index.html
+3. classpath:/static/index.html
+4. classpath:/public/index.html
+当我们访问应用根目录http://localhost:8080/时，会直接映射。
+```
+
+
+
+# 三十、spring-boot项目部署到外部tomcat环境
+
+想要把`spring-boot`项目按照平常的`web`项目一样发布到`tomcat`容器下需要进行下列几个步骤:
+
+## 一、修改打包形式
+
+在`pom.xml`里设置
+
+```
+<packaging>war</packaging>
+```
+
+## 二、移除嵌入式tomcat插件
+
+在`pom.xml`里找到`spring-boot-starter-web`依赖节点,在其中进行如下修改:
+
+```
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+    <!-- 移除嵌入式tomcat插件 -->
+    <exclusions>
+        <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+```
+
+## 三、添加本地调试Tomcat
+
+为了本地调试方便，在`pom.xml`文件中,`dependencies`下面添加
+
+```
+<dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-tomcat</artifactId>
+        <scope>provided</scope>
+</dependency>
+```
+
+## 四、修改启动类，并重写初始化方法
+
+我们平常用`main`方法启动的方式，都有一个`Application`的启动类，代码如下：
+
+```
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```
+
+我们需要类似于`web.xml`的配置方式来启动spring上下文，在`Application`类的同级添加一个`SpringBootStartApplication`类，其代码如下:
+
+```
+/**
+ * 修改启动类，继承 SpringBootServletInitializer 并重写 configure 方法
+ */
+public class SpringBootStartApplication extends SpringBootServletInitializer {
+
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
+        // 注意这里要指向原先用main方法执行的Application启动类
+        return builder.sources(Application.class);
+    }
+}
+```
+
+## 五、打包部署
+
+在项目根目录下（即包含`pom.xml`的目录），在命令行里输入：
+
+```
+mvn clean package
+```
+
+即可， 等待打包完成，出现`[INFO] BUILD SUCCESS`即为打包成功。然后把`target`目录下的war包放到`tomcat`的`webapps`目录下，启动`tomcat`，即可自动解压部署。 最后在浏览器中输入:
+
+```
+http://localhost:[端口号]/[打包项目名]/
+```
+
+发布成功。
+
+## 六、总结
+
+这样,只需要以上5步就可以打包成`war`包，并且部署到`tomcat`中了。需要注意的是这样部署的`request url`需要在端口后加上项目的名字才能正常访问。`spring-boot`更加强大的一点就是：即便项目是以上配置，依然可以用内嵌的tomcat来调试，启动命令和以前没变，还是：`mvn spring-boot:run`。如果需要在springboot中加上request前缀，需要在`application.properties`中添加`server.contextPath=/prefix/`即可。其中`prefix`为前缀名。这个前缀会在`war`包中失效，取而代之的是`war`包名称，如果`war`包名称和`prefix`相同的话，那么调试环境和正式部署环境就是一个`request`地址了。
+**注意点:**
+我测试的时候，使用的相关环境版本如下：
+`jdk:`
+
+```
+jdk1.7.0_71
+```
+
+`tomcat:`
+
+```
+apache-tomcat-8.5.8
+```
+
+`spring boot:`
+
+```
+1.4.0.RELEASE
+```
+
+最开始我使用的`spring boot`版本是`1.3.0.RELEASE`,部署到`tomcat`中出现找不到类等各种问题,后来把`spring boot`版本升级
+
+
+
+
+
+# 三十一、文件上传
+
+```jade
+package com.integration.boot.controller;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+@RestController
+public class SingleFileUpload {
+
+	@PostMapping("/upload") 
+	public Map<String,Object> singleFileUpload(@RequestParam("file") MultipartFile file,HttpServletRequest request){
+		Map<String,Object> resultMap = new HashMap<>();
+	    if (file.isEmpty()) {
+	    	resultMap.put("status","fail");
+	        resultMap.put("msg","Please select a file to upload");
+	        return resultMap;
+	    }
+	    try {
+	        byte[] bytes = file.getBytes();
+	        Path path = Paths.get("C:\\Users\\789\\Desktop\\uploadfile\\" + file.getOriginalFilename());
+	        Files.write(path, bytes);
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	    resultMap.put("status","success");
+	    resultMap.put("msg","operation successfully");
+	    return resultMap;
+	}
+}
+```
+
+- `spring.http.multipart.enabled=true` #默认支持文件上传.
+- `spring.http.multipart.file-size-threshold=0` #支持文件写入磁盘.
+- `spring.http.multipart.location=`# 上传文件的临时目录
+- `spring.http.multipart.max-file-size=1Mb` # 最大支持文件大小
+- `spring.http.multipart.max-request-size=10Mb` # 最大支持请求大小
+
+最常用的是最后两个配置内容，限制文件上传大小，上传时超过大小会抛出异常：
+
+```java
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+	@ResponseBody
+    @ExceptionHandler(MultipartException.class)
+    public Map<String,Object> handleError1(MultipartException e) {
+        Map <String,Object> result = new HashMap<>();
+        result.put("data", "error");
+        return result;
+    }
+}
+```
+
+设置一个`@ControllerAdvice`用来监控`Multipart`上传的文件大小是否受限，当出现此异常时在前端页面给出提示。利用`@ControllerAdvice`可以做很多东西，比如全局的统一异常处理等，感兴趣的同学可以下来了解
+
+
+
+
+
+# 三十二、打成war包
+
+1、maven项目，修改pom包
+
+将
+
+```xml
+<packaging>jar</packaging>  
+```
+
+改为
+
+```xml
+<packaging>war</packaging>
+```
+
+2、打包时排除tomcat.
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-tomcat</artifactId>
+    <scope>provided</scope>
+</dependency>
+```
+
+在这里将scope属性设置为provided，这样在最终形成的WAR中不会包含这个JAR包，因为Tomcat或Jetty等服务器在运行时将会提供相关的API类。
+
+3、注册启动类
+
+创建ServletInitializer.java，继承SpringBootServletInitializer ，覆盖configure()，把启动类Application注册进去。外部web应用服务器构建Web Application Context的时候，会把启动类添加进去。
+
+```java
+public class ServletInitializer extends SpringBootServletInitializer {
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+        return application.sources(Application.class);
+    }
+}
+```
+
+最后执行
+
+```java
+mvn clean package  -Dmaven.test.skip=true
+```
+
+会在target目录下生成：项目名+版本号.war文件，拷贝到tomcat服务器中启动即可。
 
 # 参考文档
 
@@ -2147,3 +2472,5 @@ http://blog.didispace.com/categories/Spring-Boot/
 http://blog.didispace.com/spring-boot-run-backend/
 
 https://blog.csdn.net/k21325/article/details/52789829
+
+http://www.cnblogs.com/ityouknow/category/914493.html
