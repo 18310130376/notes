@@ -269,12 +269,54 @@ private Resource resourceFile; // 注入文件资源
 
 application.properties
 
+可以在配置文件中引用前面配置过的属性
+
 ```properties
 aaaa=4789
 test.abc=123${aaaa}
 ```
 
 获取test.abc的值应为1234789
+
+### 九、数组注入
+
+属性文件中
+
+```properties
+aaaa=4789
+test.abc[0]=123${aaaa}
+test.abc[1]=aaaaa${aaaa}
+```
+
+```java
+@ConfigurationProperties(prefix = "test")
+public class ConfigBean {
+	
+	private List<String> abc;
+
+	public List<String> getAbc() {
+		return abc;
+	}
+
+	public void setAbc(List<String> abc) {
+		this.abc = abc;
+	}
+}
+```
+
+`configBean.getAbc()` 输出
+
+```json
+[1234789, aaaaa4789]
+```
+
+### 十、默认值
+
+```properties
+server.port=${port:8080}
+```
+
+那么就可以使用更短的–port=9090，当不提供该参数的时候使用默认值8080。
 
 ## @PropertySource自定义配置文件
 
@@ -2726,6 +2768,205 @@ mvn clean package  -Dmaven.test.skip=true
 ```
 
 会在target目录下生成：项目名+版本号.war文件，拷贝到tomcat服务器中启动即可。
+
+
+
+# 三十三、Spring boot配置log4j输出日志
+
+## 一 、删除多余的包
+
+下面两个删除
+
+```xml
+<dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-logging</artifactId>
+</dependency>
+<dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>log4j-over-slf4j</artifactId>
+</dependency>
+```
+
+可以点开[Effective POM]查看，parent中依然有两处对[spring-boot-starter-logging]的依赖
+
+```xml
+<dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter</artifactId>
+        <exclusions>
+            <exclusion>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-logging</artifactId>
+            </exclusion>
+        </exclusions>
+</dependency>
+```
+
+## 二、引入依赖
+
+```
+<dependency> 
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-log4j</artifactId>
+</dependency>
+```
+
+## 三、增加log4j.properties配置  
+
+```properties
+#我们把INFO层级以及以上的信息输出到Console和File
+#log4j.rootLogger=INFO,File,Console,DailyRollingFile ,RollingFile
+log4j.rootLogger=INFO,Console,RollingFile
+
+#stdout
+log4j.appender.Console=org.apache.log4j.ConsoleAppender
+log4j.appender.Console.Target=System.out
+log4j.appender.Console.layout=org.apache.log4j.PatternLayout
+log4j.appender.Console.layout.ConversionPattern=%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
+
+#api
+#'.'yyyy-MM: 每月
+#'.'yyyy-ww: 每周 
+#'.'yyyy-MM-dd: 每天
+#'.'yyyy-MM-dd-a: 每天两次
+#'.'yyyy-MM-dd-HH: 每小时
+#'.'yyyy-MM-dd-HH-mm: 每分钟
+log4j.appender.File=org.apache.log4j.FileAppender
+log4j.appender.File.DatePattern='.'yyyy-MM-dd-HH-mm
+log4j.appender.File.File=C://Users//789//Desktop//uploadfile//sys.log
+log4j.appender.File.layout=org.apache.log4j.PatternLayout
+log4j.appender.File.layout.ConversionPattern=%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
+
+
+#DailyRollingFile
+log4j.appender.DailyRollingFile = org.apache.log4j.DailyRollingFileAppender
+log4j.appender.DailyRollingFile.File = C://Users//789//Desktop//uploadfile//sys01.log
+log4j.appender.DailyRollingFile.layout = org.apache.log4j.PatternLayout
+log4j.appender.DailyRollingFile.layout.ConversionPattern =%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
+
+
+#RollingFile
+log4j.appender.RollingFile = org.apache.log4j.RollingFileAppender
+log4j.appender.RollingFile.File = C://Users//789//Desktop//uploadfile//sys02.log
+log4j.appender.RollingFile.MaxFileSize=1M
+log4j.appender.RollingFile.MaxBackupIndex=3
+log4j.appender.RollingFile.layout = org.apache.log4j.PatternLayout
+log4j.appender.RollingFile.layout.ConversionPattern =%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
+
+
+#指定包的日志输出到指定文件
+log4j.logger.com.integration.boot.service=info,service
+log4j.appender.service=org.apache.log4j.FileAppender
+log4j.appender.service.File=C://Users//789//Desktop//uploadfile//service.log
+log4j.appender.service.layout=org.apache.log4j.HTMLLayout
+log4j.appender.service.DailyRollingFile.layout.ConversionPattern =%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
+```
+
+
+
+# 三十四、WebJars
+
+WebJars能使Maven的依赖管理支持OSS的JavaScript库/CSS库，比如jQuery、Bootstrap等。 
+
+**（1）添加js或者css库** 
+
+```xml
+<dependency>  
+    <groupId>org.webjars</groupId>  
+    <artifactId>bootstrap</artifactId>  
+    <version>3.3.7-1</version>  
+</dependency>  
+<dependency>  
+    <groupId>org.webjars</groupId>  
+    <artifactId>jquery</artifactId>  
+    <version>3.1.1</version>  
+</dependency>  
+```
+
+src/main/resources/static/demo.html 
+
+```html
+<html>  
+    <head>  
+        <script src="/webjars/jquery/3.1.1/jquery.min.js"></script>  
+        <script src="/webjars/bootstrap/3.3.7-1/js/bootstrap.min.js"></script>  
+        <title>WebJars Demo</title>  
+        <link rel="stylesheet" href="/webjars/bootstrap/3.3.7-1/css/bootstrap.min.css" />  
+    </head>  
+    <body>  
+        <div class="container"><br/>  
+            <div class="alert alert-success">  
+                <a href="#" class="close" data-dismiss="alert" aria-label="close">×</a>  
+                Hello, <strong>WebJars!</strong>  
+            </div>  
+        </div>  
+    </body>  
+</html>  
+```
+
+启动应用访问 http://localhost:8080/demo.html 
+
+**（2）省略版本号** 
+
+很少在代码中硬编码版本号，所以需要隐藏它。 
+
+pom.xml添加webjars-locator 
+org.springframework.web.servlet.resource.WebJarsResourceResolver
+
+```
+<dependency>  
+    <groupId>org.webjars</groupId>  
+    <artifactId>webjars-locator</artifactId>  
+    <version>0.31</version>  
+</dependency>
+```
+
+src/main/resources/static/demo.html ，去掉版本号
+
+```
+<script src="/webjars/jquery/jquery.min.js"></script> 
+<script src="/webjars/bootstrap/js/bootstrap.min.js"></script> 
+<title>WebJars Demo</title> 
+<link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.min.css" />
+```
+
+启动应用再次访问 http://localhost:8080/demo.html 结果和上边一样。 
+
+引入的开源JavaScript库/CSS库将会以jar的形式被打包进工程! 
+spring-boot-demo1-0.0.1-SNAPSHOT.jar\BOOT-INF\lib 
+
+bootstrap-3.3.7-1.jar 
+└─ META-INF 
+    └─ resources 
+        └─ webjars 
+            └─ bootstrap 
+                └─ 3.3.7-1 
+                    ├─ css 
+                    |   ├─ bootstrap.min.css 
+                    |   ├─ bootstrap.min.css.gz # Gzip文件 
+                    ...
+
+
+
+jquery-3.1.1.jar 
+└─ META-INF 
+    └─ resources 
+        └─ webjars 
+            └─ jquery 
+                └─ 3.1.1 
+                    ├─ jquery.min.js 
+                    ...
+
+
+
+# 三十五、配置分离，日志和页面和jar包平行
+
+log文件夹提前创建
+
+```
+logging.file=log/server.log
+```
 
 # 参考文档
 
