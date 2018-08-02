@@ -1,5 +1,16 @@
 # 一、运行方式
 
+### 打包
+
+```
+<plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+</plugin>
+```
+
+此种方式只能使用java -jar启动运行
+
 ### 启动
 
 ```java
@@ -8,19 +19,18 @@ java -jar springboot-release.jar  --spring.prifiles.active=dev &
 nohup java -jar yourapp.jar &
 java -jar yourapp.jar &
 mvn spring-boot:run
-ps aux | grep spring | xargs kill -9
-
 java -jar myapp.jar --debug
 或者
 application.properties配置  debug=true
 ```
 
-### 停止服务
+### 完全可执行Jar
 
 ```shell
 ps -ef|grep java 
 ##拿到对于Java程序的pid
 kill -9 pid
+ps aux | grep spring | xargs kill -9
 ```
 
 如果配置下面方式，则可以把jar包当做linux服务
