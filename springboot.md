@@ -265,7 +265,7 @@ private Resource resourceFile; // 注入文件资源
   }
 ```
 
-### 八、属性拼接
+### 八、占位符属性
 
 application.properties
 
@@ -516,7 +516,7 @@ public class ProfileController {
 `application.properties`
 
 ```
-spring.profiles.active=@profileActive@
+spring.profiles.active=@profileActive@  //替换成pom的profileActive值
 ```
 
 `application-dev.properties `
