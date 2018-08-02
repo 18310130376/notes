@@ -394,7 +394,12 @@ public class Application{
 
 
 
-# 三 、Configuration声明bean
+# 三 、Configuration、SpringBootConfiguration声明bean
+
+```
+@SpringBootConfiguration继承自@Configuration，二者功能也一致，标注当前类是配置类
+并会将当前类内声明的一个或多个以@Bean注解标记的方法的实例纳入到spring容器中，并且实例名就是方法名。
+```
 
 ```java
 package com.dxz.demo.configuration;
@@ -2306,7 +2311,168 @@ http://www.leftso.com/blog/326.html
 
 
 
-# 二十八 、filter和拦截器
+# 二十八 、过滤器和拦截器
+
+### 过滤器filter
+
+```java
+package com.integration.boot.config;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+public class SessionFilter implements Filter {
+
+	private String[] excludedUris;
+
+	@Override
+	public void destroy() {
+
+	}
+
+	@Override
+	public void doFilter(ServletRequest arg0, ServletResponse arg1, FilterChain filterChain) throws IOException, ServletException {
+		
+		HttpServletRequest request = (HttpServletRequest) arg0;
+		HttpServletResponse response = (HttpServletResponse) arg1;
+		System.out.println("requestUtl:" + request.getRequestURI());
+		String uri = request.getServletPath();
+		if (isExcludedUri(uri)) {
+			filterChain.doFilter(request, response);
+		} else if (request.getSession().getAttribute("user") != null) {
+			filterChain.doFilter(request, response);
+		}else {
+			if (isAjaxRequest(request)) {
+				 response.setContentType("application/json; charset=utf-8");  
+				 Map<String,Object> resultMap = new HashMap<>();
+				 resultMap.put("success", false);
+				 PrintWriter out = response.getWriter();
+	             out.print(new ObjectMapper().writeValueAsString(resultMap));
+	             out.flush();
+	             out.close();
+			}else {
+				  filterChain.doFilter(request, response);
+				//response.sendRedirect(request.getContextPath() + "/login/toLogin");
+			}
+		}
+	}
+
+	@Override
+	public void init(FilterConfig filterConfig) throws ServletException {
+		if (StringUtils.isNotBlank(filterConfig.getInitParameter("excludedUri"))) {
+			excludedUris = filterConfig.getInitParameter("excludedUri").split(",");
+		}
+	}
+
+	private boolean isExcludedUri(String uri) {
+		if (excludedUris == null || excludedUris.length <= 0) {
+			return false;
+		}
+		for (String ex : excludedUris) {
+			uri = uri.trim();
+			ex = ex.trim();
+			if (uri.toLowerCase().matches(ex.toLowerCase().replace("*", ".*")))
+				return true;
+		}
+		return false;
+	}
+	
+	public boolean isAjaxRequest(HttpServletRequest request) {
+		String requestType = request.getHeader("X-Requested-With");
+		return "XMLHttpRequest".equalsIgnoreCase(requestType);
+	}
+}
+
+```
+
+注册
+
+```java
+package com.integration.boot.config;
+
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class SessionFilterConfig {
+	
+	   @Bean
+	    public FilterRegistrationBean testFilterRegistration() {
+	        StringBuffer excludedUriStr = new StringBuffer();
+	        excludedUriStr.append("/login/*");
+	        FilterRegistrationBean registration = new FilterRegistrationBean();
+	        registration.setFilter(new SessionFilter());
+	        registration.addUrlPatterns("/*");
+	        registration.addInitParameter("excludedUri", excludedUriStr.toString());
+	        registration.setName("sessionFilter");
+	        registration.setOrder(1);
+	        return registration;
+	    }
+}
+```
+
+
+
+### 拦截器Interceptor
+
+```java
+@Component
+public class MyInterceptor implements HandlerInterceptor {
+    @Override
+    public boolean preHandle(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Object o) throws Exception {
+    System.out.println("hello preHandler......");
+    final HandlerMethod handlerMethod = (HandlerMethod) handler;
+    final Method method = handlerMethod.getMethod();
+    final Class<?> clazz = method.getDeclaringClass();
+        if (clazz.isAnnotationPresent(Auth.class) ||
+                method.isAnnotationPresent(Auth.class)) {
+          if(request.getAttribute(USER_CODE_SESSION_KEY) == null)   {
+                 throw new Exception();
+            }else{
+                return true;
+            }
+        }
+ }
+ 
+    @Override
+    public void postHandle(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Object o, ModelAndView modelAndView) throws Exception {
+        System.out.println("hello postHandler......");
+    }
+ 
+    @Override
+    public void afterCompletion(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Object o, Exception e) throws Exception {
+        System.out.println("hello afterCompletionHandler......");
+    }
+}
+```
+
+```java
+@SpringBootConfiguration
+public class MySpringMVCConfig extends WebMvcConfigurerAdapter {
+    @Autowired
+    private MyInterceptor myInterceptor;
+    @Override
+    public void addInterceptors(InterceptorRegistry registry){
+        registry.addInterceptor(myInterceptor).addPathPatterns("/**");
+    }
+}
+```
+
+
 
 # 二十九、静态资源映射
 
