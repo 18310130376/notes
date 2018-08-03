@@ -103,6 +103,8 @@ nohup java -Xmx512M -Xms512M -Djava.security.egd=/dev/urandom -jar springboot4Do
 
 ## maven-jar-plugin
 
+maven-jar-plugin主要就是配置了MANIFEST.MF这个文件而已
+
 ```
 <plugin>
        <groupId>org.apache.maven.plugins</groupId>
@@ -332,6 +334,38 @@ dependencySet中使用exclude标签中过滤的名字有点坑，不能直接写
 
 
 useProjectArtifact为true，则会把打的jar包放在zip对应的依赖包目录下，否则不会放进去。
+
+
+
+## maven-dependency-plugi拷贝依赖到jar外
+
+```xml
+<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>${maven.dependency.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>copy-lib</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                            <includeScope>compile</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+</plugin>
+```
+
+
+
+
 
 ## Maven多环境配置
 

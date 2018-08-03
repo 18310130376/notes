@@ -105,6 +105,7 @@ mvn spring-boot:run
 java -jar myapp.jar --debug
 或者
 application.properties配置  debug=true
+java -jar demo.jar --Dspring.config.location=conf/application.properties
 ```
 
 ### 完全可执行Jar
@@ -2817,14 +2818,18 @@ mvn clean package  -Dmaven.test.skip=true
 ```properties
 #我们把INFO层级以及以上的信息输出到Console和File
 #log4j.rootLogger=INFO,File,Console,DailyRollingFile ,RollingFile
-log4j.rootLogger=INFO,Console,RollingFile
 
+#project=dubbo-consumer
+#logdir=C://Users//789//Desktop//uploadfile//${project}
+
+logdir=C://Users//789//Desktop//uploadfile//
+
+log4j.rootLogger=INFO,Console,RollingFile
 #stdout
 log4j.appender.Console=org.apache.log4j.ConsoleAppender
 log4j.appender.Console.Target=System.out
 log4j.appender.Console.layout=org.apache.log4j.PatternLayout
 log4j.appender.Console.layout.ConversionPattern=%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
-
 #api
 #'.'yyyy-MM: 每月
 #'.'yyyy-ww: 每周 
@@ -2834,34 +2839,63 @@ log4j.appender.Console.layout.ConversionPattern=%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%
 #'.'yyyy-MM-dd-HH-mm: 每分钟
 log4j.appender.File=org.apache.log4j.FileAppender
 log4j.appender.File.DatePattern='.'yyyy-MM-dd-HH-mm
-log4j.appender.File.File=C://Users//789//Desktop//uploadfile//sys.log
+log4j.appender.File.File=${logdir}//sys.log
+log4j.appender.File.Append = true
 log4j.appender.File.layout=org.apache.log4j.PatternLayout
 log4j.appender.File.layout.ConversionPattern=%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
 
 
 #DailyRollingFile
-log4j.appender.DailyRollingFile = org.apache.log4j.DailyRollingFileAppender
-log4j.appender.DailyRollingFile.File = C://Users//789//Desktop//uploadfile//sys01.log
+log4j.appender.DailyRollingFile=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.DailyRollingFile.File =${logdir}//sys01.log
 log4j.appender.DailyRollingFile.layout = org.apache.log4j.PatternLayout
 log4j.appender.DailyRollingFile.layout.ConversionPattern =%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
 
 
 #RollingFile
 log4j.appender.RollingFile = org.apache.log4j.RollingFileAppender
-log4j.appender.RollingFile.File = C://Users//789//Desktop//uploadfile//sys02.log
-log4j.appender.RollingFile.MaxFileSize=1M
+log4j.appender.RollingFile.File =${logdir}//log.log
+log4j.appender.RollingFile.MaxFileSize=1MB
 log4j.appender.RollingFile.MaxBackupIndex=3
+log4j.appender.RollingFile.Append = true
 log4j.appender.RollingFile.layout = org.apache.log4j.PatternLayout
 log4j.appender.RollingFile.layout.ConversionPattern =%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
 
 
-#指定包的日志输出到指定文件
-log4j.logger.com.integration.boot.service=info,service
-log4j.appender.service=org.apache.log4j.FileAppender
-log4j.appender.service.File=C://Users//789//Desktop//uploadfile//service.log
-log4j.appender.service.layout=org.apache.log4j.HTMLLayout
-log4j.appender.service.DailyRollingFile.layout.ConversionPattern =%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
+#指定com.integration.boot.service包的日志输出到指定文件
+log4j.category.com.integration.boot.controller=DEBUG,controller
+log4j.appender.controller=org.apache.log4j.FileAppender
+log4j.appender.controller.File=${logdir}//controller.log
+#log4j.appender.controller.Threshold = DEBUG ## 输出DEBUG级别以上的日志
+log4j.appender.controller.layout=org.apache.log4j.PatternLayout
+log4j.appender.controller.Append = true
+log4j.appender.controller.layout.ConversionPattern =%-d{M-d HH:mm:ss} %5p[%t]%c{1}:%L: %m%n
+
+
+#第三方jar包log输出级别
+log4j.logger.org.springframework =INFO
+log4j.logger.org.quartz=INFO
+log4j.logger.org.apache.zookeeper=INFO
+log4j.logger.com.alibaba.dubbo=INFO
+#值得注意的是rocketmq自定义的log,并不是使用的包名
+log4j.logger.RocketmqRemoting=INFO
+log4j.logger.RocketmqClient=INFO
+log4j.logger.RocketmqConsole=INFO
 ```
+
+
+
+## 四、文件输出
+
+默认情况下，Spring Boot将日志输出到控制台，不会写到日志文件。如果要编写除控制台输出之外的日志文件，则需在application.properties中设置logging.file或logging.path属性。
+
+- logging.file，设置文件，可以是绝对路径，也可以是相对路径。如：`logging.file=log/my.log(相对)或者/log/my.log(绝对)`
+- logging.path，设置目录，会在该目录下创建spring.log文件，并写入日志内容，如：`logging.path=/var/log`
+
+如果只配置 logging.file，会在项目的当前路径下生成一个 xxx.log 日志文件。
+如果只配置 logging.path，在 /var/log文件夹生成一个日志文件为 spring.log
+
+## 五、MDC
 
 
 
@@ -2962,11 +2996,51 @@ jquery-3.1.1.jar
 
 # 三十五、配置分离，日志和页面和jar包平行
 
-log文件夹提前创建
+`logging.config必须是xml后缀，否则不起作用。`
+
+Spring程序会按优先级从下面这些路径来加载application.properties配置文件
+
+- 当前目录下的/config目录
+- 当前目录
+- classpath里的/config目录
+- classpath 跟目录
+
+因此，要外置配置文件就很简单了，在jar所在目录新建config文件夹，然后放入配置文件，或者直接放在配置文件在jar目录
+
+## 自定义配置文件
+
+如果你不想使用application.properties作为配置文件，怎么办？完全没问题
 
 ```
-logging.file=log/server.log
+java -jar myproject.jar --spring.config.location=classpath:/default.properties,classpath:/override.properties
 ```
+
+或者
+
+```
+java -jar -Dspring.config.location=D:\config\config.properties springbootrestdemo-0.0.1-SNAPSHOT.jar 
+```
+
+当然，还能在代码里指定
+
+```
+@SpringBootApplication
+@PropertySource(value={"file:config.properties"})
+public class SpringbootrestdemoApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringbootrestdemoApplication.class, args);
+    }
+}
+```
+
+## 载入日志配置
+
+DOMConfigurator载入的是log4j.xml而PropertyConfigurator载入的是log4j.properties文件
+
+
+
+
 
 # 参考文档
 
