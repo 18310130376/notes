@@ -531,6 +531,44 @@ see：http://www.cnblogs.com/qq78292959/p/3711497.html
 </plugin>
 ```
 
+
+
+## docker-maven-plugin
+
+```
+<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>0.4.12</version>
+				<configuration>
+					<imageName>13662241921/www</imageName>
+					<!--<imageTags> docker的tag为项目版本号、latest <imageTag>${git.commit.id.abbrev}</imageTag> 
+						<imageTag>latest</imageTag> </imageTags> -->
+
+					<!-- <baseImage>java</baseImage> -->
+					<!-- <entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint> -->
+					<dockerDirectory>src/main/docker</dockerDirectory>
+					<!-- <dockerHost>https://192.168.99.100:2376</dockerHost> <dockerCertPath>C:\Users\789\.docker\machine\machines\default</dockerCertPath> -->
+					<pushImage>true</pushImage>
+					<!-- <registryUrl>registry.cn-hangzhou.aliyuncs.com</registryUrl> -->
+					<serverId>docker-hub</serverId>
+					<!--<serverId>docker-hub</serverId> -->
+					<buildArgs>
+					</buildArgs>
+					<resources>
+						<resource>
+							<targetPath>/</targetPath>
+							<directory>${project.build.directory}</directory>
+							<include>${name}.jar</include>
+						</resource>
+					</resources>
+					<settingsFile>/settings.xml</settingsFile>
+				</configuration>
+			</plugin>
+```
+
+
+
 ## maven jetty插件
 
 ```

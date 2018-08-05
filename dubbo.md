@@ -636,7 +636,28 @@ Dubbo框架内置提供负载均衡的功能以及扩展接口，我们可以透
     <artifactId>dubbo-spring-boot-starter</artifactId>
     <version>0.2.0</version>
 </dependency>
+
+或者
+<dependency>
+			<groupId>io.dubbo.springboot</groupId>
+			<artifactId>spring-boot-starter-dubbo</artifactId>
+			<version>1.0.0</version>
+			<exclusions>
+			  <exclusion>
+            <artifactId>netty</artifactId>
+            <groupId>org.jboss.netty</groupId>
+        </exclusion>
+			</exclusions>
+</dependency>
+或者
+<dependency>
+			<groupId>com.gitee.reger</groupId>
+			<artifactId>spring-boot-starter-dubbo</artifactId>
+			<version>1.0.10</version>
+</dependency>
 ```
+
+我用的是上面的  io.dubbo.springboot
 
 在springboot启动类上加：
 

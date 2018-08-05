@@ -106,6 +106,9 @@ java -jar myapp.jar --debug
 或者
 application.properties配置  debug=true
 java -jar demo.jar --Dspring.config.location=conf/application.properties
+
+
+java -jar -Dloader.path=.,3rd-lib test-0.0.1-SNAPSHOT-classes.jar
 ```
 
 ### 完全可执行Jar
@@ -427,11 +430,29 @@ public class Application{
 }
 ```
 
+## ImportResource引入xml配置
 
+```java
+@SpringBootApplication
+@ImportResource("classpath:spring-dubbo.xml")
+public class Application {
 
+	private static final Log logger = LogFactory.getLog(Application.class);
 
+	@Bean
+	public CountDownLatch closeLatch() {
+		return new CountDownLatch(1);
+	}
 
-
+	public static void main(String[] args) throws InterruptedException {
+		ApplicationContext ctx = new SpringApplicationBuilder()
+				.sources(Application.class).web(false).run(args);
+		logger.info("======dubbo-provider started successfull ======");
+		CountDownLatch closeLatch = ctx.getBean(CountDownLatch.class);
+		closeLatch.await();
+	}
+}
+```
 
 
 
@@ -864,6 +885,62 @@ test.age=20.prod
 					</execution>
 				</executions>
 			</plugin>
+```
+
+### 方式四
+
+```xml
+<profiles>
+		<profile>
+			<id>dev</id>
+			<properties>
+				<active.profile>dev</active.profile>
+				<application.name>dubbo-provider</application.name>
+				<registry.address>zookeeper://127.0.0.1:2181</registry.address>
+				<protocol.name>dubbo</protocol.name>
+				<protocol.port>20880</protocol.port>
+				<scan.basepackage>com.integration.boot.provider.service</scan.basepackage>
+			</properties>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+		</profile>
+		<profile>
+			<id>test</id>
+			<properties>
+				<active.profile>test</active.profile>
+				<application.name>dubbo-demo-server-test</application.name>
+				<registry.address>N/A</registry.address>
+				<protocol.name>dubbo</protocol.name>
+				<protocol.port>20880</protocol.port>
+				<scan.basepackage>cn.wolfcode.dubbo.service</scan.basepackage>
+			</properties>
+		</profile>
+		<profile>
+			<id>prd</id>
+			<properties>
+				<active.profile>prd</active.profile>
+				<application.name>dubbo-demo-server</application.name>
+				<registry.address>zookeeper://192.168.56.101:2181</registry.address>
+				<protocol.name>dubbo</protocol.name>
+				<protocol.port>20880</protocol.port>
+				<scan.basepackage>cn.wolfcode.dubbo.service</scan.basepackage>
+			</properties>
+		</profile>
+	</profiles>
+```
+
+```
+#dubbo 服务名
+#spring.dubbo.application.name=@application.name@
+#注册中心地址（N/A表示为不启用）
+#spring.dubbo.registry.address=@registry.address@
+#rpc 协议实现使用 dubbo 协议
+#spring.dubbo.protocol.name=@protocol.name@
+# 服务暴露端口
+#spring.dubbo.protocol.port=@protocol.port@
+#基础包扫描
+#spring.dubbo.base-package=@scan.basepackage@
 ```
 
 
