@@ -3115,7 +3115,10 @@ public class SpringbootrestdemoApplication {
 
 DOMConfigurator载入的是log4j.xml而PropertyConfigurator载入的是log4j.properties文件
 
-
+```
+logdir=log  //jar包同级有个log文件件，日志会输出到这个文件件
+log4j.appender.controller.File=${logdir}//controller.log
+```
 
 
 
