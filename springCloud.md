@@ -26,20 +26,19 @@ https://www.jianshu.com/p/6db3f2ce3a53
 
 ```xml
 <dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-config-server</artifactId>
+	<groupId>org.springframework.cloud</groupId>
+	<artifactId>spring-cloud-config-server</artifactId>
 </dependency>
-
 <dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework.cloud</groupId>
-				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>Camden.SR6</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-dependencies</artifactId>
+			<version>Camden.SR6</version>
+			<type>pom</type>
+			<scope>import</scope>
+		</dependency>
+	</dependencies>
 </dependencyManagement>
 ```
 
@@ -121,6 +120,32 @@ http请求地址和资源文件映射如下:
 - /{application}-{profile}.properties
 - /{label}/{application}-{profile}.properties
 
+
+
+假设我们需要访问configClient应用的dev环境的配置，则访问url如下：
+
+http://localhost:8001/configClient/dev/master
+
+```json
+{
+	"name": "configClient",
+	"profiles": ["dev"],
+	"label": "master",
+	"version": "d18cb50d7a06934fb3f8e3ba3d9f05c209756bea",
+	"state": null,
+	"propertySources": [{
+		"name": "https://github.com/18310130376/configdata/data/configClient-dev.properties",
+		"source": {
+			"spring.data.source.username": "123456"
+		}
+	}]
+}
+```
+
+原理：配置服务器从Git中获取配置信息后，会存储一份在configServer的文件系统中。防止GIt仓库出现故障引起服务不可用。
+
+
+
 ## 五、构建一个config client
 
 ```xml
@@ -128,12 +153,10 @@ http请求地址和资源文件映射如下:
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
    </dependency>
-  
     <dependency>
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-starter-config</artifactId>
     </dependency>
-     
 <dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -150,10 +173,10 @@ http请求地址和资源文件映射如下:
 配置文件**bootstrap.properties**
 
 ```properties
-spring.application.name=configClient
-spring.cloud.config.label=master
-spring.cloud.config.profile=dev
-spring.cloud.config.uri= http://localhost:8001/
+spring.application.name=configClient   //对应配置文件规则的{application}部分 
+spring.cloud.config.label=master   //对应配置文件规则的{label}部分 
+spring.cloud.config.profile=dev    //对应配置文件规则的{profile}部分 
+spring.cloud.config.uri= http://localhost:8001/  //配置中心configServer的地址 
 server.port=8002
 ```
 
@@ -168,6 +191,28 @@ server.port=8002
 
 config-client默认会找8888端口的配置中心，如果配置中心使用8888端口，config-client可以使用application.properties配置文件。如果配置中心没有使用8888端口，那么config-client需要使用bootstrap文件,因为bootstrap文件会被优先读取（意思是如果配置中心不是8888则client必须使用bootstrap）
 
+原因：因为本身就是为了统一配置，所以bootstrap的优先级需要高于其他配置文件的加载顺序。
+
+```java
+package org.configClient;
+
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+
+@SpringBootApplication
+public class ApplicationConfigClient {   
+	 
+	public static void main(String[] args) {
+		new SpringApplicationBuilder(ApplicationConfigClient.class).web(true).run(args);
+          System.out.println("======configClient start successful==========");
+      }
+  }
+```
+
+
+
+
+
 ## 六、客户端测试
 
 ```java
@@ -178,20 +223,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-
-
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes=ApplicationConfigClient.class)
 public class ConfigClientTest {
-	
 	@Test
 	public void contextLoads() {
-		
 	}
-    
     @Autowired
     private Environment environment;
-    
     @Test
     public void loadProperties() {
     	String property = environment.getProperty("spring.data.source.username");
@@ -225,32 +264,21 @@ server.port=8002
 spring.cloud.config.name=configClient
 需要读取的properties文件名前半部分，不配置系统默认读取spring.application.name
 
-
-
 ①如果客户端指定找spring.cloud.config.profile=dev，但是git仓库文件是configClient.properties，则也会匹配到。如果git仓库存在configClient-dev.properties，则只会加载这个文件。
 
 ②如果客户端没指定spring.cloud.config.profile=dev，则会找configClient.properties，并不会找configClient-dev.properties
 
-
-
 ## 八、其他配置
 
-```
+```properties
 spring.cloud.config.name=configClient01
-
-
 spring.cloud.config.discovery.enabled=true 
-
 当链接服务端时如果服务端因没启动等原因，客户端会迅速响应
 spring.cloud.config.failFast=true
-
 最大重试6次，不配置默认是6
 spring.cloud.config.retry.max-attempts=6
-
 #see：https://springcloud.cc/spring-cloud-config.html
-
 spring.cloud.config.server.bootstrap=false
-
 spring.cloud.config.discovery.serviceId=configCenterServer
 ```
 
@@ -258,19 +286,149 @@ spring.cloud.config.discovery.serviceId=configCenterServer
 
 ## 九、配置敏感数据加密
 
+在springcloud config中，通过在属性值前加{cipher}前缀来标注内容是一个加密值。在客户端加载配置时，配置中心自动为带有{cipher}前缀的值进行解密。
 
+配置中心安装不限长度的JCE版本，从oracle下载。下载后把local_policy.jar和US_export.policy.jar两个文件复制到$JAVA_HOME/jre/lib/security目录下，覆盖原有的内容。
+
+完成了安装后，启动配置中心，控制台会输出一些配置中心特有的端点信息。主要有：
+
+- /encrypt/status:查看加密状态功能的端点
+- /key 查看秘钥的端点
+- /encrypt  对请求的body内容进行加密的端点
+- /decrypt 对请求的body内容进行解密的端点
+
+可以尝试get方式访问/encrypt/status,得到如下内容：
+
+```
+{
+    "description":"NO key was install for encryption service"
+    "status":"NO_KEY"
+}
+```
+
+以上表示加密还不可用，没配置秘钥
+
+我们可以在配置文件指定秘钥
+
+```
+encrypt.key=123456
+```
+
+再次访问/encrypt/status得到如下内容
+
+```
+{
+    "status":"OK"
+}
+```
+
+此时才表示加解密功能可用
+
+/encrypt   POST请求
+
+/decrypt   POST请求
+
+```
+curl localhost:8001/encrypt -d root
+```
+
+```
+curl localhost:8001/decrypt -d 上面的加密内容
+```
+
+上面只通过encrypt.key就实现了加解密功能。
+
+我们也可以通过环境变量ENCRYPT_KEY来设置秘钥，从而更安全。
 
 ## 十、参考文档
 
 https://springcloud.cc/spring-cloud-config.html
 
+## 十一、指定本地文件系统
+
+```
+spring.cloud.config.server.git.uri=file://${user.home}/config-repo
+```
+
+以上方式仅用于测试，生产环境务必搭建Git仓库。
+
+## 十二、一服务对应一个Git仓库目录
+
+```
+spring.cloud.config.server.git.uri=https://github.com/18310130376/configdata/{application}
+或
+spring.cloud.config.server.git.uri=https://github.com/18310130376/configdata/{application}-config
+```
+
+{application}代表了应用名，所以客户端向Config Server发起获取配置的请求时，config Server会根据客户端的spring.application.name信息来填充{application}占位符以定位配置资源的存储位置，从而实现根据微服务应用属性动态获取不同位置的配置。
+
+这些占位符中，{label}参数较为特殊，如果Git的分支和标签名包含"/"，那么{label}参数在Http的URL中应该使用“（_）”来代替。
+
+## 十三、根据searchPaths应对多服务
+
+对于上面的一个服务一个仓库，如果为了省事可以只需要一个仓库，仓库下根据应用名建立不同的文件夹，文件夹用{application}命名。
+
+```
+spring.cloud.config.server.git.searchPaths={application}
+```
+
+## 十四、服务端对Git仓库的连通性
+
+```
+spring.cloud.config.server.health.repositories.check.name=check-repo  //已存在的仓库
+spring.cloud.config.server.health.repositories.check.label=master
+spring.cloud.config.server.health.repositories.check.profiles=default
+```
+
+如果不想使用健康检查，则使用如下方式关闭：
+
+```
+spring.cloud.config.server.health.enabled=false
+```
+
+## 十五、共同属性 / 属性覆盖
+
+```
+spring.cloud.config.server.overrides.name=zhangsan
+spring.cloud.config.server.overrides.from=shenzhen
+```
+
+以上在configServer配置的属性，每个客户端都会获取到，从而实现了应用配置的共同属性或默认属性。
+
+## 十六、配置中心安全保护
+
+在configServer的pom增加
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency
+```
+
+默认情况下我们会得一个名为user的用户，并在配置中心启动的时候在日志中打印出该用户的随机密码。
+
+大多数情况下，并不会使用随机密码，我们在配置文件中指定用户和密码，比如
+
+```
+security.user.name=user
+security.user.password=37cc5635-559d-4e6f-b633-7e932b813f73
+```
+
+由于对configServer做了安全保护，如果这时连接到配置中心的客户端没有设置安全信息，在获取配置信息的时候返回401错误。所以需要通过配置的方式在客户端加入安全信息来通过校验，比如：
+
+```
+spring.cloud.config.username=user
+spring.cloud.config.password=37cc5635-559d-4e6f-b633-7e932b813f73
+```
+
 
 
 # 二、配置中心SpringCloud   高可用
 
-## 一 、引入依赖
+## 一 、引入eureka依赖
 
-```
+```xml
 <dependency>
 	<groupId>org.springframework.cloud</groupId>
 	<artifactId>spring-cloud-starter-eureka-server</artifactId>
@@ -335,7 +493,7 @@ eureka.server.enable-self-preservation=true
 
 在pom.xml引入
 
-```
+```xml
 <dependency>
 	<groupId>org.springframework.cloud</groupId>
 	<artifactId>spring-cloud-starter-eureka</artifactId>
@@ -433,3 +591,18 @@ configClient通过spring.cloud.config.discovery.serviceId=configServer去注册�
 eurekaServer对多个configServer其中的一台进行访问。
 
 configServer把自己注册到注册中心（多个）。
+
+
+
+# 附
+
+## 注解
+
+|               |      |
+| ------------- | ---- |
+| @refreshScope |      |
+|               |      |
+|               |      |
+|               |      |
+|               |      |
+
