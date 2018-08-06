@@ -3139,6 +3139,12 @@ log4j.appender.controller.File=${logdir}//controller.log
 
 ## 打包方式一
 
+http://maven.apache.org/plugins/maven-assembly-plugin/assembly.html
+
+https://www.cnblogs.com/f-zhao/p/6929814.html
+
+
+
 配置文件放在resources / config下：
 
 application.properties    默认加载
@@ -3303,6 +3309,10 @@ application.properties 放在config目录或者resource下(默认加载)
 log4j.properties  放在resource下(默认加载)
 
 重点`<Class-Path>./config/</Class-Path>` 打包后把/config/设置为classpath，log4j默认在此位置加载
+
+- dependencySets用来定义选择依赖并定义最终打包到什么目录，这里我们声明的一个depenencySet默认包含所有所有 依赖，而useProjectArtifact表示将项目本身生成的构件也包含在内，最终打包至输出包内的lib路径下（由 outputDirectory指定）。
+
+
 
 ```
 <plugin>
