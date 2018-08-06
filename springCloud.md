@@ -360,7 +360,7 @@ spring.cloud.config.server.git.searchPaths=src/main/resources/conf/
 spring.cloud.config.label=master
 spring.cloud.config.server.git.username=475402366@qq.com
 spring.cloud.config.server.git.password=wk69404905
-eureka.client.serviceUrl.defaultZone=http://localhost:8889/eureka/
+eureka.client.serviceUrl.defaultZone=http://localhost:9001/eureka/
 #eureka.client.serviceUrl.defaultZone=http://localhost:9001/eureka/,http://localhost:9002/eureka/
 #eureka.instance.preferIpAddress=true
 #eureka.instance.instance-id=${spring.cloud.client.ipAddress}:${server.port}
@@ -388,4 +388,40 @@ public class ApplicationConfigServer {
 }
 ```
 
-https://blog.csdn.net/forezp/article/details/81041045
+## 三、改造config-client
+
+```xml
+   <dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-config</artifactId>
+    </dependency>
+    
+    <dependency>
+	  <groupId>org.springframework.cloud</groupId>
+	  <artifactId>spring-cloud-starter-eureka</artifactId>
+    </dependency>
+```
+
+配置文件bootstrap.properties，注意是bootstrap 加上服务注册地址为<http://localhost:9001/eureka/> 
+
+```properties
+server.port=8002
+spring.application.name=configClient
+spring.cloud.config.label=master
+spring.cloud.config.profile=dev
+#spring.cloud.config.uri= http://localhost:8001/
+eureka.client.serviceUrl.defaultZone=http://localhost:9001/eureka/
+spring.cloud.config.discovery.enabled=true
+spring.cloud.config.discovery.serviceId=configServer
+#eureka.instance.preferIpAddress=true
+#eureka.instance.instance-id=${spring.cloud.client.ipAddress}:${server.port}
+```
+
+- spring.cloud.config.discovery.enabled 是从配置中心读取文件。
+- spring.cloud.config.discovery.serviceId 配置中心的servieId，即服务名。
+
+这时发现，在读取配置文件不再写ip地址，而是服务名，这时如果配置服务部署多份，通过负载均衡，从而高可用。
+
+依次启动eureka-servr,config-server,config-client 
+
+访问网址：<http://localhost:9002/>  （eureka服务端）
