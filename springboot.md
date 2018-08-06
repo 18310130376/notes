@@ -3021,7 +3021,7 @@ logging.config=classpath:logback.xml
 
 logback.xml
 
-```
+```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration debug="false">
     <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
@@ -3692,6 +3692,18 @@ public class MailTest {
 # 三十九、AOP
 
 # 四十、事件通知
+
+# 四十一、tomcat日志
+
+```properties
+server.session-timeout=30
+#日志开关
+server.tomcat.access-log-enabled=true
+#日志格式
+server.tomcat.access-log-pattern=%h %l %u %t "%r" %s %b %D "%{Referer}i" "%{User-Agent}i"
+#日志输出目录，这里是设置为当前目录下
+server.tomcat.basedir=./
+```
 
 
 
