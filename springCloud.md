@@ -425,3 +425,11 @@ spring.cloud.config.discovery.serviceId=configServer
 依次启动eureka-servr,config-server,config-client 
 
 访问网址：<http://localhost:9002/>  （eureka服务端）
+
+## 小结
+
+configClient通过spring.cloud.config.discovery.serviceId=configServer去注册中心寻找configServer（多个），
+
+eurekaServer对多个configServer其中的一台进行访问。
+
+configServer把自己注册到注册中心（多个）。
