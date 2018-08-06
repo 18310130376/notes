@@ -3163,8 +3163,8 @@ public static void loadLogConfig(){
 }
 ```
 
-```
- <!-- 打包插件  用maven-jar-plugin时spring-boot-maven-plugin需要去除，不然把的包执行不了-->
+```xml
+<!-- 打包插件  用maven-jar-plugin时spring-boot-maven-plugin需要去除，不然把的包执行不了-->
         	<!-- <plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -3187,6 +3187,9 @@ public static void loadLogConfig(){
 							 <!--jar包不包含唯一版本标识-->
                             <useUniqueVersions>false</useUniqueVersions>
 						</manifest>
+					 <manifestEntries>  
+                         <Class-Path>./config/ ./config02/</Class-Path>
+                     </manifestEntries> 
 					</archive>
 					  <!--过滤掉不希望包含在jar中的文件-->
 					 <excludes>
@@ -3194,9 +3197,6 @@ public static void loadLogConfig(){
 						<exclude>static/**</exclude>
 						<exclude>/**/log4j.properties</exclude>
 					</excludes> 
-					  <manifestEntries>  
-                         <Class-Path>./</Class-Path>
-                     </manifestEntries> 
 				</configuration>
 			</plugin>
 			
@@ -3218,12 +3218,12 @@ public static void loadLogConfig(){
 						</goals>
 					</execution>
 				</executions>
-</plugin> 
+			</plugin> 
 ```
 
 
 
-```
+```xml
 <?xml version="1.0" encoding="UTF-8"?>  
 <assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
   xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 http://maven.apache.org/xsd/assembly-1.1.3.xsd">  
@@ -3314,7 +3314,7 @@ log4j.properties  放在resource下(默认加载)
 
 
 
-```
+```xml
 <plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -3358,7 +3358,7 @@ log4j.properties  放在resource下(默认加载)
 	</plugin>
 ```
 
-```
+```xml
 <?xml version="1.0" encoding="UTF-8"?>  
 <assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
   xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 http://maven.apache.org/xsd/assembly-1.1.3.xsd">  
