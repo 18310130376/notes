@@ -1178,7 +1178,23 @@ public class UserConrollerTest {
 }
 ```
 
+指定加载的环境配置
 
+```java
+package com.boot.util;
+
+import org.junit.runner.RunWith;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringBootTest(classes=Application.class)
+/**单元测试手动制定需要加载的环境**/
+@ActiveProfiles("prod")
+public class UserTest {
+	
+}
+```
 
 
 
@@ -3691,6 +3707,74 @@ public class MailTest {
 
 # 三十九、AOP
 
+```java
+package com.integration.boot.filter;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+
+@Target({ ElementType.PARAMETER, ElementType.METHOD })
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface AspectAction {
+	
+	String value() default "";
+
+}
+
+```
+
+```java
+package com.integration.boot.filter;
+
+import java.lang.reflect.Method;
+
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.AfterReturning;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.stereotype.Component;
+
+@Aspect
+@Component
+public class LogAspect {
+
+	
+	    @Pointcut("@annotation(com.boot.annotation.AspectAction)")
+	    public void log() {
+
+	    }
+	 
+	 /**
+	     * 前置通知
+	     */
+	    @Before("log()")
+	    public void doBeforeController(JoinPoint joinPoint) {
+	        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+	        Method method = signature.getMethod();
+	        AspectAction action = method.getAnnotation(AspectAction.class);
+	        System.out.println("action名称 " + action.value()); // ⑤
+	    }
+
+	    /**
+	     * 后置通知
+	     */
+	    @AfterReturning(pointcut = "log()", returning = "retValue")
+	    public void doAfterController(JoinPoint joinPoint, Object retValue) {
+	        System.out.println("retValue is:" + retValue);
+	    }
+}
+
+```
+
+
+
 # 四十、事件通知
 
 # 四十一、tomcat日志
@@ -3706,6 +3790,52 @@ server.tomcat.basedir=./
 ```
 
 
+
+# 四十二  、自定义tomcat参数
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+public class ApplicationWebController {   
+	 
+	public static void main(String[] args) {
+		new SpringApplicationBuilder(ApplicationWebController.class).web(true).run(args);
+          System.out.println("======webController start successful==========");
+          /**配置文件读取规则:根目录config下的application.properties/无config,resource下的config，resource下的application.properties/**/
+          /**
+          new SpringApplicationBuilder(Application.class).properties("spring-config-location=classpath:/abc.properties").run(args);**/
+      }
+	
+	
+	/**
+	@Component
+    public static class CustomServletContainer implements EmbeddedServletContainerCustomizer{
+
+        @Override
+        public void customize(ConfigurableEmbeddedServletContainer container) {
+            container.setPort(8888);//①
+            container.addErrorPages(new ErrorPage(HttpStatus.NOT_FOUND, "/404.html"));//②
+            container.setSessionTimeout(10,TimeUnit.MINUTES);//③
+        }
+    }**/
+	
+	/**
+	@Bean
+	public ConfigurableServletWebServerFactory webServerFactory() {
+		TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
+		factory.setPort(9000);
+		factory.setSessionTimeout(10, TimeUnit.MINUTES);
+		factory.addErrorPages(new ErrorPage(HttpStatus.NOT_FOUND, "/notfound.html"));
+		return factory;
+	}**/
+  }
+```
+
+
+
+# 四十三 @ComponentScan
+
+@ComponentScan(basepackages="com.boot")
 
 # 参考文档
 
