@@ -322,6 +322,41 @@ server.port=${port:8080}
 
 那么就可以使用更短的–port=9090，当不提供该参数的时候使用默认值8080。
 
+### 十一、PropertiesLoaderUtils
+
+PropertiesLoaderUtils加载properties
+
+```
+ PropertiesLoaderUtils.loadAllProperties("application.properties");
+```
+
+### 十一、Environment
+
+```java
+ public static void main(String[] args) throws InterruptedException {
+    	  
+    	  loadLogConfig();
+    	  ConfigurableApplicationContext run = SpringApplication.run(Application.class, args);
+    	  Environment environment = run.getBean(Environment.class);
+    	  String property = environment.getProperty("spring.dubbo.application.name");
+    	  System.out.println(property);
+          logger.info("======dubbo-consumer started successfull ======");
+    }
+```
+
+```java
+   @Autowired
+    private Environment environment;
+    
+    @Test
+    public void loadProperties() {
+    	String property = environment.getProperty("spring.dubbo.application.name");
+    	System.out.println(property);
+  }
+```
+
+
+
 ## @PropertySource自定义配置文件
 
 ```java
@@ -2978,6 +3013,85 @@ log4j.logger.RocketmqConsole=INFO
 
 ### 集成logback
 
+application.peoperties
+
+```
+logging.config=classpath:logback.xml
+```
+
+logback.xml
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false">
+    <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
+    <property name="LOG_HOME" value="/test/log" />
+    <!-- 控制台输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- 按照每天生成日志文件 -->
+    <appender name="FILE"  class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!--日志文件输出的文件名-->
+            <FileNamePattern>${LOG_HOME}/TestWeb.log.%d{yyyy-MM-dd}.log</FileNamePattern>
+            <!--日志文件保留天数-->
+            <MaxHistory>30</MaxHistory>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+        <!--日志文件最大的大小-->
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <MaxFileSize>10MB</MaxFileSize>
+        </triggeringPolicy>
+    </appender>
+    <!-- show parameters for hibernate sql 专为 Hibernate 定制 -->
+  <!--   <logger name="org.hibernate.type.descriptor.sql.BasicBinder"  level="TRACE" />
+    <logger name="org.hibernate.type.descriptor.sql.BasicExtractor"  level="DEBUG" />
+    <logger name="org.hibernate.SQL" level="DEBUG" />
+    <logger name="org.hibernate.engine.QueryParameters" level="DEBUG" />
+    <logger name="org.hibernate.engine.query.HQLQueryPlan" level="DEBUG" /> -->
+
+    <!--myibatis log configure-->
+    <logger name="com.ibatis" level="DEBUG" />  
+<logger name="com.ibatis.common.jdbc.SimpleDataSource" level="DEBUG" />  
+<logger name="com.ibatis.common.jdbc.ScriptRunner" level="DEBUG" />  
+<logger name="com.ibatis.sqlmap.engine.impl.SqlMapClientDelegate" level="DEBUG" />  
+<logger name="java.sql.Connection" level="DEBUG" />  
+<logger name="java.sql.Statement" level="DEBUG" />  
+<logger name="java.sql.PreparedStatement" level="DEBUG" />  
+
+    <!-- 日志输出级别 -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </root>
+    
+    <logger name="dao" level="DEBUG">  
+    <!--daoFILE为实际定义的appender-->  
+    <appender-ref ref="FILE" />  
+</logger>  
+    <!--日志异步到数据库 -->
+    <!--<appender name="DB" class="ch.qos.logback.classic.db.DBAppender">-->
+        <!--&lt;!&ndash;日志异步到数据库 &ndash;&gt;-->
+        <!--<connectionSource class="ch.qos.logback.core.db.DriverManagerConnectionSource">-->
+            <!--&lt;!&ndash;连接池 &ndash;&gt;-->
+            <!--<dataSource class="com.mchange.v2.c3p0.ComboPooledDataSource">-->
+                <!--<driverClass>com.mysql.jdbc.Driver</driverClass>-->
+                <!--<url>jdbc:mysql://127.0.0.1:3306/databaseName</url>-->
+                <!--<user>root</user>-->
+                <!--<password>root</password>-->
+            <!--</dataSource>-->
+        <!--</connectionSource>-->
+    <!--</appender>-->
+</configuration>
+```
+
 
 
 # 三十四、WebJars
@@ -3436,6 +3550,148 @@ log4j.properties  放在resource下(默认加载)
 
 </assembly>  
 ```
+
+
+
+# 三十六、Lombok
+
+# 三十七、日期格式化
+
+```
+spring.jackson.date-format=yyyy-MM-dd HH:mm:ss
+```
+
+
+
+# 三十八 、邮件
+
+see:https://blog.csdn.net/u011244202/article/details/54809696
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
+```
+
+
+
+```properties
+# JavaMailSender 邮件发送的配置
+#若使用QQ邮箱发送邮件，则需要修改为spring.mail.host=smtp.qq.com，同时spring.mail.password改为QQ邮箱的授权码。 
+#QQ邮箱->设置->账户->POP3/SMTP服务:开启服务后会获得QQ的授权码 
+spring.mail.host=smtp.qq.com
+spring.mail.username=475402366@qq.com
+spring.mail.password=aaaaa
+spring.mail.properties.mail.smtp.auth=false
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+```
+
+```java
+package springBoot;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.mail.internet.MimeMessage;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import com.integration.boot.Application;
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringBootTest(classes=Application.class)
+public class MailTest {
+	
+	@Autowired
+	private JavaMailSender mailSender;
+	
+	
+	/**
+	 * 发送简单的邮件
+	 **/
+	
+	@Test
+	public void sendSimpleMail() throws Exception {
+		
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom("475402366@qq.com");
+		message.setTo("69404905@qq.com");
+		message.setSubject("123");
+		message.setText("1234");
+		try {
+			mailSender.send(message);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	@Test
+	public void sendAttachmentsMail() throws Exception {
+		
+		MimeMessage mimeMessage = mailSender.createMimeMessage();
+		
+		MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+		
+		helper.setFrom("475402366@qq.com");
+		helper.setTo("475402366@qq.com");
+		helper.setSubject("主题：有附件");
+		helper.setText("有附件的邮件");
+		FileSystemResource file = new FileSystemResource(new File("C:\\Users\\Administrator\\Desktop\\QQ截图20170603165155.png"));
+		helper.addAttachment("附件-1.jpg", file);
+		helper.addAttachment("附件-2.jpg", file);
+		mailSender.send(mimeMessage);
+	}
+	
+	@Test
+	public void sendInlineMail() throws Exception {
+		MimeMessage mimeMessage = mailSender.createMimeMessage();
+		MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+		helper.setFrom("475402366@qq.com");
+		helper.setTo("475402366@qq.com");
+		helper.setSubject("主题：嵌入静态资源");
+		helper.setText("<html><body><img src=\"cid:thisisaimg\" ></body></html>", true);
+		FileSystemResource file = new FileSystemResource(new File("C:\\Users\\Administrator\\Desktop\\QQ截图20170603165155.png"));
+		helper.addInline("thisisaimg", file);
+		mailSender.send(mimeMessage);
+	}
+
+	@Test
+	public void sendTemplateMail() throws Exception {
+		MimeMessage mimeMessage = mailSender.createMimeMessage();
+		MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+		helper.setFrom("dyc87112@qq.com");
+		helper.setTo("dyc87112@qq.com");
+		helper.setSubject("主题：模板邮件");
+		Map<String, Object> model = new HashMap();
+		model.put("username", "didi");
+//		String text = VelocityEngineUtils.mergeTemplateIntoString(
+//				velocityEngine, "template.vm", "UTF-8", model);
+//		helper.setText(text, true);
+		mailSender.send(mimeMessage);
+	}
+}
+```
+
+
+
+
+
+
+
+# 三十九、AOP
+
+# 四十、事件通知
 
 
 
