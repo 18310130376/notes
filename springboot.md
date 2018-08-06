@@ -3583,6 +3583,8 @@ spring.jackson.date-format=yyyy-MM-dd HH:mm:ss
 
 see:https://blog.csdn.net/u011244202/article/details/54809696
 
+http://blog.didispace.com/springbootmailsender/
+
 ```xml
 <dependency>
   <groupId>org.springframework.boot</groupId>
@@ -3706,6 +3708,8 @@ public class MailTest {
 
 
 # 三十九、AOP
+
+http://blog.didispace.com/springbootaoplog/
 
 ```java
 package com.integration.boot.filter;

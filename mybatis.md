@@ -52,3 +52,9 @@ logging.level.com.leftso.mapper=DEBUG   //com.leftso.mapper为mapper所在的包
 https://www.w3cschool.cn/mybatis/k8ay1im3.html
 
 https://www.yiibai.com/mybatis/mybatis-dynamic-sql.html
+
+https://www.thinksaas.cn/group/topic/440100/
+
+# 三、mybatis spring配置SqlSessionTemplate使用
+
+http://blog.csdn.net/lan12334321234/article/details/70049217
