@@ -47,3 +47,8 @@ https://blog.csdn.net/liyanlei5858/article/details/79066790
 logging.level.com.leftso.mapper=DEBUG   //com.leftso.mapper为mapper所在的包路径
 ```
 
+# 二、mybatis javaApi
+
+https://www.w3cschool.cn/mybatis/k8ay1im3.html
+
+https://www.yiibai.com/mybatis/mybatis-dynamic-sql.html
