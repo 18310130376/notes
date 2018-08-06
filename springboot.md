@@ -3135,6 +3135,296 @@ log4j.appender.controller.File=${logdir}//controller.log
 5. jar包内有些配置文件想放在jar包外面，比如文件config.properties：如果这个文件是以路径方式载入的，比如new file("./config/config.properties")，那么将config.properties放在jar包相同目录下的config目录下即可，也就是说“./”路径等价于jar包所在目录；如果这个文件是以ClassPath下的文件这种方式载入的，比如在Spring中载入classpath:config.properties，则在MF文件的配置文件的ClassPath中添加“./”，然后将这个配置文件与jar包放在同一个目录即可，当然也可以在MF文件的配置文件的ClassPath中添加“./config/”，然后把配置文件都放在jar包相同目录下的config目录下。
 ```
 
+
+
+## 打包方式一
+
+配置文件放在resources / config下：
+
+application.properties    默认加载
+
+log4j.properties   手动加载（开发和部署）
+
+```
+public static void loadLogConfig(){
+    	
+	try {
+			PropertyConfigurator.configure(Application.class.getClassLoader().getResource("").getPath() + File.separator+"config"+File.separator+"log4j.properties");
+		} catch (Exception e) {
+			logger.error("=========config not found，try to load from user.dir =======");
+			PropertyConfigurator.configure(System.getProperty("user.dir") + File.separator+"config"+ File.separator+"log4j.properties");
+		}
+}
+```
+
+```
+ <!-- 打包插件  用maven-jar-plugin时spring-boot-maven-plugin需要去除，不然把的包执行不了-->
+        	<!-- <plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin> -->
+			
+			 <plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+					
+					 <!--生成的jar中，不要包含pom.xml和pom.properties这两个文件 -->
+                    <addMavenDescriptor>false</addMavenDescriptor>
+					
+						<manifest>
+							<mainClass>com.integration.boot.Application</mainClass>
+							<addClasspath>true</addClasspath><!--是否要把第三方jar放到manifest的classpath中 -->
+							 <!--MANIFEST.MF中 Class-Path加入前缀 -->
+							<classpathPrefix>lib/</classpathPrefix> <!--生成的manifest中classpath的前缀，因为要把第三方jar放到lib目录下，所以classpath的前缀是lib/-->
+							 <!--jar包不包含唯一版本标识-->
+                            <useUniqueVersions>false</useUniqueVersions>
+						</manifest>
+					</archive>
+					  <!--过滤掉不希望包含在jar中的文件-->
+					 <excludes>
+						<exclude>config/**</exclude>
+						<exclude>static/**</exclude>
+						<exclude>/**/log4j.properties</exclude>
+					</excludes> 
+					  <manifestEntries>  
+                         <Class-Path>./</Class-Path>
+                     </manifestEntries> 
+				</configuration>
+			</plugin>
+			
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<finalName>${name}</finalName>
+					<appendAssemblyId>false</appendAssemblyId>
+					<descriptors>
+						<descriptor>src/main/build/package.xml</descriptor>
+					</descriptors>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+</plugin> 
+```
+
+
+
+```
+<?xml version="1.0" encoding="UTF-8"?>  
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+  xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 http://maven.apache.org/xsd/assembly-1.1.3.xsd">  
+   <id>dev</id>  <!-- id 标识符，添加到生成文件名称的后缀符。如果指定 id 的话，目标文件则是 ${artifactId}-${id}.tar.gz -->
+    <formats>  
+    <!-- zip,tar,tar.gz,tar.bz2,jar,dir,war -->
+        <format>zip</format>  
+    </formats>  
+     <!--tar.gz 压缩包下是否生成和项目名相同的根目录-->
+    <includeBaseDirectory>true</includeBaseDirectory>  
+    
+     
+    <dependencySets>  
+        <dependencySet>  
+         <!--useProjectArtifact为true，则会把打的jar包放在zip对应的依赖包目录下，否则不会放进去-->
+            <useProjectArtifact>true</useProjectArtifact>
+            <outputDirectory>${file.separator}lib</outputDirectory> 
+            <unpack>false</unpack>
+           <!--  <scope>runtime</scope> -->
+            <excludes><!--打的jar默认会 放到lib下的，这里排除掉 -->
+            <!--<exclude>${groupId}:${artifactId}</exclude>-->
+            </excludes>  
+        </dependencySet>  
+    </dependencySets>  
+    
+    <fileSets>  
+        <fileSet>  
+            <directory>bin</directory>  
+            <outputDirectory>${file.separator}</outputDirectory>  
+        </fileSet>  
+        <fileSet>  
+            <directory>src/main/resources</directory>  
+            <outputDirectory>${file.separator}</outputDirectory>  
+            <includes>
+                <include>config/**</include>
+                <include>static/**</include>
+                <include>/**/log4j.properties</include>
+           </includes>
+            <!--打包时是否进行文件置换(将 maven profile 中的 properties与配置文件引用置换)-->
+            <filtered>true</filtered>
+        </fileSet>  
+        
+        <fileSet>  
+            <directory>${project.build.directory}</directory>  
+            <outputDirectory>/</outputDirectory>  
+            <includes>  
+                <include>*.jar</include>  
+            </includes>  
+        </fileSet>  
+       <!--  <fileSet>
+            <directory>src/main/assembly/bin</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+                                 分配脚本文件可执行权限
+            <fileMode>0755</fileMode>
+        </fileSet> -->
+    </fileSets>  
+    
+ <!--<files>  
+    <file>  
+        <source>b.txt</source>  
+        <outputDirectory>/</outputDirectory>  
+        <destName>b.txt.bak</destName>
+    </file>  
+</files> -->
+     <!-- <files>
+	    <file>
+	    <source>target/springboot4Docker-1.0-SNAPSHOT.jar</source>
+	    <outputDirectory>./lib</outputDirectory>
+	    <outputDirectory>./</outputDirectory>
+	    <destName>app.jar</destName>
+	    </file>
+    </files> -->
+</assembly>  
+```
+
+## 打包方式二
+
+application.properties 放在config目录或者resource下(默认加载)
+
+log4j.properties  放在resource下(默认加载)
+
+重点`<Class-Path>./config/</Class-Path>` 打包后把/config/设置为classpath，log4j默认在此位置加载
+
+```
+<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<mainClass>com.docker.DockerApplication</mainClass>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+						</manifest>
+						 <manifestEntries>
+                         <!--MANIFEST.MF 中 Class-Path加入资源文件目录,只能配置一个，后面的覆盖前面的 -->
+                         <Class-Path>./config/</Class-Path>
+                         </manifestEntries>
+					</archive>
+					<excludes>
+						<exclude>config/**</exclude>
+						<exclude>log4j.properties</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<finalName>${name}</finalName>
+					<appendAssemblyId>false</appendAssemblyId>
+					<descriptors>
+						<descriptor>src/main/build/package.xml</descriptor>
+					</descriptors>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+	</plugin>
+```
+
+```
+<?xml version="1.0" encoding="UTF-8"?>  
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+  xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 http://maven.apache.org/xsd/assembly-1.1.3.xsd">  
+    <id>dev</id>  
+    <formats>  
+        <format>zip</format>  
+    </formats>  
+    <includeBaseDirectory>true</includeBaseDirectory>  
+    <fileSets>  
+        <!-- <fileSet>  
+            <directory>bin</directory>  
+            <outputDirectory>/</outputDirectory>  
+        </fileSet>  --> 
+        <fileSet>  
+            <directory>src/main/resources</directory>  
+            <outputDirectory>/</outputDirectory>  
+            <includes>
+                <include>config/**</include>
+           </includes>
+            <!--打包时是否进行文件置换(将 maven profile 中的 properties与配置文件引用置换)-->
+            <filtered>true</filtered>
+        </fileSet>  
+        
+         <fileSet>  
+            <directory>src/main/resources</directory>  
+            <outputDirectory>/config</outputDirectory>  
+            <includes>
+                <include>log4j.properties</include>
+           </includes>
+        </fileSet> 
+        
+        <fileSet>  
+            <directory>${project.build.directory}</directory>  
+            <outputDirectory>/</outputDirectory>  
+            <includes>  
+                <include>*.jar</include>  
+            </includes>  
+        </fileSet>
+        
+       <!--  <fileSet>
+            <directory>src/main/assembly/bin</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+                                 分配脚本文件可执行权限
+            <fileMode>0755</fileMode>
+        </fileSet> -->
+    </fileSets>  
+    
+    <dependencySets>  
+        <dependencySet>  
+         <!--useProjectArtifact为true，则会把打的jar包放在zip对应的依赖包目录下，否则不会放进去-->
+            <useProjectArtifact>true</useProjectArtifact>
+            <outputDirectory>lib</outputDirectory> 
+            <!-- <unpack>false</unpack>  
+            <scope>runtime</scope> -->
+            <excludes><!--打的jar默认会 放到lib下的，这里排除掉 -->
+            <!--<exclude>${groupId}:${artifactId}</exclude>-->
+            </excludes>  
+        </dependencySet>  
+    </dependencySets>  
+    
+ <!--文件重命名<files>  
+    <file>  
+        <source>b.txt</source>  
+        <outputDirectory>/</outputDirectory>  
+        <destName>b.txt.bak</destName>
+    </file>  
+</files> -->
+
+</assembly>  
+```
+
+
+
 # 参考文档
 
 https://blog.csdn.net/column/details/zkn-springboot.html?&page=2
