@@ -144,7 +144,9 @@ http://localhost:8001/configClient/dev/master
 
 原理：配置服务器从Git中获取配置信息后，会存储一份在configServer的文件系统中。防止GIt仓库出现故障引起服务不可用。
 
+访问：http://localhost:8001/configClient-dev.properties
 
+ 或者   http://localhost:8001/master/configClient-dev.properties
 
 ## 五、构建一个config client
 
@@ -421,6 +423,188 @@ security.user.password=37cc5635-559d-4e6f-b633-7e932b813f73
 spring.cloud.config.username=user
 spring.cloud.config.password=37cc5635-559d-4e6f-b633-7e932b813f73
 ```
+
+
+
+## 十七、如何刷新配置信息
+
+项目一旦放到生产环境，就需要不停机更改配置。比如更改一些线程池连接数什么的。或者是配置文件，这里我演示手动刷新git仓库上的配置文件
+
+### 一、手动刷新
+
+在configClient加入依赖spring-boot-starter-actuator
+
+```xml
+<dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+
+ <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-config</artifactId>
+ </dependency>
+```
+
+在Controller上添加注解@RefreshScope。添加@RefreshScope的类会在配置更改时得到特殊处理
+
+```java
+package org.config.controller;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RefreshScope
+public class ConfigController {
+	
+	@Value("${spring.data.source.username}")
+	public String springDataSourceUsername;
+	
+	@RequestMapping("getConfig")
+	public Map<String,Object> getConfig(){
+		
+		Map<String,Object> result = new HashMap<String, Object>();
+		result.put("springDataSourceUsername", springDataSourceUsername);
+		return result;
+	}
+}
+
+```
+
+发送POST请求到`http://localhost:7001/refresh`（configClient的地址）
+
+```json
+[
+	"config.client.version",
+	"spring.data.source.username"
+]
+```
+
+证明spring.data.source.username的值有变化，此时访问http://localhost:7001/getConfig 获取到了最新的值
+
+
+
+以上可以增加Git的webhooks 实现刷新
+
+
+
+### 二、客户端集群集成kafka
+
+如果客户端集群呢，不能一个一个去刷新，则在client加入kafka，访问客户端的 /bus/refresh，此时所有的客户端会得到通知从而获取最新的配置。
+
+此种方式的弊端：
+
+客户端的配置变动需要更新Git的webhooks
+
+如果配置Git的webhooks对应的客户端宕机了造成其他机器都获取不到数据
+
+解决方案：
+
+在ConfigServer加入kafka，实现自动刷新
+
+### 三、配置服务端集成kafka
+
+
+
+配置中心服务端 post访问localhost:9000/bus/refresh 或者 ?destination=customers:9000（默认spring.application.name:server.port） 或者  /bus/refresh?destination=customers:** 或者?destination=configClient
+
+customers指的是服务实例名，customers:9000指的是各个微服务的ApplicationContext ID，默认情况下，ApplicationContext ID是spring.application.name:server.port
+
+
+
+#### 一、kafka安装
+
+see：https://www.cnblogs.com/ryan304/p/9134783.html
+
+#### 二、configServer改造
+
+```xml
+<dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+   <!-- kafka依赖 -->
+<dependency>
+     <groupId>org.springframework.cloud</groupId>
+     <artifactId>spring-cloud-starter-bus-kafka</artifactId>
+</dependency>
+```
+
+application.properties配置文件添加
+
+```properties
+spring.cloud.stream.kafka.binder.zk-nodes=localhost:2181
+spring.cloud.stream.kafka.binder.brokers=localhost:9092
+management.security.enabled=false
+```
+
+#### 三、config-client改造
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+     <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+     <!-- kafka依赖 -->
+<dependency>
+     <groupId>org.springframework.cloud</groupId>
+     <artifactId>spring-cloud-starter-bus-kafka</artifactId>
+</dependency>
+```
+
+获取配置的controller上添加注解：@RefreshScope
+
+```java
+package org.config.controller;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RefreshScope
+public class ConfigController {
+	
+	@Value("${spring.data.source.username}")
+	public String springDataSourceUsername;
+	
+	@RequestMapping("getConfig")
+	public Map<String,Object> getConfig(){
+		
+		Map<String,Object> result = new HashMap<String, Object>();
+		result.put("springDataSourceUsername", springDataSourceUsername);
+		return result;
+	}
+}
+```
+
+#### 三、测试
+
+重启config-server和config-client项目，然后修改配置文件内容后，用postman调用`config-server`的bus/refresh请求：配置中心ip:端口/bus/refresh。这个时候可以发现config-client使用的配置是最新的。
+
+#### 总结
+
+刷新过程总结下
+
+　　1.config-server接收到bus/refresh请求后会下载最新配置并通知消息总线bus
+
+　　2.消息总线通知各个客户端配置有更新
+
+　　3.各个客户端会重新请求config-server获取最新配置
+
+​        4.上面的bus/refresh可以加入到Git的webHooks中
+
+
 
 
 
