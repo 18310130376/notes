@@ -20,6 +20,10 @@ https://springcloud.cc/spring-cloud-dalston.html#_stub_runner_for_messaging
 
 https://www.jianshu.com/p/6db3f2ce3a53
 
+
+
+https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_config
+
 # 一、分布式配置中心SpringCloud
 
 ## 一、构建一个config Server
@@ -74,10 +78,21 @@ logging.config=classpath:logback-boot.xml
 spring.cloud.config.server.git.uri=https://github.com/18310130376/configCenterServer/
 #git仓库地址下的相对地址，可以配置多个，用,分割
 spring.cloud.config.server.git.searchPaths=src/main/resources/conf/
+
+#native：启动从本地读取配置文件，必须指定active的值，才可以使用本地文件配置模式
 #spring.profiles.active=native
 #spring.cloud.config.server.native.searchLocations=classpath:/conf
+
+
+#默认情况下，它们放在系统临时目录中，前缀为config-repo-。在linux上，例如可以是/tmp/config-repo-<randomid>。一些操#作系统会定期清除临时目录。这可能会导致意外的行为，例如缺少属性。为避免此问题，请通过将#spring.cloud.config.server.git.basedir或spring.cloud.config.server.svn.basedir设置为不驻留在系统临时结构中#的目录来更改Config Server使用的目录。
+
 #spring.cloud.config.server.git.basedir=config-repo
 #spring.cloud.config.server.git.clone-on-start=true
+
+#配置中心通过git从远程git库读取数据时，有时本地的拷贝被污染，这时配置中心无法从远程库更新本地配置。设置force-#pull=true，则强制从远程库中更新本地库
+#spring.cloud.config.server.git.force-pull=true
+
+
 spring.cloud.config.label=master
 spring.cloud.config.server.git.username=475402366@qq.com
 spring.cloud.config.server.git.password=wk69404905
@@ -176,7 +191,10 @@ http://localhost:8001/configClient/dev/master
 
 ```properties
 spring.application.name=configClient   //对应配置文件规则的{application}部分 
+#spring.cloud.config.name=configClient 默认为{spring.application.name}，如果设置则以此为准
+#多个Label可以使用逗号分隔
 spring.cloud.config.label=master   //对应配置文件规则的{label}部分 
+#如果不设置此值，则系统设置此值为 spring.profiles.active
 spring.cloud.config.profile=dev    //对应配置文件规则的{profile}部分 
 spring.cloud.config.uri= http://localhost:8001/  //配置中心configServer的地址 
 server.port=8002
@@ -210,10 +228,6 @@ public class ApplicationConfigClient {
       }
   }
 ```
-
-
-
-
 
 ## 六、客户端测试
 
@@ -279,6 +293,11 @@ spring.cloud.config.discovery.enabled=true
 spring.cloud.config.failFast=true
 最大重试6次，不配置默认是6
 spring.cloud.config.retry.max-attempts=6
+spring.cloud.config.retry.initial-interval=2000
+spring.cloud.config.retry.max-interval=4000
+#每次重试时间是之前的倍数
+spring.cloud.config.retry.multiplier=1.2
+
 #see：https://springcloud.cc/spring-cloud-config.html
 spring.cloud.config.server.bootstrap=false
 spring.cloud.config.discovery.serviceId=configCenterServer
@@ -782,11 +801,12 @@ configServer把自己注册到注册中心（多个）。
 
 ## 注解
 
-|               |      |
-| ------------- | ---- |
-| @refreshScope |      |
-|               |      |
-|               |      |
-|               |      |
-|               |      |
+|                                                      |                           |
+| ---------------------------------------------------- | ------------------------- |
+| @refreshScope                                        | 刷新配置                  |
+| @EnableDiscoveryClient                               | 通用的注册中心注解        |
+| @EnableEurekaClient                                  | 仅局限于Eureka            |
+| spring. profiles                                     | 指定当前配置文件的profile |
+| spring. profiles. active=prd                         | 激活配置文件              |
+| spring-boot:run -Drun.profiles=config-center1 -P dev |                           |
 
