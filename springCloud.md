@@ -16,13 +16,15 @@ http://www.cnblogs.com/skyblog/p/5129603.html
 
 https://springcloud.cc/spring-cloud-dalston.html#_stub_runner_for_messaging
 
-狄永超
+## 翟永超
+
+http://blog.didispace.com/spring-boot-run-backend/
 
 https://www.jianshu.com/p/6db3f2ce3a53
 
-
-
 https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_config
+
+
 
 # 一、分布式配置中心SpringCloud
 
