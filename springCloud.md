@@ -511,8 +511,6 @@ public class ConfigController {
 
 以上可以增加Git的webhooks 实现刷新
 
-
-
 ### 二、客户端集群集成kafka
 
 如果客户端集群呢，不能一个一个去刷新，则在client加入kafka，访问客户端的 /bus/refresh，此时所有的客户端会得到通知从而获取最新的配置。
@@ -560,7 +558,10 @@ application.properties配置文件添加
 ```properties
 spring.cloud.stream.kafka.binder.zk-nodes=localhost:2181
 spring.cloud.stream.kafka.binder.brokers=localhost:9092
+## 刷新时，关闭安全验证
 management.security.enabled=false
+## 开启消息跟踪
+spring.cloud.bus.trace.enabled=true
 ```
 
 #### 三、config-client改造
@@ -611,6 +612,27 @@ public class ConfigController {
 
 重启config-server和config-client项目，然后修改配置文件内容后，用postman调用`config-server`的bus/refresh请求：配置中心ip:端口/bus/refresh。这个时候可以发现config-client使用的配置是最新的。
 
+### 四、框架存在的bug
+
+`/bus/refresh` 有一个很严重的BUG，一直没有解决：对客户端执行`/bus/refresh`之后，挂到总线的上的客户端都会从Eureka注册中心撤销登记；如果对server端执行`/bus/refresh`,server端也会从Eureka注册中心撤销登记。再用白话解释一下，就是本来人家在Eureka注册中心注册的好好的，只要你对着它执行一次`/bus/refresh`，立刻就会从Euraka中挂掉。
+
+其实这个问题挺严重的，本来你利用`/bus/refresh`给所有的节点来更新配置信息呢，结果把服务从Euraka中给搞掉了，那么如果别人需要调用客户端的服务的时候就直接歇菜了。不知道国内有童鞋公司在生产中用到这个功能没有，用了不就很惨烈。在网上搜索了一下，国内网友和国外网友都遇到过很多次，但是一直没有解决，很幸运就是我在写这篇文章的**前几天**，Netflix修复了这个问题，使用Spring Cloud最新版本的包就可以解决这个问题。由此也可以发现Spring Cloud还在快速的发展中，最新的版本可能也会有一些不稳定性，可见路漫漫而修远兮。
+
+在pom中使用Spring Cloud的版本，解决这个bug.
+
+```
+<properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <java.version>1.8</java.version>
+    <spring-cloud.version>Dalston.SR1</spring-cloud.version>
+</properties>
+```
+
+主要是这句：`<spring-cloud.version>Dalston.SR1</spring-cloud.version>` ，详情可以参考本文示例中的代码
+
+
+
 #### 总结
 
 刷新过程总结下
@@ -624,6 +646,28 @@ public class ConfigController {
 ​        4.上面的bus/refresh可以加入到Git的webHooks中
 
 
+
+
+
+
+
+
+
+
+
+## 十八、复合仓库
+
+
+
+```
+spring.profiles.active: git, svn
+spring.cloud.config.server.svn.uri=file:///path/to/svn/repo
+spring.cloud.config.server.svn.order=2
+spring.cloud.config.server.git.uri=file:///path/to/git/repo
+spring.cloud.config.server.git.order=1
+```
+
+除了指定URI的每个repo之外，还可以指定order属性。order属性允许您指定所有存储库的优先级顺序。order属性的数值越低，优先级越高。存储库的优先顺序将有助于解决包含相同属性的值的存储库之间的任何潜在冲突
 
 
 
