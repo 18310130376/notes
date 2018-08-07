@@ -200,6 +200,11 @@ spring.cloud.config.label=master   //对应配置文件规则的{label}部分
 spring.cloud.config.profile=dev    //对应配置文件规则的{profile}部分 
 spring.cloud.config.uri= http://localhost:8001/  //配置中心configServer的地址 
 server.port=8002
+
+##开启Config服务发现支持
+spring.cloud.config.discovery.enabled=true
+#指定server端的name,也就是server端spring.application.name的值
+spring.cloud.config.discovery.serviceId=configServer
 ```
 
 - spring.cloud.config.label 指明远程仓库的分支
@@ -855,4 +860,5 @@ configServer把自己注册到注册中心（多个）。
 | spring. profiles                                     | 指定当前配置文件的profile |
 | spring. profiles. active=prd                         | 激活配置文件              |
 | spring-boot:run -Drun.profiles=config-center1 -P dev |                           |
+| mvn spring-boot:run -Dspring.profiles.active=peer1   |                           |
 
