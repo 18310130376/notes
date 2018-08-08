@@ -438,9 +438,41 @@ feign.hystrix.enabled: false
 
 
 
+# 七、远程调用设置用户名密码
 
 
 
+```java
+
+package com.dynamic.cloud.feign;
+ 
+import org.springframework.cloud.netflix.feign.FeignClient;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.dynamic.config.AuthConfiguration;
+ 
+@FeignClient(name="xxx",url="http://localhost:8761/",configuration=AuthConfiguration.class)
+public interface FeignClient2 {
+	
+	@RequestMapping(value="/eureka/apps/{serviceName}")
+	public String findServiceInfoFromEurekaByServiceName(@PathVariable("serviceName") String serviceName);
+```
 
 
+
+```java
+package com.dynamic.config;
+ 
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import feign.auth.BasicAuthRequestInterceptor;
+ 
+@Configuration
+public class AuthConfiguration {
+    @Bean
+    public BasicAuthRequestInterceptor basicAuthRequestInterceptor() {
+        return new BasicAuthRequestInterceptor("user","pass123");
+    }
+}
+```
 
