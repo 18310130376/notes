@@ -1008,9 +1008,192 @@ zuul.stripPrefix=false //表示不从请求中删除api前缀
 
 
 
+# 十三、查看路由规则
+
+如果使用@EnableZuulProxy与Spring Boot Actuator，您将启用（默认情况下）一个额外的端点，通过HTTP作为/ routes可用。 到此端点的GET将返回映射路由的列表。 POST将强制刷新现有路由（例如，如果服务目录中有更改）
+
+使用zuul已经自动引入了监控依赖，只需要在application.properties里配置：
+
+```
+management.security.enabled=false
+```
+
+即可访问：http://localhost:6001/routes
+
+如果不让随便访问，则开启HTTP basic认证 
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+```properties
+security.user.name=admin
+security.user.password=123456
+management.security.enabled=true
+management.security.role=ADMIN
+```
+
+接着在浏览器访问上面的地址提示输入用户名和密码，输入正确后即可访问成功
 
 
-# 、参考文档
+
+# 十四、访问安全
+
+访问zuul时，不是每个人都可以调用的，需要认证，此时开启HTTP basic认证
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+```properties
+security.user.name=admin
+security.user.password=123456
+management.security.enabled=true
+management.security.role=ADMIN
+```
+
+此时访问zuul的任何地址都需要输入用户名和密码
+
+
+
+# 十五、本地转发
+
+
+
+# 十六、URL重写
+
+```java
+package org.boot.filter;
+
+import org.springframework.cloud.netflix.zuul.filters.support.FilterConstants;
+import org.springframework.stereotype.Component;
+
+import com.netflix.zuul.ZuulFilter;
+import com.netflix.zuul.context.RequestContext;
+
+@Component
+public class UrlPathFilter extends ZuulFilter{
+
+	@Override
+	public boolean shouldFilter() {
+		
+		final String serviceId = (String) RequestContext.getCurrentContext().get("proxy");
+		//上一个filter设置该值
+		boolean isOK = RequestContext.getCurrentContext().getBoolean("isOK");
+		return "configClient".equals(serviceId) && isOK;
+	}
+
+	@Override
+	public Object run() {
+		
+		  RequestContext context = RequestContext.getCurrentContext();
+		  Object originalRequestPath = context.get("requestURI");
+		  String modifiedRequestPath = "/api/prefix" + originalRequestPath;
+		  context.put("requestURI", modifiedRequestPath);
+		  return null;
+	}
+
+	@Override
+	public String filterType() {
+		return FilterConstants.PRE_TYPE;
+	}
+
+	@Override
+	public int filterOrder() {
+		return FilterConstants.PRE_DECORATION_FILTER_ORDER + 1;
+	}
+}
+```
+
+
+
+```java
+package org.boot.filter;
+
+import java.io.IOException;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.stereotype.Component;
+
+import com.netflix.zuul.ZuulFilter;
+import com.netflix.zuul.context.RequestContext;
+
+@Component
+public class PreFilter extends ZuulFilter {
+
+	@Override
+	public boolean shouldFilter() {
+		return true;
+	}
+
+	@Override
+	public Object run() {
+		RequestContext ctx = RequestContext.getCurrentContext();
+		ctx.set("isOK",true);//可以把一些值放到ctx中，便于后面的filter获取使用
+		HttpServletRequest request = ctx.getRequest();
+		Object accessToken = request.getParameter("accessToken");
+		if (accessToken == null) {
+			ctx.setSendZuulResponse(false);
+			ctx.setResponseStatusCode(401);
+			 try {
+				ctx.getResponse().getWriter().write("token is empty");
+				ctx.set("isOK",false);//可以把一些值放到ctx中，便于后面的filter获取使用
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+		System.out.println(request.getHeaderNames());
+		return null;
+	}
+
+	@Override
+	public String filterType() {
+		return "pre";
+	}
+
+	@Override
+	public int filterOrder() {
+		return 1;
+	}
+}
+```
+
+上面是在路由之前，我们可以在路由获取真实的URL之后重写访问真正实例的URL
+
+
+
+# 十七、filter执行顺序
+
+| 顺序 | 过滤器                  | 功能                       |       |
+| ---- | ----------------------- | -------------------------- | ----- |
+| -3   | ServletDetectionFilter  | 标记处理servlet的类型      | Pre   |
+| -2   | Servlet30WrapperFilter  | 包装httpServletRequest请求 | `     |
+| -1   | FormBodyWrapperFilter   | 包装请求体                 | `     |
+| 1    | DebugFilter             | 标记调试标志               | `     |
+| 5    | PreDecorationFilter     | 处理请求上下文供后续使用   | `     |
+|      |                         |                            |       |
+| 10   | RibbonRoutingFilter     | ServiceId请求转发          | route |
+| 100  | SimpleHostRoutingFilter | Url请求转发                | `     |
+| 500  | SendForwardFilter       | Forward请求转发            | `     |
+|      |                         |                            |       |
+| 0    | SendErrorFilter         | 处理有错误的请求响应       | post  |
+| 1000 | SendResponseFilter      | 处理正常处理的请求响应     | `     |
+
+
+
+# 十八、zuul动态配置路由规则，从DB读取 
+
+https://blog.csdn.net/hxpjava1/article/details/78304003
+
+# 参考文档
 
 https://segmentfault.com/a/1190000011635768
 

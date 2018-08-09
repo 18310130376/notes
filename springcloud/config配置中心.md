@@ -40,7 +40,7 @@ https://springcloud.cc/spring-cloud-dalston.html#_spring_cloud_config
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-dependencies</artifactId>
-			<version>Camden.SR6</version>
+			<version>Dalston.RELEASE</version>
 			<type>pom</type>
 			<scope>import</scope>
 		</dependency>
