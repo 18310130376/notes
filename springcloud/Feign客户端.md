@@ -476,3 +476,17 @@ public class AuthConfiguration {
 }
 ```
 
+
+
+# 九、原理
+
+Feign将方法签名中方法参数对象序列化为请求参数放到HTTP请求中的过程，是由编码器(Encoder)完成的。同理，将HTTP响应数据反序列化为Java对象是由解码器(Decoder)完成的。默认情况下，Feign会将标有`@RequestParam`注解的参数转换成字符串添加到URL中，将没有注解的参数通过Jackson转换成json放到请求体中。注意，如果在`@RequetMapping`中的`method`将请求方式指定为`POST`，那么所有未标注解的参数将会被忽略，例如：
+
+```
+@RequestMapping(value = "/group/{groupId}", method = RequestMethod.GET)
+void update(@PathVariable("groupId") Integer groupId, @RequestParam("groupName") String groupName, DataObject obj);
+```
+
+此时因为声明的是GET请求没有请求体，所以`obj`参数就会被忽略。
+
+在Spring Cloud环境下，Feign的Encoder只会用来编码没有添加注解的参数。如果你自定义了Encoder, 那么只有在编码`obj`参数时才会调用你的Encoder。对于Decoder, 默认会委托给SpringMVC中的`MappingJackson2HttpMessageConverter`类进行解码。只有当状态码不在200 ~ 300之间时ErrorDecoder才会被调用。ErrorDecoder的作用是可以根据HTTP响应信息返回一个异常，该异常可以在调用Feign接口的地方被捕获到。我们目前就通过ErrorDecoder来使Feign接口抛出业务异常以供调用者处理。

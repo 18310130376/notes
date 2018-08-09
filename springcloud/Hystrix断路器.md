@@ -49,7 +49,7 @@ import org.springframework.web.client.RestTemplate;
 @SpringBootApplication
 @EnableEurekaClient
 @EnableFeignClients
-@EnableHystrix
+@EnableHystrix //或者 @EnableCircuitBreaker
 public class ApplicationConfigClient {
 
 	public static void main(String[] args) {
@@ -178,3 +178,27 @@ public class ConfigController {
 ```
 
 测试，断开服务提供者，访问http://localhost:7001/consumer01/456  提示  sorry 456
+
+
+
+# 四、注意事项
+
+```java
+ @Service
+ public class HelloService {
+     
+     @Autowired RestTemplate restTemplate;
+     
+     @HystrixCommand(fallbackMethod = "serviceFailure")
+     public String getHelloContent() {
+         return restTemplate.getForObject("http://SERVICE-HELLOWORLD/",String.class);
+     }
+     public String serviceFailure() {
+         return "hello world service is not available !";
+     }
+}
+```
+
+第一，  fallbackMethod的返回值和参数类型需要和被@HystrixCommand注解的方法完全一致。否则会在运行时抛出异常。比如本例中，serviceFailure（）的返回值和getHelloContant()方法的返回值都是String。
+
+第二，  当底层服务失败后，fallbackMethod替换的不是整个被@HystrixCommand注解的方法（本例中的getHelloContant), 替换的只是通过restTemplate去访问的具体服务。可以从中的system输出看到， 即使失败，控制台输出里面依然会有“call SERVICE-HELLOWORLD”。
