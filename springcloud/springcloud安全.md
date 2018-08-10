@@ -364,3 +364,145 @@ public String welcome() {
 访问：http://localhost:6001/user
 
 输出了Github用户信息
+
+
+
+
+
+# 三、API网关统一认证
+
+只能保证入口的权限，不能保证内部服务之间的调用安全
+
+
+
+# 四、服务之间的安全
+
+如同方式一也是服务之前的安全
+
+
+
+用户输入账号密码成功后----返回JWT生成的Token，放到请求头Authorization里，每次经过网关Pre，先看Authorization有没有token，没有则返回，有的话则获取最新token，传递到下游，下游根据filter再次校验token。
+
+```java
+//放在zuul就可以了
+@Override
+  public Object run() {
+  RequestContext ctx = RequestContext.getCurrentContext();
+  ctx.addZuulRequestHeader("Authorization", TokenScheduledTask.token);
+  return null;
+}
+```
+
+```java
+/**
+   放在zuul就可以了
+ * 定时刷新token
+ **/
+@Component
+public class TokenScheduledTask {
+    private static Logger logger = LoggerFactory.getLogger(TokenScheduledTask.class);
+
+    public final static long ONE_Minute = 60 * 1000 * 60 * 20;
+
+    public static String token = "";
+
+    @Autowired
+    private AuthService authService;
+
+    /**
+     * 刷新Token
+     */
+    @Scheduled(fixedDelay = ONE_Minute)
+    public void reloadApiToken() {
+        token = authService.getToken();
+        while (StringUtils.isBlank(token)) {
+            try {
+                Thread.sleep(1000);
+                token = authService.getToken();
+            } catch (InterruptedException e) {
+                logger.error("", e);
+            }
+        }
+    }
+}
+```
+
+
+
+# 五、JWT认证
+
+编程微服务模式了，cookie和session机制已经不能很好的满足保护API的需求了，更多的情况下采用token的验证机制，JWT的本质也是一种token。
+
+JWT：JSON Web Token，是JSON风格的轻量级授权和认证规范，可以实现无状态，分布式的web应用授权。JWT的内容由三部分组成，分别是Header,Payload,Signature，三个部分之间通过.分割,举例
+
+xxxxx.yyyyyy.zzzzz
+
+Header
+
+头部Header一般由2个部分组成alg和typ,alg是加密算法，如HMAC或SHA256,typ是token类型，取值为jwt,一个Header的例子
+
+{
+
+"alg": "HS256",
+
+"typ": "JWT"
+
+}
+
+然后对Header部分进行Base64编码，得到第一部分的值
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.{PAYLOAD}.{SIGNATURE}
+
+Payload
+
+内容部分Payload是JWT存储信息的主体，包含三类内容
+
+- 标准中注册的声明
+- 公共的声明
+- 私有的声明
+
+标准中注册的声明
+
+- iss:jwt签发者
+- sub:jwt所面向的用户
+- aud:接收jwt的一方
+- exp:jwt的过期时间
+- nbf:定义在什么时间之前该jwt是不可用的
+- iat:jwt的签发时间
+- jti:jwt的唯一标识，主要用作一次性token，避免重放攻击
+
+公共的声明：
+
+可以存放任何信息，根据业务实际需要添加，如用户id，名称等，但不要存放敏感信息
+
+私有的声明：
+
+私有声是提供者和消费者所共同定义的声明，不建议存放敏感信息
+
+举例：定义一个payload:
+
+{ "sub": "1234567890", "name": "John Doe", "admin": true }对其进行Base64编码，得到第二部分
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.{SIGNATURE}
+
+Signature
+
+token的签名部分由三部分组成256签名
+
+var encodedString = base64UrlEncode(header) + '.' + base64UrlEncode(payload);
+
+var signature = HMACSHA256(encodedString, 'secret');
+
+得到最终的token串
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+
+
+
+参考：
+
+https://www.jianshu.com/p/e62af4a217eb
+
+
+
+https://www.jianshu.com/p/6307c89fe3fa
