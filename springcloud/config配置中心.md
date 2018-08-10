@@ -854,3 +854,36 @@ configServer把自己注册到注册中心（多个）。
 | spring-boot:run -Drun.profiles=config-center1 -P dev |                           |
 | mvn spring-boot:run -Dspring.profiles.active=peer1   |                           |
 
+## 刷新端点
+
+GET方法调用可以查看系统环境变量，POST调用可以更改环境变量的值，并且通过这种方式修改的变量值具有最最高优先级
+
+```
+curl -X POST http://localhost:8080/env -d spring.datasource.username=wsh  //不会生效，refresh后生效
+```
+
+如果要使上述修改生效，还需要利用/refresh重新载入所有@RefreshScope修饰的bean类。
+
+```
+curl -X POST http://localhost:8080/refresh
+```
+
+如果要重置这些修改
+
+```
+curl -X POST http://localhost:8080/env/reset
+```
+
+
+
+/bus/env作用同/env，区别是会对所有节点生效
+
+```
+curl -X POST http://localhost:8888/bus/env -d spring.datasource.username=wsh //不会生效，/bus/refresh后生效
+```
+
+向消息broker发送一条信息，所有监听这个broker的应用会获得上述消息，并各自开始更新配置。每个SpringCloudBus的节点都有这个接口，并且这些接口是等效的，调用任何一个都可以起到相同的效果。但通常我们会调用在ConfigServer上配置的Bus，这样从流程上更符合人们的理解习惯。
+
+```
+curl -X POST http://localhost:8888/bus/refresh
+```

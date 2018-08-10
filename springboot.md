@@ -269,6 +269,12 @@ private Resource resourceFile; // 注入文件资源
   }
 ```
 
+或者启动时指定
+
+```java
+new SpringApplicationBuilder(Application.class).properties("spring-config-location=classpath:/abc.properties").run(args);
+```
+
 ### 八、占位符属性
 
 application.properties
