@@ -151,6 +151,16 @@ spring.application.name=configServer
 server.context-path=/
 logging.config=classpath:logback.xml
 eureka.client.serviceUrl.defaultZone=http://localhost:9001/eureka/
+
+#设置心跳的时间间隔（默认是30秒）
+eureka.instance.lease-renewal-interval-in-seconds=3
+# 如果现在超过了5秒的间隔（默认是90秒）
+eureka.instance.lease-expiration-duration-in-seconds=5
+#eureka.instance.instance-id=${spring.cloud.client.ipAddress}:${server.port}
+#信息列表时显示主机名称
+eureka.instance.instance-id=dept-8001.com
+#访问的路径变为IP地址
+eureka.instance.prefer-ip-address=true
 ```
 
 此时访问注册中心地址http://localhost:9001/ 看到客户端已经注册到注册中心了。
@@ -207,7 +217,8 @@ eureka.client.serviceUrl.defaultZone=http://eureka02:9002/eureka/
 #如果为true，启动时报警  
 eureka.client.fetch-registry=false
 eureka.instance.preferIpAddress=true
-eureka.server.enableSelfPreservation=false
+# 设置为false表示关闭保护模式
+eureka.server.enableSelfPreservation=false 
 ```
 
 application-9002.properties
