@@ -4032,7 +4032,87 @@ LEGACYHTML5需要搭配一个额外的库NekoHTML才可用
 
 
 
+# 四十八、禁止启动时传参
+
+默认情况下，`SpringApplication`会将所有命令行配置参数（以'--'开头，比如`--server.port=9000`）转化成一个`property`，并将其添加到Spring `Environment`中。正如以上章节提过的，命令行属性总是优先于其他属性源。
+
+如果不想将命令行属性添加到`Environment`，你可以使用`SpringApplication.setAddCommandLineProperties(false)`来禁用它们。
+
+或
+
+```
+SpringApplication.addCommandLineProperties(false)
+```
+
+
+
+# 四十九、静态内容
+
+默认情况下，Spring Boot从classpath下的`/static`（`/public`，`/resources`或`/META-INF/resources`）文件夹，或从`ServletContext`根目录提供静态内容。这是通过Spring MVC的`ResourceHttpRequestHandler`实现的，你可以自定义`WebMvcConfigurerAdapter`并覆写`addResourceHandlers`方法来改变该行为（加载静态文件）。
+
+
+
+你可以设置`spring.resources.staticLocations`属性自定义静态资源的位置（配置一系列目录位置代替默认的值），如果你这样做，默认的欢迎页面将从自定义位置加载，所以只要这些路径中的任何地方有一个`index.html`，它都会成为应用的主页。
+
+
+
+# 五十、自定义内嵌servlet容器
+
+常见的Servlet容器配置可以通过Spring `Environment`进行设置，通常将这些属性定义到`application.properties`文件中。
+
+常见的服务器配置包括：
+
+1. 网络设置：监听进入Http请求的端口（`server.port`），接口绑定地址`server.address`等。
+2. Session设置：session是否持久化（`server.session.persistence`），session超时时间（`server.session.timeout`），session数据存放位置（`server.session.store-dir`），session-cookie配置（`server.session.cookie.*`）。
+3. Error管理：错误页面的位置（`server.error.path`）等。
+4. [SSL](http://docs.spring.io/spring-boot/docs/1.4.1.RELEASE/reference/htmlsingle/#howto-configure-ssl)。
+5. [HTTP压缩](http://docs.spring.io/spring-boot/docs/1.4.1.RELEASE/reference/htmlsingle/#how-to-enable-http-response-compression)
+
+Spring Boot会尽量暴露常用设置，但这并不总是可能的。对于不可能的情况，可以使用专用的命名空间提供server-specific配置（查看`server.tomcat`，`server.undertow`）。例如，可以根据内嵌servlet容器的特性对[access logs](http://docs.spring.io/spring-boot/docs/1.4.1.RELEASE/reference/htmlsingle/#howto-configure-accesslogs)进行不同的设置。
+
+**注** 具体参考[ServerProperties](https://github.com/spring-projects/spring-boot/tree/v1.4.1.RELEASE/spring-boot-autoconfigure/src/main/java/org/springframework/boot/autoconfigure/web/ServerProperties.java)。
+
+**编程方式的自定义**
+
+如果需要以编程方式配置内嵌servlet容器，你可以注册一个实现`EmbeddedServletContainerCustomizer`接口的Spring bean。`EmbeddedServletContainerCustomizer`能够获取到包含很多自定义setter方法的`ConfigurableEmbeddedServletContainer`，你可以通过这些setter方法对内嵌容器自定义。
+
+```
+import org.springframework.boot.context.embedded.*;
+import org.springframework.stereotype.Component;
+
+@Component
+public class CustomizationBean implements EmbeddedServletContainerCustomizer {
+    @Override
+    public void customize(ConfigurableEmbeddedServletContainer container) {
+        container.setPort(9000);
+    }
+}
+```
+
+**直接自定义ConfigurableEmbeddedServletContainer**
+
+如果以上自定义手法过于受限，你可以自己注册`TomcatEmbeddedServletContainerFactory`，`JettyEmbeddedServletContainerFactory`或`UndertowEmbeddedServletContainerFactory`。
+
+```
+@Bean
+public EmbeddedServletContainerFactory servletContainer() {
+    TomcatEmbeddedServletContainerFactory factory = new TomcatEmbeddedServletContainerFactory();
+    factory.setPort(9000);
+    factory.setSessionTimeout(10, TimeUnit.MINUTES);
+    factory.addErrorPages(new ErrorPage(HttpStatus.NOT_FOUND, "/notfound.html");
+    return factory;
+}
+```
+
+很多配置选项提供setter方法，有的甚至提供一些受保护的钩子方法以满足你的某些特殊需求，具体参考源码或相关文档。
+
+
+
 # 参考文档
+
+https://doc.yonyoucloud.com/doc/Spring-Boot-Reference-Guide/VII.%20Spring%20Boot%20CLI/56.%20Developing%20application%20with%20the%20Groovy%20beans%20DSL.html
+
+
 
 http://www.cnblogs.com/ityouknow/p/8440455.html
 
