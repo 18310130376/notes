@@ -506,3 +506,7 @@ https://www.jianshu.com/p/e62af4a217eb
 
 
 https://www.jianshu.com/p/6307c89fe3fa
+
+
+
+https://github.com/shuaicj/zuul-auth-example
