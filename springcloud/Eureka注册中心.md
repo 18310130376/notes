@@ -462,3 +462,46 @@ eureka.instance.instance-id=${spring.cloud.client.ipAddress}:${server.port}
 ```
 
 配置完需要重启注册中心
+
+
+
+# 七、Eureka的安全
+
+```xml
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+
+<!-- 安全验证 -->
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+```properties
+security.user.name=admin
+security.user.password=admin
+security.user.role=SUPERUSER
+
+### management.security.roles: SUPERUSER #角色
+
+### endpoint.shutdown.enabled=true
+### endpoint.shutdown.sensitive=true
+```
+
+
+
+客户端(最好eureka服务端也加上)
+
+```properties
+eureka.client.serviceUrl.defaultZone=http://admin:admin@localhost:9001/eureka/
+```
+
+停止注册中心
+
+```shell
+curl -u admin:admin -X POST http://192.168.1.108:8761/shutdown
+```
+
