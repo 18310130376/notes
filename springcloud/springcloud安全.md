@@ -497,6 +497,477 @@ var signature = HMACSHA256(encodedString, 'secret');
 
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
 
+```
+header.payload.signature
+```
+
+
+
+###  普通方法
+
+第一部分`{"alg":"HS512"}`是签名算法
+
+第二部分 `{"exp":1495176357,"username":"admin"}`是一些数据(你想放什么都可以), 这里有过期日期和用户名
+
+第三部分`')4'7�6-DM�(�H6fJ::$c���a4�~tI2%Xd-�$nL(l`非常重要,是签名Signiture, 服务器会验证这个以防伪造. 因为JWT其实是明文传送, 任何人都能篡改里面的内容. 服务端通过验证签名, 从而确定这个JWT是自己生成的.
+
+原理也不是很复杂, 我用一行代码就能表示出来
+
+首先我们将JWT第一第二部分的内容, 加上你的秘钥(key或者叫secret), 然后用某个算法(比如hash算法)求一下, 求得的内容就是你的签名. 验证的时候只需要验证你用JWT算出来的值是否等于JWT里面的签名.
+
+因为别人没有你的key, 所以也就没法伪造签名
+
+简单粗暴一行代码解释什么是签名:
+
+```
+ int signiture = ("{alg:HS512}{exp:1495176357,username:admin}" + key).hashCode();
+```
+
+最后附上签名,得到完整的JWT:
+
+```
+{"alg":"HS512"}{"exp":1495176357,"username":"admin"}    ')4'7�6-DM�(�H6fJ::$c���a4�~tI2%Xd-�$nL(l
+```
+
+为了方便复制和使用, 通常我们都是把JWT用base64编码之后放在http的header里面, 并且每一次呼叫api都附上这个JWT, 并且服务器每次也验证JWT是否过期
+
+通常我们用到的JWT:
+
+```perl
+Base64编码后:
+eyJhbGciOiJIUzUxMiJ9.eyJleHAiOjE0OTUxNzYzNTcsInVzZXJuYW1lIjoiYWRtaW4ifQ.mQtCfLKfI0J7c3HTYt7kRN4AcoixiUSDaZv2ZKOjq2JMZjBhf1DmE0Fn6PdEkyJZhYZJTMLaIPwyR-uu6BMKGw
+```
+
+```java
+package org.boot.controller;
+import java.io.IOException;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+public class JwtAuthenticationFilter extends OncePerRequestFilter{
+	
+	  private static final PathMatcher pathMatcher = new AntPathMatcher();
+
+	    @Override
+	    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+	        try {
+	            if(isProtectedUrl(request)) {
+//	                String token = request.getHeader("Authorization");
+//	                //检查jwt令牌, 如果令牌不合法或者过期, 里面会直接抛出异常, 下面的catch部分会直接返回
+//	                JwtUtil.validateToken(token);
+	            	 request = JwtUtil.validateTokenAndAddUserIdToHeader(request);
+	            }
+	        } catch (Exception e) {
+	            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+	            return;
+	        }
+	        //如果jwt令牌通过了检测, 那么就把request传递给后面的RESTful api
+	        filterChain.doFilter(request, response);
+	    }
+	    //我们只对地址 /api 开头的api检查jwt. 不然的话登录/login也需要jwt
+	    private boolean isProtectedUrl(HttpServletRequest request) {
+	        return pathMatcher.match("/api/**", request.getServletPath());
+	    }
+}
+```
+
+```java
+package org.boot.controller;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+
+public class JwtUtil {
+
+	private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
+
+	static final String SECRET = "ThisIsASecret";
+
+	static final Long Expiration_TimeMillis = 3 * 60 * 1000L;
+
+	static final String TOKEN_PREFIX = "Bearer ";
+
+	static final String HEADER_STRING = "Authorization";
+
+	public static String generateToken(String username) {
+		
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("username", username);
+		map.put("userId", 100);
+		map.put("role", "admin");
+		String jwt = Jwts.builder().setClaims(map)
+				.setExpiration(new Date(System.currentTimeMillis() + Expiration_TimeMillis))
+
+				.signWith(SignatureAlgorithm.HS512, SECRET).compact();
+		return TOKEN_PREFIX + jwt; // jwt前面一般都会加Bearer
+	}
+
+	public static void validateToken(String token) {
+		try {
+			Map<String, Object> body = Jwts.parser().setSigningKey(SECRET)
+					.parseClaimsJws(token.replace(TOKEN_PREFIX, "")).getBody();
+			System.out.println(body);
+		} catch (Exception e) {
+			throw new IllegalStateException("Invalid Token. " + e.getMessage());
+		}
+	}
+
+	public static HttpServletRequest validateTokenAndAddUserIdToHeader(HttpServletRequest request) {
+		String token = request.getHeader(HEADER_STRING);
+		if (token != null) {
+			try {
+				Map<String, Object> body = Jwts.parser().setSigningKey(SECRET)
+						.parseClaimsJws(token.replace(TOKEN_PREFIX, "")).getBody();
+				return new CustomHttpServletRequest(request, body);
+			} catch (Exception e) {
+				logger.info(e.getMessage());
+				throw new TokenValidationException(e.getMessage());
+			}
+		} else {
+			throw new TokenValidationException("Missing token");
+		}
+	}
+
+	public static class CustomHttpServletRequest extends HttpServletRequestWrapper {
+
+		private Map<String, String> claims;
+
+		public CustomHttpServletRequest(HttpServletRequest request, Map<String, ?> claims) {
+			super(request);
+			this.claims = new HashMap<>();
+			claims.forEach((k, v) -> this.claims.put(k, String.valueOf(v)));
+		}
+
+		@Override
+		public Enumeration<String> getHeaders(String name) {
+			if (claims != null && claims.containsKey(name)) {
+				return Collections.enumeration(Arrays.asList(claims.get(name)));
+			}
+			return super.getHeaders(name);
+		}
+
+		public Map<String, String> getClaims() {
+			return claims;
+		}
+	}
+
+	static class TokenValidationException extends RuntimeException {
+		public TokenValidationException(String msg) {
+			super(msg);
+		}
+	}
+}
+```
+
+```java
+package org.boot.controller;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@SuppressWarnings("all")
+@RestController
+public class UserController {
+
+	@GetMapping("/api/protected")
+	public @ResponseBody Object hellWorld(@RequestHeader(value = "userId") String userId) {
+		return "Hello World! This is a protected api,your userId="+userId;
+	}
+	
+	@PostMapping("/login")
+    public Object login(HttpServletResponse response, @RequestBody final Map<String,Object> account) throws IOException {
+        if(isValidPassword(account)) {
+            final String jwt = JwtUtil.generateToken((String)(account.get("username")));
+            return new HashMap<String,String>(){{
+                put("token", jwt);
+            }};
+        }else {
+            return new ResponseEntity(HttpStatus.UNAUTHORIZED);
+        }
+    }
+	
+	
+	/**
+	 *模拟登陆查询数据库
+	 **/
+	private boolean isValidPassword(Map<String,Object> account) {
+	        return "admin".equals(account.get("username")) && "admin".equals(account.get("password"));
+	 }
+}
+```
+
+```java
+	@Bean
+	public FilterRegistrationBean jwtFilter() {
+		final FilterRegistrationBean registrationBean = new FilterRegistrationBean();
+		JwtAuthenticationFilter filter = new JwtAuthenticationFilter();
+		registrationBean.setFilter(filter);
+		return registrationBean;
+	}
+```
+
+```xml
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt</artifactId>
+    <version>0.7.0</version>
+</dependency>
+```
+
+### 整合Security
+
+#### 方式一、简单的集成
+
+利用上面的代码，在过滤器中从token解析出role，放进security的上下文，因为这里登录用上面的，security只做鉴权
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+```java
+package org.boot.controller;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter{
+	
+	@Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().disable().authorizeRequests()
+                .antMatchers("/").permitAll()
+                .antMatchers(HttpMethod.POST, "/login").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                .addFilterBefore(new JwtAuthenticationFilter(),
+                        UsernamePasswordAuthenticationFilter.class);
+    }
+}
+```
+
+关键代码setAuthentication，用户名密码因为没用框架的，这里只是做鉴权操作，用到角色信息
+
+```java
+package org.boot.controller;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Map;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+public class JwtAuthenticationFilter extends OncePerRequestFilter{
+	
+	  private static final PathMatcher pathMatcher = new AntPathMatcher();
+
+	    @Override
+	    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+	        try {
+	            if(isProtectedUrl(request)) {
+	            	Map<String, Object> claims = JwtUtil.validateTokenAndGetClaims(request);
+	                String role = String.valueOf(claims.get("role"));
+
+	            	 SecurityContextHolder.getContext().setAuthentication(
+	                         new UsernamePasswordAuthenticationToken(
+	                                 null, null, Arrays.asList(() -> role)));
+	            }
+	        } catch (Exception e) {
+	            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+	            return;
+	        }
+	        //如果jwt令牌通过了检测, 那么就把request传递给后面的RESTful api
+	        filterChain.doFilter(request, response);
+	    }
+	    //我们只对地址 /api 开头的api检查jwt. 不然的话登录/login也需要jwt
+	    private boolean isProtectedUrl(HttpServletRequest request) {
+	        return pathMatcher.match("/api/**", request.getServletPath());
+	    }
+}
+```
+
+```java
+  public static Map<String, Object> validateTokenAndGetClaims(HttpServletRequest request) {
+	        String token = request.getHeader(HEADER_STRING);
+	        if (token == null)
+	            throw new TokenValidationException("Missing token");
+	        // parse the token. exception when token is invalid
+	        Map<String, Object> body = Jwts.parser()
+	                .setSigningKey(SECRET)
+	                .parseClaimsJws(token.replace(TOKEN_PREFIX, ""))
+	                .getBody();
+	        return body;
+	    }
+```
+
+```java
+	package org.boot.controller;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@SuppressWarnings("all")
+@RestController
+public class UserController {
+
+	@PreAuthorize("hasAuthority('admin')")
+	@GetMapping("/api/protected")
+	public @ResponseBody Object hellWorldAdmin() {
+		return "Hello World! This is a protected api,you are admin";
+	}
+	
+	@PreAuthorize("hasAuthority('user')")
+	@GetMapping("/api/protected/user")
+	public @ResponseBody Object hellWorldUser() {
+		return "Hello World! This is a protected api,your are user";
+	}
+	
+	static Map<String,Object> userMap = null;
+	
+	static {
+		userMap = new HashMap();
+		userMap.put("user", new User("user", "user", "user"));
+		userMap.put("admin",new User("admin", "admin", "admin"));
+	}
+	
+	static class User implements Serializable{
+		
+		private String username;
+		private String password;
+		private String role;
+		public String getUsername() {
+			return username;
+		}
+		public void setUsername(String username) {
+			this.username = username;
+		}
+		public String getPassword() {
+			return password;
+		}
+		public void setPassword(String password) {
+			this.password = password;
+		}
+		public String getRole() {
+			return role;
+		}
+		public void setRole(String role) {
+			this.role = role;
+		}
+		
+		User(String username,String password,String role){
+			this.username = username;
+			this.password = password;
+			this.role = role;
+		}
+	}
+	
+	@PostMapping("/login")
+    public Object login(HttpServletResponse response, @RequestBody final Map<String,Object> account) throws IOException {
+        if(isValidPassword(account)) {
+            final String jwt = JwtUtil.generateToken(account);
+            return new HashMap<String,String>(){{
+                put("token", jwt);
+            }};
+        }else {
+            return new ResponseEntity(HttpStatus.UNAUTHORIZED);
+        }
+    }
+	
+	/**
+	 *模拟登陆查询数据库
+	 **/
+	private boolean isValidPassword(Map<String,Object> account) {
+		return userMap.containsKey(account.get("username"));
+	 }
+}
+```
+
+#### 方式二、整合security
+
+##### 引入依赖
+
+```xml
+<dependency>
+   <groupId>io.jsonwebtoken</groupId>
+   <artifactId>jjwt</artifactId>
+   <version>0.7.0</version>
+</dependency>
+
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+
+
+
+
 
 
 参考：

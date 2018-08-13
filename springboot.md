@@ -1155,7 +1155,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import com.integration.boot.Application;
 
-@RunWith(SpringJUnit4ClassRunner.class)
+@RunWith(SpringJUnit4ClassRunner.class) // @RunWith(SpringRunner.class)
 @SpringBootTest(classes=Application.class)
 public class UserConrollerTest {
 	@Test
@@ -1208,6 +1208,8 @@ public class UserTest {
 
 目前发现问题，引入后dubbo消费报错。
 
+### 方式一
+
 ```xml
 <dependencies>
     <dependency>
@@ -1230,6 +1232,39 @@ public class UserTest {
         </plugin>
 </plugins>
 </build>
+```
+
+### 方式二 maven 插件-springloaded
+
+```
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>springloaded</artifactId>
+                    <version>1.2.5.RELEASE</version>
+                </dependency>
+            </dependencies>
+        </plugin>
+    </plugins>
+</build>
+```
+
+通过命令：mvn spring-boot:run 启动应用，修改controller中代码 或 修改html页面 后再刷新页面，会发现显示结果跟着变化。
+
+注意：对 mvn spring-boot:run 这种方式启动应用有效，而对直接运行Application.java启动应用无效。
+
+注意1：如果发现没有热部署效果，则需要检查idea配置中有没有打开自动编译
+
+注意2：如果使用Thymeleaf模板引擎，需要把模板默认缓存设置为false
+
+```
+#禁止thymeleaf缓存（建议：开发环境设置为false，生成环境设置为true）
+spring.thymeleaf.cache=false
 ```
 
 
@@ -4105,6 +4140,57 @@ public EmbeddedServletContainerFactory servletContainer() {
 ```
 
 很多配置选项提供setter方法，有的甚至提供一些受保护的钩子方法以满足你的某些特殊需求，具体参考源码或相关文档。
+
+
+
+# 五十一、静态资源处理
+
+## 一、默认静态资源映射
+
+Spring Boot 默认将 /** 所有访问映射到以下目录：
+
+```
+classpath:/static
+classpath:/public
+classpath:/resources
+classpath:/META-INF/resources
+```
+
+## 二、自定义静态资源映射
+
+#### 第一种方式：静态资源配置类
+
+```
+package com.sam.demo.conf;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+
+@Configuration
+public class WebMvcConfig extends WebMvcConfigurerAdapter {
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        //将所有/static/** 访问都映射到classpath:/static/ 目录下
+        registry.addResourceHandler("/static/**").addResourceLocations("classpath:/static/");
+    }
+}
+```
+
+#### 第二种方式：在application.properties配置
+
+#### 在application.properties中添加配置：
+
+```
+spring.mvc.static-path-pattern=/static/**
+```
+
+重启项目，访问：http://localhost:8080/static/c.jpg 同样能正常访问static目录下的c.jpg图片资源。
+
+注意：通过spring.mvc.static-path-pattern这种方式配置，会使Spring Boot的默认配置失效，也就是说，/public /resources 等默认配置不能使用。
+
+配置中配置了静态模式为/static/**，就只能通过/static/**来访问。
 
 
 

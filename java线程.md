@@ -38,6 +38,7 @@
         EMPTY 空字符串
         replace 替换字符串
         capitalize 首字符大写
+String collectionToDelimitedString = StringUtils.collectionToDelimitedString(list, ",");
 -------------------------------------------------------------------------------------     
     
     
