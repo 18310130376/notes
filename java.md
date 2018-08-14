@@ -74,6 +74,12 @@ nohup java -cp ./${jarName}:./config/:$JAR_CLASSPATH  com.gwghk.ix.data.monitor.
 
 https://www.cnblogs.com/wade-luffy/category/853135.html
 
+|                         |              |
+| ----------------------- | ------------ |
+| jps   jps -l   jps -lmv | 查看java进程 |
+|                         |              |
+|                         |              |
+
 
 
 #### 三 、线程异常
