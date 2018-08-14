@@ -107,3 +107,9 @@ protected Thread.UncaughtExceptionHandler handler = new Thread.UncaughtException
 };
 ```
 
+```
+Resource resource = new ClassPathResource("public.cert");
+String publicKey = null;
+publicKey = new String(FileCopyUtils.copyToByteArray(resource.getInputStream()));
+```
+
