@@ -360,6 +360,7 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 | ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper localhost:2181 --group test --topic testKJ1 | 查看consumer组内消费的offset |
 | ./kafka-consumer-offset-checker.sh --zookeeper 192.168.0.201:12181 --group group1 --topic group1 |                              |
 | ./kafka-topics.sh --alter --topict_test --zookeeper master:2181 --partitions 10 | 添加分区                     |
+| ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker--zookeeper 192.168.35.110:10950 --group bo_01 --topic TABLE_IX_TRADE_ALL_BASE | //查看分区偏移量             |
 
 ## 配置详解
 

@@ -3924,7 +3924,7 @@ Windows下比较简单，我们可以直接使用这款软件：`AlwaysUp`。如
 
 - 关闭应用的脚本：`stop.sh`
 
-```
+```shell
 #!/bin/bash
 PID=$(ps -ef | grep yourapp.jar | grep -v grep | awk '{ print $2 }')
 if [ -z "$PID" ]
@@ -3938,14 +3938,14 @@ fi
 
 - 启动应用的脚本：`start.sh`
 
-```
+```shell
 #!/bin/bash
 nohup java -jar yourapp.jar --server.port=8888 &
 ```
 
 - 整合了关闭和启动的脚本：`run.sh`，由于会先执行关闭应用，然后再启动应用，这样不会引起端口冲突等问题，适合在持续集成系统中进行反复调用。
 
-```
+```properties
 #!/bin/bash
 echo stop application
 source stop.sh
@@ -3959,7 +3959,7 @@ source start.sh
 
 - 在`pom.xml`中添加Spring Boot的插件，并注意设置`executable`配置
 
-```
+```xml
 <build> 
   <plugins> 
     <plugin> 
@@ -3976,13 +3976,13 @@ source start.sh
 - 在完成上述配置后，使用`mvn install`进行打包，构建一个可执行的jar包
 - 创建软连接到`/etc/init.d/`目录下
 
-```
+```shell
 sudo ln -s /var/yourapp/yourapp.jar /etc/init.d/yourapp
 ```
 
 - 在完成软连接创建之后，我们就可以通过如下命令对`yourapp.jar`应用来控制启动、停止、重启操作了
 
-```
+```shell
 /etc/init.d/yourapp start|stop|restart
 ```
 
@@ -3992,7 +3992,7 @@ sudo ln -s /var/yourapp/yourapp.jar /etc/init.d/yourapp
 
 http://www.cnblogs.com/ityouknow/p/8440455.html
 
-
+https://blog.csdn.net/tzs_1041218129/article/details/79100661
 
 # 四十六、启动时倒入Sql脚本
 
@@ -4193,6 +4193,158 @@ spring.mvc.static-path-pattern=/static/**
 配置中配置了静态模式为/static/**，就只能通过/static/**来访问。
 
 
+
+
+
+# 五十二、通过代码自动生成pid
+
+```java
+package org.boot;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.system.ApplicationPidFileWriter;
+import org.springframework.cloud.client.SpringCloudApplication;
+import org.springframework.cloud.netflix.zuul.EnableZuulProxy;
+import org.springframework.web.bind.annotation.RestController;
+
+@EnableZuulProxy
+@SpringCloudApplication
+@RestController
+public class ZuulApplication {
+	public static void main(String[] args) {
+		
+		SpringApplication app = new SpringApplication(ZuulApplication.class);
+		app.addListeners(new ApplicationPidFileWriter());
+		app.run(args);
+		System.out.println("====GatewayzuulApplication start successful==========");
+	}
+}
+```
+
+默认位置和target平级，但是我了规范则自定义位置
+
+```properties
+spring.pid.file=target/${spring.application.name}.pid
+```
+
+打包后的配置分离，建议最终放在jar平级的 bin目录下
+
+```powershell
+[root@localhost canal-1.0.22]#
+[root@localhost canal-1.0.22]# ls
+bin  conf  lib  logs
+[root@localhost canal-1.0.22]#
+[root@localhost canal-1.0.22]#
+```
+
+
+
+# 五十三、停止SpringBoot应用服务
+
+## 方式一：HTTP发送shutdown信号
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+```properties
+#启用shutdown
+endpoints.shutdown.enabled=true
+#禁用密码验证
+endpoints.shutdown.sensitive=false
+```
+
+POST请求访问 http://localhost:9001/shutdown 将得到形如`{"message":"Shutting down, bye..."}`的响应
+
+安全设置
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+
+```properties
+security.user.name=admin
+security.user.password=admin
+security.user.role=SUPERUSER
+management.security.roles=SUPERUSER
+#启用shutdown
+endpoints.shutdown.enabled=true
+#启用密码验证
+endpoints.shutdown.sensitive=true
+
+#指定shutdown endpoint的路径 
+endpoints.shutdown.path=/custompath
+#也可以统一指定所有endpoints的路径
+#management.context-path=/manage
+```
+
+POST请求http://localhost:9001/custompath，用POSTMAN工具选择BASIC  AUTH，写入用户名密码
+
+## 方式二：部署为Unix/Linux Service
+
+该方式主要借助官方的`spring-boot-maven-plugin`创建"Fully executable" jar ，这中jar包`内置一个shell脚本`，可以方便的将该应用设置为Unix/Linux的系统服务(init.d service),官方对该功能在CentOS和Ubuntu进行了测试，对于OS X和FreeBSD,可能需要自定义。具体步骤如下
+
+```xml
+<plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+    <configuration>
+    <executable>true</executable>
+    </configuration>
+</plugin>	
+```
+
+```shell
+sudo ln -s /var/app/app.jar /etc/init.d/app
+```
+
+```shell
+chmod u+x app.jar
+```
+
+接下来，就可以使用我们熟悉的service foo start|stop|restart来对应用进行启停等管理了
+`sudo service app start|stop`
+命令将得到形如`Started|Stopped [PID]`的结果反馈
+
+默认PID文件路径：/var/run/appname/appname.pid
+默认日志文件路径：/var/log/appname.log
+
+这可能是我们更熟悉也更常用的管理方式。
+
+在这种方式下，我们还可以使用自定义的.conf文件来变更默认配置，方法如下：
+
+1. 在jar包相同路径下创建一个.conf文件，名称应该与.jar的名称相同，如appname.conf
+2. 在其中配置相关变量，如：
+
+```
+JAVA_HOME=/usr/local/jdk
+JAVA_OPTS=-Xmx1024M
+LOG_FOLDER=/custom/log
+```
+
+安全设置：
+
+作为应用服务，安全性是一个不能忽略的问题，如下一些操作可以作为部分基础设置参考：
+
+- 为服务创建一个独立的用户，同时最好将该用户的shell绑定为/usr/sbin/nologin
+- 赋予最小范围权限：`chmod 500 app.jar`
+- 阻止修改：`sudo chattr +i app.jar`
+- 对.conf文件做类似的工作：`chmod 400 app.conf`,`sudo chown root:root app.conf`
+
+
+
+
+# 五十四、springboot的tomcat启动过慢的问题分析
+
+```
+java -jar app.jar -Djava.security.egd=file:/dev/./urandom
+```
 
 # 参考文档
 
