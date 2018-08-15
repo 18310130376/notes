@@ -435,6 +435,14 @@ public class User {
 @EnableConfigurationProperties({User.class，ConfigurationFileInject.class})
 ```
 
+## @propertySource读取Jar包外配置
+
+```
+@PropertySource("${user.dir}/xxx.properties")
+```
+
+
+
 ## Environment
 
 ## @ConfigurationProperties 
@@ -4173,7 +4181,7 @@ classpath:/META-INF/resources
 
 #### 第一种方式：静态资源配置类
 
-```
+```java
 package com.sam.demo.conf;
 
 import org.springframework.context.annotation.Configuration;
@@ -4188,6 +4196,15 @@ public class WebMvcConfig extends WebMvcConfigurerAdapter {
         //将所有/static/** 访问都映射到classpath:/static/ 目录下
         registry.addResourceHandler("/static/**").addResourceLocations("classpath:/static/");
     }
+    
+    //比上面更优雅的方式
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+
+        if(!registry.hasMappingForPattern("/static/**")){
+              registry.addResourceHandler("/static/**").addResourceLocations("classpath:/static/");
+        }
+        super.addResourceHandlers(registry);
+    }  
 }
 ```
 
@@ -4195,8 +4212,34 @@ public class WebMvcConfig extends WebMvcConfigurerAdapter {
 
 #### 在application.properties中添加配置：
 
-```
+```properties
+#自定义的属性，指定了一个路径，注意要以/结尾
+web.upload-path=D:/temp/study13/
+
 spring.mvc.static-path-pattern=/static/**
+
+#覆盖默认配置，所以需要将默认的也加上否则static、public等这些路径将不能被当作静态资源路径
+#在最末尾的file:${web.upload-path}中的file:表示是一个具体的硬盘路径，其他的使用classpath指的是系统环境变量
+spring.resources.static-locations=classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,classpath:/public/,file:${web.upload-path}
+```
+
+解释：意思就是/static/的请求映射到spring.resources.static-locations目录下找文件
+
+```java
+@SpringBootTest
+@RunWith(SpringRunner.class)
+public class FileTest {
+
+    @Value("${web.upload-path}")
+    private String path;
+
+    /** 文件上传测试 */
+    @Test
+    public void uploadTest() throws Exception {
+        File f = new File("D:/pic.jpg");
+        FileCopyUtils.copy(f, new File(path+"/1.jpg"));
+    }
+}
 ```
 
 重启项目，访问：http://localhost:8080/static/c.jpg 同样能正常访问static目录下的c.jpg图片资源。
@@ -4404,6 +4447,471 @@ public void recover(Exception e) {
     log.error("try to callback failed:", e);
 }
 ```
+
+
+
+# 五十七、@Conditional来按照条件注册bean
+
+1.有时候需要根据不同条件生成不同的 bean，这时候就需要用到 @Conditional 注解。常见的一种用法，就是根据操作系统类型，注册不同的 bean。在 BeanConfig 配置类中增加三个 bean。
+
+```java
+package io.mieux.config;
+
+import io.mieux.bean.Person;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class BeanConfig {
+
+    @Bean(value = "zhangsan")
+    public Person getPerson() {
+        return new Person("zhangsan", 28);
+    }
+
+    @Bean(value = "linux")
+    public Person getLinux() {
+        return new Person("linux", 50);
+    }
+
+    @Bean(value = "windows")
+    public Person getWindows() {
+        return new Person("windows", 30);
+    }
+
+    @Bean(value = "mac")
+    public Person getMac() {
+        return new Person("mac", 24);
+    }
+}
+```
+
+查看当前容器中 Person 类的实例有哪些：
+
+```java
+package io.mieux;
+
+import io.mieux.bean.Person;
+import io.mieux.config.BeanConfig;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class App04 {
+    public static void main(String[] args) {
+        AnnotationConfigApplicationContext annotationConfigApplicationContext = new AnnotationConfigApplicationContext(BeanConfig.class);
+        String[] beanNames = annotationConfigApplicationContext.getBeanNamesForType(Person.class);
+        for (String beanName : beanNames) {
+            System.out.println("beanName: " + beanName);
+        }
+    }
+}
+```
+
+运行效果：
+
+```properties
+beanName: zhangsan
+beanName: linux
+beanName: windows
+beanName: mac
+```
+
+2.使用 @Conditional 注解来根据操作系统的不同注册不同的 bean。首先需要实现 Condition 接口，创建三个 Condition 接口的实现类 LinuxConditon、MacConditon 和 WindowsConditon，获取运行环境的操作系统类型进行判断。
+
+LinuxConditon：
+
+```java
+package io.mieux.condition;
+
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.core.env.Environment;
+import org.springframework.core.type.AnnotatedTypeMetadata;
+
+// 判断是否是 linux 系统
+public class LinuxConditon implements Condition {
+
+    public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+        Environment environment = context.getEnvironment();
+
+        String operatingSystem = environment.getProperty("os.name");
+        if ("linux".equals(operatingSystem)) {
+            System.out.println("Operating System: " + environment.getProperty("os.name"));
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+WindowsConditon：
+
+```java
+package io.mieux.condition;
+
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.core.env.Environment;
+import org.springframework.core.type.AnnotatedTypeMetadata;
+
+// 判断是否是 windows 系统
+public class WindowsConditon implements Condition {
+
+    public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+        Environment environment = context.getEnvironment();
+
+        String operatingSystem = environment.getProperty("os.name");
+        if (operatingSystem.contains("Windows")) {
+            System.out.println("Operating System: " + environment.getProperty("os.name"));
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+MacConditon：
+
+```java
+package io.mieux.condition;
+
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.core.env.Environment;
+import org.springframework.core.type.AnnotatedTypeMetadata;
+
+// 判断是否是 mac os 系统
+public class MacConditon implements Condition {
+
+    public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+        Environment environment = context.getEnvironment();
+
+        String operatingSystem = environment.getProperty("os.name");
+        if ("Mac OS X".equals(operatingSystem)) {
+            System.out.println("Operating System: " + environment.getProperty("os.name"));
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+在 BeanConfig 配置类中加上 @Conditional 注解。
+
+```java
+package io.mieux.config;
+
+import io.mieux.bean.Person;
+import io.mieux.condition.LinuxConditon;
+import io.mieux.condition.MacConditon;
+import io.mieux.condition.WindowsConditon;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class BeanConfig {
+
+    @Bean(value = "zhangsan")
+    public Person getPerson() {
+        return new Person("zhangsan", 28);
+    }
+
+    @Bean(value = "linux")
+    @Conditional(value = {LinuxConditon.class})
+    public Person getLinux() {
+        return new Person("linux", 50);
+    }
+
+    @Bean(value = "windows")
+    @Conditional(value = {WindowsConditon.class})
+    public Person getWindows() {
+        return new Person("windows", 30);
+    }
+
+    @Bean(value = "mac")
+    @Conditional(value = {MacConditon.class})
+    public Person getMac() {
+        return new Person("mac", 24);
+    }
+}
+```
+
+运行效果：
+
+```properties
+Operating System: Mac OS X
+beanName: zhangsan
+beanName: mac
+```
+
+
+
+# 五十八、@ConditionalOnProperty来控制Configuration是否生效
+
+```java
+@Configuration
+//如果synchronize在配置文件中并且值为true
+@ConditionalOnProperty(name = "synchronize", havingValue = "true")
+public class SecondDatasourceConfig {
+
+    @Bean(name = "SecondDataSource")
+    @Qualifier("SecondDataSource")
+    @ConfigurationProperties(prefix = "spring.second.datasource")
+    public DataSource jwcDataSource() {
+        return DataSourceBuilder.create().build();
+    }
+}
+```
+
+当从properties读取的synchronize=true时才生效配置
+
+
+
+# 五十九、ConditionalOnExpression
+
+实现五十八的效果也可以使用
+
+```java
+@Configuration
+@ConditionalOnExpression("${test.enabled:true}")
+public class TestConfiguration {
+    @Bean
+    public TestBean testBean() {
+        return new TestBean();
+    }
+}
+```
+
+```properties
+test.enabled: true
+```
+
+这个bean只有在`test.enabled: true`的时候才会进行初始化。
+
+
+
+# 六十、Spring boot 获取当前启动端口和IP
+
+一、获取端口
+
+1. 通过environment获取
+
+```
+@Autowired
+Environment environment;
+
+public String getPort(){
+  return environment.getProperty("local.server.port");
+}
+```
+
+  2.通过`@LocalServerPort`或`@Value("${local.server.port}")`获取
+
+```
+@Value("${local.server.port}")
+private String port ;
+```
+
+```
+@LocalServerPort
+private String port ;
+```
+
+注：当`application.yml`配置文件中没有指定服务启动端口时，不能使用`@LocalServerPort`和`@Value("${local.server.port}")`的方法获取端口号，只能使用`environment`的方式
+
+二、获取本机ip
+
+```
+InetAddress localHost = null;
+try {
+  localHost = Inet4Address.getLocalHost();
+} catch (UnknownHostException e) {
+  logger.error(e.getMessage(),e);
+}
+String ip = localHost.getHostAddress();  // 返回格式为：xxx.xxx.xxx
+// localHost.getHostName() 一般是返回电脑用户名
+```
+
+
+
+# 六十一、跨域配置
+
+全局配置
+
+```java
+@Configuration
+public class WebAppConfigurer extends WebMvcConfigurerAdapter {
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+               .allowedOrigins("*")
+           //.allowedOrigins("http://192.168.89.89")
+                //rest集中请求方式
+                .allowedMethods("GET", "POST","DELETE")
+                .allowCredentials(false).maxAge(3600);
+    }
+}
+```
+
+等价于
+
+```java
+@Configuration
+public class CORSConfiguration {
+	@Bean
+	public WebMvcConfigurer corsConfigurer() {
+		return new WebMvcConfigurerAdapter() {
+			@Override
+			public void addCorsMappings(CorsRegistry registry) {
+				registry.addMapping("/**")
+				.allowedOrigins("http://domain.com", "http://domain2.com")
+				.allowedMethods("GET", "POST", "DELETE", "PUT", "OPTIONS")
+				.allowCredentials(false).maxAge(3600);
+			}
+		};
+	}
+}
+```
+
+filter实现跨域
+
+```java
+@Configuration
+public class MyConfiguration {
+
+	@Bean
+	public FilterRegistrationBean corsFilter() {
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		CorsConfiguration config = new CorsConfiguration();
+		config.setAllowCredentials(false);
+		config.addAllowedOrigin("http://domain.com");
+		config.addAllowedHeader("*");
+		config.addAllowedMethod("*");
+		source.registerCorsConfiguration("/**", config);
+		FilterRegistrationBean bean = new FilterRegistrationBean(new CorsFilter(source));
+		bean.setOrder(0);
+		return bean;
+	}
+}
+```
+
+单个接口配置
+
+```java
+    @CrossOrigin(origins = "*", maxAge = 3600) //* 可以改成ip地址
+    @PostMapping("save")
+    public ResponseEntity<Result> addNote(@RequestParam String noteName){
+
+   }
+```
+
+
+
+# 六十二、@Value 获取计算机中绝对路径文件的内容
+
+默认情况下使用
+
+```
+@Value("aaa.txt")
+private Resource txtResource;
+```
+
+这样获取到的是项目classpath 下的 aaa.txt
+
+如果想获取非项目路径下的文件内容怎么办呢,看了下@Value的好像也没有说,
+
+其实
+
+```
+@Value("https://www.baidu.com")
+private Resource urlResource;
+```
+
+这样是可以获取到 百度首页的内容的.它这里使用的是https协议.
+
+那么同样的我们可以使用file协议获取文本的内容
+
+即:
+
+```
+@Value("file:///E://aaa.txt")
+private Resource txtResource;
+```
+
+使用@Value 有一个好处就是,你不用关心文本内容的变化,你每次调用的时候,springboot 会自动帮你重新加载.
+
+
+
+# 六十三、普通类获取bean对象
+
+```java
+package org.lvgang;
+
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Component;
+
+/**
+ * SpringBoot 普通类获取Spring容器中的bean工具类
+ */
+@Component
+public class SpringBootBeanUtil implements ApplicationContextAware {
+
+    private static ApplicationContext applicationContext;
+
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        if (SpringBootBeanUtil.applicationContext == null) {
+            SpringBootBeanUtil.applicationContext = applicationContext;
+        }
+        System.out.println("========ApplicationContext配置成功========");
+        System.out.println("========在普通类可以通过调用SpringUtils.getAppContext()获取applicationContext对象========");
+        System.out.println("========applicationContext="+ SpringBootBeanUtil.applicationContext +"========");
+    }
+
+    /**
+     * 获取applicationContext
+     * @return
+     */
+    public static ApplicationContext getApplicationContext() {
+        return applicationContext;
+    }
+
+    /**
+     * 通过name获取 Bean.
+     * @param name
+     * @return
+     */
+    public static Object getBean(String name) {
+        return getApplicationContext().getBean(name);
+    }
+
+    /**
+     * 通过class获取Bean.
+     * @param clazz
+     * @return
+     */
+    public static <T> T getBean(Class<T> clazz) {
+        return getApplicationContext().getBean(clazz);
+    }
+
+    /**
+     * 通过name,以及Clazz返回指定的Bean
+     * @param name
+     * @param clazz
+     * @return
+     */
+    public static <T> T getBean(String name, Class<T> clazz) {
+        return getApplicationContext().getBean(name, clazz);
+    }
+}
+```
+
+
+
+
+
+
 
 
 
