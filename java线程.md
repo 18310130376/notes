@@ -2284,7 +2284,7 @@ public class Client{
 }
 ```
 
-## 单例
+## 单例（双重校验锁）
 
 ```java
 package com.audition;

@@ -1,3 +1,7 @@
+# 面试锦集
+
+# https://www.bilibili.com/read/cv558137?from=articleDetail
+
 # 1 、 Java支持多继承么
 
 Java中类不支持多继承，只支持单继承（即一个类只有一个父类）。
@@ -258,6 +262,8 @@ Throw写在方法前面后面，throws后面跟的是异常类，异常类可以
 ArrayList与LinkedList都实现了List接口。
 ArrayList是线性表，底层是使用数组实现的，它在尾端插入和访问数据时效率较高， 
 Linked是双向链表，他在中间插入或者头部插入时效率较高，在访问数据时效率较低
+
+
 
 # 29、Array与ArrayList有什么不一样
 
@@ -1075,3 +1081,9 @@ Ribbon和Feign都是用于调用其他服务的，不过方式不同。
 | 事件消息总线                             | Spring Cloud Bus                                             |          |
 
  
+
+# 38、 Java线程池中submit() 和 execute()方法有什么区别？
+
+两个方法都可以向线程池提交任务，execute()方法的返回类型是void，它定义在Executor接口中, 而submit()方法可以返回持有计算结果的Future对象，它定义在ExecutorService接口中，它扩展了Executor接口，其它线程池类像ThreadPoolExecutor和ScheduledThreadPoolExecutor都有这些方法。
+
+http://www.cnblogs.com/king-garden/p/5672853.html
