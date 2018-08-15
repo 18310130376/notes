@@ -273,6 +273,19 @@ private Resource resourceFile; // 注入文件资源
 
 ```java
 new SpringApplicationBuilder(Application.class).properties("spring-config-location=classpath:/abc.properties").run(args);
+
+
+ public static void main(String[] args) {
+        System.out.println("================================================== 开始启动 Config Server配置中心服务 =============================================================");
+        System.out.println("请在控制台指定Config Server配置中心服务的端口号 —— [端口号随意指定，注意不要与本机端口号出现冲突即可]");
+
+        Scanner scanner = new Scanner(System.in);
+        String port = scanner.nextLine(); //让用户指定端口号
+        new SpringApplicationBuilder(ConfigApplication.class).properties("server.port=" + port).run(args);//启动项目
+
+        System.out.println("================================================== Config Server配置中心服务启动成功 =============================================================");
+
+    }
 ```
 
 ### 八、占位符属性
@@ -4347,6 +4360,52 @@ java -jar app.jar -Djava.security.egd=file:/dev/./urandom
 ```
 
 # 参考文档
+
+
+
+# 五十五、随机端口
+
+```
+server.port=0
+eureka.instance.instance-id=${spring.application.name}:${random.int}
+```
+
+- 除了上面的方法，实际上我们还可以直接使用random函数来配置server.port。这样就可以指定端口的取值范围，比如：
+
+```
+server.port=${random.int[10000,19999]}
+```
+
+由于默认的实例ID会由server.port拼接，而此时server.port设置的随机值会重新取一次随机数，所以使用这种方法的时候不需要重新定义实例ID的规则就能产生不同的实例ID了。
+
+
+
+# 五十六、spring boot使用@Retryable来进行重处理
+
+```
+<dependency>
+ <groupId>org.springframework.retry</groupId>
+ <artifactId>spring-retry</artifactId>
+</dependency>
+```
+
+```java
+//异步回调(重处理)
+@Retryable(maxAttempts = 3, value = Exception.class)
+private void callback(RmsJobResult result) {
+    log.info("try to callback");
+    final String serviceCode = "SCH_CLIENT_CALLBACK_1";
+    rms.call(serviceCode, result, null, new ParameterizedTypeReference<RestResponse<String>>() {
+    }, null);
+}
+//回调失败后的处理
+@Recover
+public void recover(Exception e) {
+    log.error("try to callback failed:", e);
+}
+```
+
+
 
 https://doc.yonyoucloud.com/doc/Spring-Boot-Reference-Guide/VII.%20Spring%20Boot%20CLI/56.%20Developing%20application%20with%20the%20Groovy%20beans%20DSL.html
 

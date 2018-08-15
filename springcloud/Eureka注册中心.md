@@ -505,3 +505,57 @@ eureka.client.serviceUrl.defaultZone=http://admin:admin@localhost:9001/eureka/
 curl -u admin:admin -X POST http://192.168.1.108:8761/shutdown
 ```
 
+
+
+# 八、loadBalancerClient负载均衡
+
+```xml
+<dependency>
+       <groupId>org.springframework.cloud</groupId>
+       <artifactId>spring-cloud-starter-ribbon</artifactId>
+       <version>1.4.0.RELEASE</version>
+</dependency>
+```
+
+```properties
+server:
+
+  port: 8082
+
+spring:
+
+  application:
+
+    name: Ribbon-Consumer
+
+#providers这个是自己命名的，ribbon,listOfServer这两个是规定的
+
+providers:
+
+  ribbon:
+
+    listOfServers: localhost:8080,localhost:8081
+```
+
+```java
+@RestController
+
+public class ConsumerController {
+
+　　//注入负载均衡客户端
+  　@Autowired
+    private LoadBalancerClient loadBalancerClient;
+
+    @RequestMapping("/consumer")
+    public String helloConsumer() throws ExecutionException, InterruptedException {
+　　　　　//这里是根据配置文件的那个providers属性取的
+
+        ServiceInstance serviceInstance = loadBalancerClient.choose("providers");
+　　　　　　//负载均衡算法默认是轮询，轮询取得服务
+
+        URI uri = URI.create(String.format("http://%s:%s", serviceInstance.getHost(), serviceInstance.getPort()));
+
+        return uri.toString();
+　　}
+```
+

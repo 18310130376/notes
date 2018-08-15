@@ -113,3 +113,41 @@ String publicKey = null;
 publicKey = new String(FileCopyUtils.copyToByteArray(resource.getInputStream()));
 ```
 
+# 四、是不是子集
+
+```
+public class Test {
+
+	public static boolean test(String a[] ,String b[]) {
+
+	
+		if (a.length < b.length)
+			return false;
+
+		boolean flag = false;
+		int j = 0;
+		for (int i = 0, len = b.length; i < len; i++) {
+			if (j >= a.length) {
+				flag = false;
+			}
+			while (j < a.length) {
+				if (b[i] != a[j]) {
+					flag = false;
+					j++;
+					continue;
+				} else {
+					flag = true;
+					j++;
+					break;
+				}
+			}
+			
+			if (!flag) {
+				break;
+			}
+		}
+		return flag;
+	}
+}
+```
+
