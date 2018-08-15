@@ -949,26 +949,34 @@ public class UserController {
 
 #### 方式二、整合security
 
-##### 引入依赖
+代码见本目录下的jwt目录
 
-```xml
-<dependency>
-   <groupId>io.jsonwebtoken</groupId>
-   <artifactId>jjwt</artifactId>
-   <version>0.7.0</version>
-</dependency>
+http://www.svlada.com/jwt-token-authentication-with-spring-boot/
 
-<dependency>
-	<groupId>org.springframework.boot</groupId>
-	<artifactId>spring-boot-starter-security</artifactId>
-</dependency>
+# 六、如何刷新token
+
+返回前端：
+
+authorization：token;refreshToken
+
+后端判断token是否过期，没过期的正常走，过期的解析refreshToken是否过期，没过期的解析refreshToken，根据refreshToken的信息生成新的token，放进authorization：token里，返回的时候设置：
+
+```
+headers->set('Access-Control-Expose-Headers', 'Authorization');
+$response->headers->set('Cache-Control', 'no-store')
 ```
 
+后面逻辑校验失效的token肯定校验不过，因此需要request.setHader(Authorization,newToken);
 
 
 
+问题：
 
+假设token刚过期，页面发来两个请求到后端，后端根据refreshToken刷新了两次新的token。
 
+```
+刷新当前token之后，产生新的token，旧token加入到了backlist中了，无法使用，那么另外一个请求自然无法成功。我这里使用Redis解决的，将旧token作为键，新token作为值，设置一个30秒过期的时间。当第二个请求来的时候，已经知道token在backlist中了，我们可以去redis查询下是否存在这么个旧token，存在的话放行。
+```
 
 参考：
 
