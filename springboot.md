@@ -33,7 +33,6 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
 ```
 

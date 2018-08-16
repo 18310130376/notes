@@ -615,6 +615,26 @@ public class CompletionServiceTest {
 
 **drainTo(Collection c)**: 将队列中值，全部移除，并发设置到给定的集合中。
 
+
+
+## 方法区别
+
+add  添加元素的时候，若超出了度列的长度会直接抛出异常
+
+put  若向队尾添加元素的时候发现队列已经满了会发生阻塞一直等待空间，以加入元素
+
+offer 在添加元素时，如果发现队列已满无法添加的话，会直接返回false
+
+
+
+poll: 若队列为空，返回null。
+
+remove:若队列为空，抛出NoSuchElementException异常。
+
+take:若队列为空，发生阻塞，等待有元素。
+
+
+
 ```java
 package com.audition;
 
@@ -1191,6 +1211,236 @@ public class SemaphoreTest {
 
 
 
+# 综合例子
+
+题目：多线程之间需要等待协调，才能完成某种工作，问怎么设计这种协调方案？如：子线程循环10次，接着主线程循环100，接着又回到子线程循环10次，接着再回到主线程又循环100，如此循环50次。
+
+在并发编程中经常会使用到一些并发工具类，来对线程的并发量、执行流程、资源依赖等进行控制。这里我们主要探讨三个经常使用的并发工具类：CountDownLatch，CyclicBarrier和Semaphore。
+
+## 一 CountDownLatch 
+
+
+
+从CountDownLatch的字面意思就可以体现出其设计模型，countdown在英语里具有倒计时的（倒数）意思，Latch就是门闩的意思。CountDownLatch的构造函数接受一个int值作为计数器的初始值N，当程序调用countDown()的时候，N便会减1（体现出了倒数的意义），当N值减为0的时候，阻塞在await()的线程便会唤醒，继续执行。这里通过一个例子来说明其应用场景。
+
+假设我们主线程需要创建5个工作线程来分别执行5个任务，主线程需要等待5个任务全部完成后才会进行后续操作，那么我们就可以声明N=5的CountDownLatch，来进行控制。
+
+代码如下：
+
+```java
+public class CountDownLatchDemo {
+
+    private static final CountDownLatch countDownLatch = new CountDownLatch(5);
+
+    public static void main(String[] args) throws InterruptedException {
+
+        //循环创建5个工作线程
+        for( int ix = 0; ix != 5; ix++ ){
+
+            new Thread(new Runnable() {
+                public void run() {
+                    try{
+                        System.out.println( Thread.currentThread().getName() + " start" );
+                        Thread.sleep(1000);
+                        countDownLatch.countDown();
+                        System.out.println( Thread.currentThread().getName() + " stop" );
+
+                    } catch ( InterruptedException ex ){
+                    }
+                }
+            }, "Task-Thread-" + ix ).start();
+            Thread.sleep(500);
+        }
+        //主线程等待所有任务完成
+        countDownLatch.await();
+        System.out.println("All task has completed.");
+    }
+}
+```
+
+运行结果：
+
+Task-Thread-0 start
+
+Task-Thread-1 start
+
+Task-Thread-0 stop
+
+Task-Thread-2 start
+
+Task-Thread-1 stop
+
+Task-Thread-3 start
+
+Task-Thread-2 stop
+
+Task-Thread-4 start
+
+Task-Thread-3 stop
+
+Task-Thread-4 stop
+
+All task has completed.
+
+在主线程创建了5个工作线程后，就会阻塞在countDownLatch.await()，等待5个工作线程全部完成任务后返回。任务的执行顺序可能会不同，但是任务完成的Log一定会在最后显示。CountDownLatch通过计数器值的控制，实现了允许一个或多个线程等待其他线程完成操作的并发控制。
+
+## 二 CyclicBarrier 
+
+
+
+CyclicBarrier就字面意思是可循环的屏障，其体现了两个特点，可循环和屏障。调用CyclicBarrier的await()方法便是在运行线程中插入了屏障，当线程运行到这个屏障时，便会阻塞在await()方法中，直到等待所有线程运行到屏障后，才会返回。CyclicBarrier的构造函数同样接受一个int类型的参数，表示屏障拦截线程的数目。另一个特点循环便是体现处出了CyclicBarrier与CountDownLatch不同之处了，CyclicBarrier可以通过reset()方法，将N值重置，循环使用，而CountDownLatch的计数器是不能重置的。此外，CyclicBarrier还提供了一个更高级的用法，允许我们设置一个所有线程到达屏障后，便立即执行的Runnable类型的barrierAction（注意：barrierAction不会等待await()方法的返回才执行，是立即执行！）机会，这里我们通过以下代码来测试一下CyclicBarrier的特性。
+
+代码如下：
+
+```java
+public class CyclicBarrierDemo {
+
+    private final static CyclicBarrier cyclicBarrier = new CyclicBarrier(5, new MyBarrierAction());
+
+    private final static AtomicInteger atcIx = new AtomicInteger(1);
+
+    public static void main(String[] args) {
+
+        for (int ix = 0; ix != 10; ix++){
+            new Thread(new Runnable() {
+                public void run() {
+                    try{
+                        System.out.println(Thread.currentThread().getName() + " start");
+                        Thread.sleep(atcIx.getAndIncrement() * 1000 );
+                        cyclicBarrier.await();
+                        System.out.println( Thread.currentThread().getName() + " stop" );
+                    } catch ( Exception ex){
+                    }
+                }
+            }, "Thread-" + ix).start();
+        }
+    }
+
+    private static class MyBarrierAction implements Runnable {
+
+        @Override
+        public void run() {
+            System.out.println("MyBarrierAction is call.");
+        }
+    }
+}
+```
+
+运行结果：
+
+Thread-0 start
+
+Thread-1 start
+
+Thread-2 start
+
+Thread-3 start
+
+Thread-4 start
+
+MyBarrierAction is call.
+
+Thread-4 stop
+
+Thread-0 stop
+
+Thread-1 stop
+
+Thread-2 stop
+
+Thread-3 stop
+
+根据运行结果，我们可以看到一下几点：
+
+1. 首先在线程没有调用够N次cyclicBarrier.await()时，所有线程都会阻塞在cyclicBarrier.await()上，也就是说必须N个线程同时到达屏障，才会所有线程越过屏障继续执行。
+2. 验证了BarrierAction的执行时机是所有阻塞线程都到达屏障之后，并且BarrierAction执行后，所有线程才会从await()方法返回，继续执行。
+
+## 三 Semaphore 
+
+
+
+Semaphore信号量并发工具类，其提供了aquire()和release()方法来进行并发控制。Semaphore一般用于资源限流，限量的工作场景，例如数据库连接控制。假设数据库的最大负载在10个连接，而现在有100个客户端想进行数据查询，显然我们不能让100个客户端同时连接上来，找出数据库服务的崩溃。那么我们可以创建10张令牌，想要连接数据库的客户端，都必须先尝试获取令牌（Semaphore.aquire()），当客户端获取到令牌后便可以进行数据库连接，并在完成数据查询后归还令牌（Semaphore.release()），这样就能保证同时连接数据库的客户端不超过10个，因为只有10张令牌，这里给出该场景的模拟代码。
+
+代码如下：
+
+```java
+public class SemaphoreDemo {
+
+    private static final Semaphore semaphoreToken = new Semaphore(10);
+
+    public static void main(String[] args) {
+
+        for (int ix = 0; ix != 100; ix++) {
+            new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        semaphoreToken.acquire()
+                        System.out.println("select * from xxx");
+                        semaphoreToken.release();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        }
+    }
+}
+```
+
+也许有同学会问，aquire()函数获取许可证的顺序和调用的先后顺序有关系吗，也就是说该例子中客户端是否是排队获取令牌的？答案不是，因为Semaphore默认是非公平的，当然其构造函数提供了设置为公平信号量的参数。
+
+四
+
+本例答案 
+
+```java
+public class Question12 {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        final Object object = new Object();
+
+        new Thread(new Runnable() {
+            public void run() {
+                for (int i = 0; i < 50; i++) {
+                    synchronized (object) {
+                        for (int j = 0; j < 10; j++) {
+                            System.out.println("SubThread:" + (j + 1));
+                        }
+                        object.notify();
+                        try {
+                            object.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+
+        }).start();
+
+        for (int i = 0; i < 50; i++) {
+
+            synchronized (object) {
+
+                //主线程让出锁，等待子线程唤醒
+
+                object.wait();
+
+                for (int j = 0; j < 100; j++) {
+
+                    System.out.println("MainThread:" + (j + 1));
+
+                }
+                object.notify();
+            }
+        }
+    }
+}
+```
+
+
+
 # ThreadLocal
 
 ```java
@@ -1618,6 +1868,18 @@ ThreadPoolExecutor提供了线程池监控相关方法
 
 ## Java线程池
 
+
+
+Executors.newCachedThreadPool()
+
+Executors.newFixedThreadPool()
+
+都是调用的
+
+```
+new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>())
+```
+
 `线程池`：顾名思义，用一个池子装载多个线程，使用池子去管理多个线程。
 
 `问题来源`：应用大量通过new Thread()方法创建执行时间短的线程，较大的消耗系统资源并且系统的响应速度变慢。
@@ -1648,7 +1910,7 @@ Executors静态方法：创建线程池
 
 
 
-​       1、corePoolSize(线程池基本大小) >= 0;【当前最大并行运行线程数】
+​       1、corePoolSize(线程池基本大小，核心线程数量) >= 0;【当前最大并行运行线程数】
 
 　　2、maximumPoolSize(线程池最大大小) >= 1;【当前最大创建线程数】
 
@@ -1695,6 +1957,32 @@ ScheduledThreadPoolExecutor scheduledThreadPoolExecutor= new ScheduledThreadPool
 ## BlockingQueue
 
 FIFO，poll后就从队列删除
+
+因此如果你使用while(true)来获得队列元素，千万别用poll()，CPU会100%的. 
+
+
+
+**offer(E e)**: 将给定的元素设置到队列中，如果设置成功返回true, 否则返回false. e的值不能为空，否则抛出空指针异常。
+
+**offer(E e, long timeout, TimeUnit unit)**: 将给定元素在给定的时间内设置到队列中，如果设置成功返回true, 否则返回false.
+
+**add(E e)**: 将给定元素设置到队列中，如果设置成功返回true, 否则抛出异常。如果是往限定了长度的队列中设置值，推荐使用offer()方法。
+
+**put(E e)**: 将元素设置到队列中，如果队列中没有多余的空间，该方法会一直阻塞，直到队列中有多余的空间。
+
+**take()**: 从队列中获取值，如果队列中没有值，线程会一直阻塞，直到队列中有值，并且该方法取得了该值。
+
+**poll(long timeout, TimeUnit unit)**: 在给定的时间里，从队列中获取值，如果没有取到会抛出异常。
+
+**remainingCapacity()**：获取队列中剩余的空间。
+
+**remove(Object o)**: 从队列中移除指定的值。
+
+**contains(Object o)**: 判断队列中是否拥有该值。
+
+**drainTo(Collection c)**: 将队列中值，全部移除，并发设置到给定的集合中
+
+
 
 ```java
 package com.audition;
@@ -1814,7 +2102,13 @@ public class ExecutorServiceTest {
 
 ### ArrayBlockingQueue
 
-有界队列
+有界队列 阻塞队列
+
+
+
+### ConcurrentLinkedQueue
+
+由于我们的系统入队需求要远大于出队需求，可以用于秒杀场景
 
 
 
@@ -2226,6 +2520,73 @@ public class Test
     }
 }
 ```
+
+
+
+观察者二
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+public class Subject {
+	private List<ITicketObserver> list = new ArrayList<ITicketObserver>();
+
+	public void addObservers(ITicketObserver ticketObserver) {
+		list.add(ticketObserver);
+	}
+	public void removeObservers(Object object) {
+		list.remove(object);
+	}
+	public void change(String state) {
+		System.out.println("观察者改变了！");
+		for (ITicketObserver ticketObserver : list) {
+			ticketObserver.doWork(state);
+		}
+	}
+}
+```
+
+```java
+public interface ITicketObserver {
+	public void doWork(String state);
+}
+```
+
+```java
+public class MessageObservers implements ITicketObserver {
+	@Override
+	public void doWork(String state) {
+		 System.out.println("短信操作开始！更新状态"+state);
+	}
+}
+```
+
+```java
+
+public class LogObservers implements ITicketObserver {
+ 
+	@Override
+	public void doWork(String state) {
+		 System.out.println("日志文件操作开始！更新状态"+state);
+	}
+}
+```
+
+```java
+public class MainTest {
+	public static void main(String[] args) {
+		 Subject subject=new Subject();
+		 
+		 ITicketObserver logObservers=new LogObservers(); 
+		 ITicketObserver messageObservers=new MessageObservers();
+		 subject.addObservers(logObservers);
+		 subject.addObservers(messageObservers);
+		 subject.change("ok");
+	}
+}
+```
+
+
 
 ## 回调
 

@@ -237,6 +237,21 @@ ls -R __consumer_offsets-*    //列出目录和里面的内容
 
 
 
+查看文件类型
+
+```
+[root@localhost workspace]# file deploy-all-td-sit.sh
+deploy-all-td-sit.sh: ASCII text
+[root@localhost workspace]#
+[root@localhost workspace]# file chestbox/
+chestbox/: directory
+[root@localhost workspace]#
+```
+
+
+
+
+
 #### sed
 
 |                                                              |                                                              |                                                            |

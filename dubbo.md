@@ -1090,7 +1090,7 @@ registry.address=zookeeper://address1?buckup=address2,address3
 
 ## 四.处理前端参数用的Dto
 
-```
+```java
 import java.util.Map;
 /**
  * Created by Luo
@@ -1123,7 +1123,7 @@ public class RequestDto {
 
 ## 五.Router服务入口
 
-```
+```java
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -1155,7 +1155,7 @@ public class App {
 
 ## 六.通过GenericService进行泛化调用
 
-```
+```java
 package local.demo.genericservice;
 
 import com.alibaba.dubbo.config.ApplicationConfig;
@@ -1252,4 +1252,71 @@ spring.dubbo.protocol.port=20882  //只需服务端配置
 @Reference(url="dubbo://127.0.0.1:20882/com.integration.boot.provider.service.IUserProviderService")
 private IUserProviderService userProviderService;
 ```
+
+
+
+# dubbo测试
+
+```java
+
+public class Main {
+ 
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
+    	run();
+    }
+     public static void run() throws InterruptedException, ExecutionException{
+    	ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[] { "applicationConsumer.xml" });
+    	context.start();
+    	//ServiceDemo demoServer = (ServiceDemo) context.getBean("demoServicemy");
+    	ServiceDemo2 demoServer2 = (ServiceDemo2) context.getBean("demoServicemy2");
+    	/*ServiceDemo demoServer3 = (ServiceDemo) context.getBean("demoServicemy3");*/
+    	/*String str=demoServer.say("java ---->>>");*/
+    	//调用后立即返回null
+    	Person person=demoServer2.getPerson("www", 13);
+    	System.err.println("立即返回的为null:"+person);
+    	//拿到调用的Future引用，当结果返回后，会被通知和设置到此Future。
+        Future<Person> pFuture = RpcContext.getContext().getFuture();
+        //如果Person已返回，直接拿到返回值，否则线程wait，等待Person返回后，线程会被notify唤醒。
+        person = pFuture.get();
+        System.out.println("返回的有值"+person);
+        System.out.println(person);
+     }
+}
+```
+
+# dubbo异步调用
+
+提供方不变，消费方配置，如果是单个方法要设置为异步，则
+
+```xml
+ <dubbo:reference id="demoService" check="false" interface="com.alibaba.dubbo.demo.DemoService">
+    <dubbo:method name="sayHello" async="true" timeout="60000"/>
+    <dubbo:method name="sayBye" async="true" timeout="60000"/>
+</dubbo:reference>
+```
+
+如果接口下的全部方法设置为异步，则
+
+```xml
+<dubbo:reference async="true"/>
+```
+
+```java
+ ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"META-INF/spring/dubbo-demo-consumer.xml"});
+     context.start();
+     DemoService demoService = (DemoService) context.getBean("demoService"); 
+     demoService.sayHello("zhangsan");
+     Future<String> helloFuture = RpcContext.getContext().getFuture();
+     final String helloStr = helloFuture.get();
+
+   //或者
+  Future<String> helloFuture = RpcContext.getContext().asyncCall(()->   demoService.sayHello("zhangsan"));
+ final String byeStr = byeFuture.get();//消耗8s
+```
+
+
+
+# 遇见问题
+
+https://blog.csdn.net/gj716/article/details/80100231
 
