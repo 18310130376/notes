@@ -800,7 +800,7 @@ spring.dubbo.protocol.port=20882
 
 # springboot dubbo配置清单
 
-```
+```properties
 #应用名称
 spring.dubbo.application.name=dubbo-provider
 #spring.dubbo.registry.address=zookeeper://127.0.0.1:2181
