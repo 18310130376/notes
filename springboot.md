@@ -1,3 +1,13 @@
+# 快速开始
+
+https://start.spring.io/
+
+# 完整配置
+
+https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+
+
+
 # 一、运行方式
 
 ### 开始

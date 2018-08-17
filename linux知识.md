@@ -250,6 +250,13 @@ chestbox/: directory
 
 
 
+#### 日志
+
+```
+tail -300f shopbase.log #倒数300行并进入实时监听文件写入模式
+tail -fn 300 Goldoffice_api_1.0.0-IX_TD-SIT.log
+```
+
 
 
 #### sed
