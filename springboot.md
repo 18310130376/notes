@@ -4940,6 +4940,37 @@ public class SpringBootBeanUtil implements ApplicationContextAware {
 
 
 
+# 六十四、全局异常处理
+
+## 1.自定义异常页面
+
+不同的异常，客户端会返回不同的http响应状态码：（404,403,500等）。我们可以定义以这些状态码为名字的文件名：404.html.500.html。服务的响应异常时候，就会跳转到对应状态码的页面。这些页面必须在error目录下
+
+## 2.对于restful风格，请求返回的都是json格式数据。我们可以在这样定义一个类
+
+```java
+@ControllerAdvice(basePackages = "com.test")
+public class AdviceConfigurer extends ResponseEntityExceptionHandler {
+        @ExceptionHandler({ Exception.class })
+	@ResponseBody
+	ResponseEntity<?> handleControllerException(HttpServletRequest request, Throwable ex) {
+		HttpStatus status = getStatus(request);
+		Map<String, Object> map = new HashMap<String, Object>();
+         map.put("status", status.value());
+         map.put("flag", "01");
+         map.put("message", ex.getMessage());
+		return new ResponseEntity<>(map, status);
+	}
+	private HttpStatus getStatus(HttpServletRequest request) {
+		Integer statusCode = (Integer) request.getAttribute("javax.servlet.error.status_code");
+		if (statusCode == null) {
+			return HttpStatus.INTERNAL_SERVER_ERROR;
+		}
+		return HttpStatus.valueOf(statusCode);
+	}
+}
+```
+
 
 
 
