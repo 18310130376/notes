@@ -1331,6 +1331,10 @@ https://dangdangdotcom.github.io/dubbox/rest.html
 
 
 
+# Dubbo 整合 Pinpoint 做分布式服务请求跟踪
+
+https://my.oschina.net/yanpenglei/blog/1863383
+
 # 遇见问题
 
 

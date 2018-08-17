@@ -4946,7 +4946,7 @@ public class SpringBootBeanUtil implements ApplicationContextAware {
 
 不同的异常，客户端会返回不同的http响应状态码：（404,403,500等）。我们可以定义以这些状态码为名字的文件名：404.html.500.html。服务的响应异常时候，就会跳转到对应状态码的页面。这些页面必须在error目录下
 
-## 2.对于restful风格，请求返回的都是json格式数据。我们可以在这样定义一个类
+## 2.对于restful风格
 
 ```java
 @ControllerAdvice(basePackages = "com.test")
@@ -4969,6 +4969,30 @@ public class AdviceConfigurer extends ResponseEntityExceptionHandler {
 		return HttpStatus.valueOf(statusCode);
 	}
 }
+```
+
+
+
+# 六十五、设置网站图标
+
+原来我们在使用`tomcat`开发时，设置网站图片时，即icon图标时，一般都是直接替换`root`包下的`favicon.ico`替换成自己的，或者在网页的头部设置`link`的ref为`icon`然后设置其`href`值。而在`SpringBoot`中，替换图片也是很简单的，只需要将自定义图片放置在`静态资源`目录下即可，即默认有`static`、`public`、`resources`、`/META-INF/resources`或者自定义的静态目录下即可。放入favicon.ico即可。
+
+
+
+# 六十六、启动不设置端口
+
+对一些定时任务服务项目，其本身只是提供一个定时调度功能，不需要其他服务调用，只是去调度其他服务。像这样的服务，正常也就不需要设置端口了。这时候`SpringBoot`也是支持的。只需要改下启动方式：
+
+```
+new SpringApplicationBuilder().sources(ChapterApplication.class).web(false).run(args);
+//之后这里设置业务逻辑 比如挂起一个线程 或者设置一个定时任务。保证不退出
+//不然它就是一个启动类，启动后就停止了。
+```
+
+或者修改配置文件的属性：
+
+```
+spring.main.web-environment=false
 ```
 
 
