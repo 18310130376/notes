@@ -1325,6 +1325,28 @@ private String signParameters(TreeMap<String, String> params)
 
 		return HashUtil.md5(sign).toUpperCase();
 }
+
+
+等价于
+public static String toQueryString(Map<String, String> ps) {
+		StringBuilder buf = new StringBuilder();
+		if (ps != null && ps.size() > 0) {
+			for (Map.Entry<String, String> entry : new TreeMap<String, String>(ps).entrySet()) {
+				String key = entry.getKey();
+				String value = entry.getValue();
+				if (key != null && key.length() > 0
+						&& value != null && value.length() > 0) {
+					if (buf.length() > 0) {
+						buf.append("&");
+					}
+					buf.append(key);
+					buf.append("=");
+					buf.append(value);
+				}
+			}
+		}
+		return buf.toString();
+	}
 ```
 
 ## 方案二

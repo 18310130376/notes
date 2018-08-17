@@ -622,7 +622,7 @@ Dubbo框架内置提供负载均衡的功能以及扩展接口，我们可以透
 
 方式一：
 
-```
+```xml
 <!--dubbo-springBoot依赖-->
 		<dependency>
 			<groupId>com.alibaba.spring.boot</groupId>
@@ -631,6 +631,9 @@ Dubbo框架内置提供负载均衡的功能以及扩展接口，我们可以透
 </dependency>
 
 还有说或者引用，这种方式的配置内容前缀没有spring.
+
+https://github.com/alibaba/dubbo-spring-boot-starter/blob/master/README_zh.md
+
 <dependency>
     <groupId>com.alibaba.boot</groupId>
     <artifactId>dubbo-spring-boot-starter</artifactId>
@@ -659,7 +662,7 @@ Dubbo框架内置提供负载均衡的功能以及扩展接口，我们可以透
 
 我用的是上面的  io.dubbo.springboot
 
-在springboot启动类上加：
+在springboot启动类上加：（经测试不需要）
 
 ```
 @EnableDubboConfiguration
@@ -1058,6 +1061,8 @@ public class AuthorityFilter implements Filter {
 
 # Dubbo高级特性实践-泛化调用
 
+泛化调用消费者不需要对应的接口了。
+
 ## 一 接口
 
 ```java
@@ -1213,7 +1218,7 @@ public class DubboServiceFactory {
         ReferenceConfig<GenericService> reference = new ReferenceConfig<GenericService>();
         reference.setApplication(application); 
         reference.setRegistry(registry); 
-        reference.setInterface(interfaceClass); // 接口名 
+        reference.setInterface(interfaceClass); // 接口名 （包括package的全名）
         reference.setGeneric(true); // 声明为泛化接口 
         /*ReferenceConfig实例很重，封装了与注册中心的连接以及与提供者的连接，
         需要缓存，否则重复生成ReferenceConfig可能造成性能问题并且会有内存和连接泄漏。
@@ -1234,6 +1239,12 @@ public class DubboServiceFactory {
     }
 }
 ```
+
+
+
+### 泛化调用spring项目
+
+https://blog.csdn.net/linuu/article/details/54313560
 
 
 
@@ -1314,10 +1325,13 @@ public class Main {
  final String byeStr = byeFuture.get();//消耗8s
 ```
 
+# dubbo Rest暴露服务
+
+https://dangdangdotcom.github.io/dubbox/rest.html
+
 
 
 # 遇见问题
 
 
 
-https://dangdangdotcom.github.io/dubbox/rest.html
