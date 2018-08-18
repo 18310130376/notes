@@ -1211,6 +1211,63 @@ public class SemaphoreTest {
 
 
 
+# Phaser适用场景
+
+CountDownLatch和CyclicBarrier都是JDK 1.5引入的，而Phaser是JDK 1.7引入的。Phaser的功能与CountDownLatch和CyclicBarrier有部分重叠，同时也提供了更丰富的语义和更灵活的用法。
+
+Phaser顾名思义，与阶段相关。Phaser比较适合这样一种场景，一种任务可以分为多个阶段，现希望多个线程去处理该批任务，对于每个阶段，多个线程可以并发进行，但是希望保证只有前面一个阶段的任务完成之后才能开始后面的任务。这种场景可以使用多个CyclicBarrier来实现，每个CyclicBarrier负责等待一个阶段的任务全部完成。但是使用CyclicBarrier的缺点在于，需要明确知道总共有多少个阶段，同时并行的任务数需要提前预定义好，且无法动态修改。而Phaser可同时解决这两个问题。
+
+
+
+```java
+public class PhaserDemo {
+  public static void main(String[] args) throws IOException {
+    int parties = 3;
+    int phases = 4;
+    final Phaser phaser = new Phaser(parties) {
+      @Override  
+      protected boolean onAdvance(int phase, int registeredParties) {  
+          System.out.println("====== Phase : " + phase + " ======");  
+          return registeredParties == 0;  
+      }  
+    };
+    for(int i = 0; i < parties; i++) {
+      int threadId = i;
+      Thread thread = new Thread(() -> {
+        for(int phase = 0; phase < phases; phase++) {
+          System.out.println(String.format("Thread %s, phase %s", threadId, phase));
+          phaser.arriveAndAwaitAdvance();
+        }
+      });
+      thread.start();
+    }
+  }
+}
+```
+
+执行结果如下
+
+```
+Thread 0, phase 0
+Thread 1, phase 0
+Thread 2, phase 0
+====== Phase : 0 ======
+Thread 2, phase 1
+Thread 0, phase 1
+Thread 1, phase 1
+====== Phase : 1 ======
+Thread 1, phase 2
+Thread 2, phase 2
+Thread 0, phase 2
+====== Phase : 2 ======
+Thread 0, phase 3
+Thread 1, phase 3
+Thread 2, phase 3
+====== Phase : 3 ======
+```
+
+从上面的结果可以看到，多个线程必须等到其它线程的同一阶段的任务全部完成才能进行到下一个阶段，并且每当完成某一阶段任务时，Phaser都会执行其*onAdvance*方法。
+
 # 综合例子
 
 题目：多线程之间需要等待协调，才能完成某种工作，问怎么设计这种协调方案？如：子线程循环10次，接着主线程循环100，接着又回到子线程循环10次，接着再回到主线程又循环100，如此循环50次。
