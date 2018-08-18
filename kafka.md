@@ -1030,6 +1030,17 @@ Topic的一个子概念，一个topic可具有多个partition，但Partition一�
 
 当然可以，leader收到消息写入本地就ack，然后再发给follower。问题也很显而易见，最坏得情况下，有个消息leader返回ack了，但follower因为各种原因没有写入，主挂了，丢数据了。
 
+# 如何选举Leader
+
+　　最简单最直观的方案是，所有Follower都在Zookeeper上设置一个Watch，一旦Leader宕机，其对应的ephemeral znode会自动删除，此时所有Follower都尝试创建该节点，而创建成功者（Zookeeper保证只有一个能创建成功）即是新的Leader，其它Replica即为Follower。
+　　但是该方法会有3个问题： 　　
+
+- split-brain 这是由Zookeeper的特性引起的，虽然Zookeeper能保证所有Watch按顺序触发，但并不能保证同一时刻所有Replica“看”到的状态是一样的，这就可能造成不同Replica的响应不一致
+- herd effect 如果宕机的那个Broker上的Partition比较多，会造成多个Watch被触发，造成集群内大量的调整
+- Zookeeper负载过重 每个Replica都要为此在Zookeeper上注册一个Watch，当集群规模增加到几千个Partition时Zookeeper负载会过重。
+
+　　Kafka 0.8.*的Leader Election方案解决了上述问题，它在所有broker中选出一个controller，所有Partition的Leader选举都由controller决定。controller会将Leader的改变直接通过RPC的方式（比Zookeeper Queue的方式更高效）通知需为此作出响应的Broker。同时controller也负责增删Topic以及Replica的重新分配。
+
 
 
 # 参考文档
