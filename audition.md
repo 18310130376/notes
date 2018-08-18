@@ -1290,3 +1290,13 @@ count(*) 是表示整个结果集有多少条记录
 trunc是截断表，将表所有数据删除，释放表空间。
 不可以回滚。
  delete：删除表数据，不释放表空间，可以回滚。
+
+
+
+# 48、ConcurrentHashMap与HashMap
+
+ConcurrentHashMap与HashMap相比，有以下不同点
+
+- ConcurrentHashMap线程安全，而HashMap非线程安全
+- HashMap允许Key和Value为null，而ConcurrentHashMap不允许
+- HashMap不允许通过Iterator遍历的同时通过HashMap修改，而ConcurrentHashMap允许该行为，并且该更新对后续的遍历可见
