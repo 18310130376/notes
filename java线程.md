@@ -1268,6 +1268,59 @@ Thread 2, phase 3
 
 从上面的结果可以看到，多个线程必须等到其它线程的同一阶段的任务全部完成才能进行到下一个阶段，并且每当完成某一阶段任务时，Phaser都会执行其*onAdvance*方法。
 
+
+
+# Exchanger
+
+用于进行线程间的数据交换
+
+两个线程通过exchange方法交换数据，如果一个线程先执行exchange方法，它会一直等待第二个线程也执行exchange方法
+当两个线程都达到同步点时，这两个线程就可以交换数据，将本线程生产出来的数据传递给对方
+
+```java
+import java.util.concurrent.Exchanger;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Exchange_Thread {
+
+	public static void main(String[] args) {
+		ExecutorService executorSer = Executors.newCachedThreadPool();
+		final Exchanger<String> exchanger = new Exchanger<String>();
+		executorSer.execute(new Runnable() {
+			String a = "yangyu";
+			public void run() {
+				try {
+					String b = (String) exchanger.exchange(a);
+					System.out.println("this is A,but B is:" + b);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+
+		executorSer.execute(new Runnable() {
+			String b = "java code";
+
+			public void run() {
+				try {
+					Thread.sleep((long) (Math.random() * 100));
+					String a = (String) exchanger.exchange(b);
+					System.out.println("this is B,but A is:" + a);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		executorSer.shutdown();
+	
+}
+```
+
+
+
+
+
 # 综合例子
 
 题目：多线程之间需要等待协调，才能完成某种工作，问怎么设计这种协调方案？如：子线程循环10次，接着主线程循环100，接着又回到子线程循环10次，接着再回到主线程又循环100，如此循环50次。
