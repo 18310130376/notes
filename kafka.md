@@ -1152,6 +1152,20 @@ topic01         0          359976          359976          0               -    
 
 
 
+通过
+
+```
+./kafka-run-class.sh kafka.tools.DumpLogSegments --files /tmp/kafka-logs/topic01-0/00000000000000275789.log --print-data-log
+
+可以查看到每条消息的offset: 359975 position: 7547672  CreateTime: 1534826578785
+```
+
+
+
+
+
+
+
 # 参考文档
 
 http://kafka.apache.org/10/documentation.html
