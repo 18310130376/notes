@@ -341,26 +341,30 @@ bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topi
 
 ## 常用命令
 
-|                                                              |                              |
-| ------------------------------------------------------------ | ---------------------------- |
-| bin/kafka-server-start.sh -daemon config/server.properties & |                              |
-| nohup bin/kafka-server-start.sh config/server.properties > /dev/null 2>&1 & |                              |
-| bin/kafka-server-stop.sh                                     |                              |
-| ./kafka-topics.sh --list --zookeeper localhost:2181          | 查看有哪些主题               |
-| ./kafka-topics.sh -zookeeper 127.0.0.1:2181 -describe -topic www | 查看topic的详细信息          |
-| ./kafka-reassign-partitions.sh -zookeeper 127.0.0.1:2181 -reassignment-json-file json/partitions-to-move.json -execute | 为topic增加副本              |
-| ./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic testKJ1 | 创建topic                    |
-| ./bin/kafka-topics.sh –zookeeper 127.0.0.1:2181 –alter –partitions 20 –topic testKJ1 | 为topic增加partition         |
-| ./kafka-console-producer.sh --broker-list localhost:9092 --topic testKJ1 | kafka生产者客户端命令        |
-| ./kafka-console-consumer.sh -zookeeper localhost:2181 --from-beginning --topic testKJ1 | kafka消费者客户端命令        |
-| ./kafka-server-start.sh -daemon ../config/server.properties  | kafka服务启动                |
-| ./kafka-run-class.sh kafka.admin.ShutdownBroker --zookeeper 127.0.0.1:2181 --broker #brokerId# --num.retries 3 --retry.interval.ms 60 shutdown broker | 下线broker                   |
-| ./kafka-run-class.sh kafka.admin.DeleteTopicCommand --topic testKJ1 --zookeeper 127.0.0.1:2181 | 删除topic                    |
-| ./kafka-topics.sh --zookeeper localhost:2181 --delete --topic testKJ1 |                              |
-| ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper localhost:2181 --group test --topic testKJ1 | 查看consumer组内消费的offset |
-| ./kafka-consumer-offset-checker.sh --zookeeper 192.168.0.201:12181 --group group1 --topic group1 |                              |
-| ./kafka-topics.sh --alter --topict_test --zookeeper master:2181 --partitions 10 | 添加分区                     |
-| ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker--zookeeper 192.168.35.110:10950 --group bo_01 --topic TABLE_IX_TRADE_ALL_BASE | //查看分区偏移量             |
+|                                                              |                                                 |
+| ------------------------------------------------------------ | ----------------------------------------------- |
+| bin/kafka-server-start.sh -daemon config/server.properties & |                                                 |
+| nohup bin/kafka-server-start.sh config/server.properties > /dev/null 2>&1 & |                                                 |
+| bin/kafka-server-stop.sh                                     |                                                 |
+| ./kafka-topics.sh --zookeeper localhost:2181 --list          | 查看有哪些主题                                  |
+| ./kafka-topics.sh -zookeeper 127.0.0.1:2181 -describe -topic www | 查看topic的详细信息                             |
+| ./kafka-reassign-partitions.sh -zookeeper 127.0.0.1:2181 -reassignment-json-file json/partitions-to-move.json -execute | 为topic增加副本                                 |
+| ./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic testKJ1 | 创建topic                                       |
+| ./bin/kafka-topics.sh –zookeeper 127.0.0.1:2181 –alter –partitions 20 –topic testKJ1 | 为topic增加partition                            |
+| ./kafka-console-producer.sh --broker-list localhost:9092 --topic testKJ1 | kafka生产者客户端命令                           |
+| ./kafka-console-consumer.sh -zookeeper localhost:2181 --from-beginning --topic testKJ1 | kafka消费者客户端命令                           |
+| ./kafka-server-start.sh -daemon ../config/server.properties  | kafka服务启动                                   |
+| ./kafka-run-class.sh kafka.admin.ShutdownBroker --zookeeper 127.0.0.1:2181 --broker #brokerId# --num.retries 3 --retry.interval.ms 60 shutdown broker | 下线broker                                      |
+| ./kafka-run-class.sh kafka.admin.DeleteTopicCommand --topic testKJ1 --zookeeper 127.0.0.1:2181 | 删除topic                                       |
+| ./kafka-topics.sh --zookeeper localhost:2181 --delete --topic testKJ1 |                                                 |
+| ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper localhost:2181 --group test --topic testKJ1 | 查看consumer组内消费的offset                    |
+| ./kafka-consumer-offset-checker.sh --zookeeper 192.168.0.201:12181 --group group1 --topic group1 |                                                 |
+| ./kafka-topics.sh --alter --topict_test --zookeeper master:2181 --partitions 10 | 添加分区                                        |
+| ./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper 192.168.35.110:10950 --group bo_01 --topic TABLE_IX_TRADE_ALL_BASE（ 在0.9.0.0已经不支持，使用下面new-consumer方式） | //查看分区偏移量                                |
+| bin/kafka-consumer-groups.sh --new-consumer --bootstrap-server 127.0.0.1:9292 --list | 查看consumer group列表                          |
+| bin/kafka-consumer-groups.sh --zookeeper 127.0.0.1:2181 --list    或者./kafka-consumer-groups.sh --bootstrap-server 192.168.48.131:9092 --list | 查看consumer group列表                          |
+| ./kafka-consumer-groups.sh --new-consumer --bootstrap-server 127.0.0.1:9092 --group lx_test --describe | 查看特定consumer group 详情(查看消息是否有堆积) |
+| bin/kafka-consumer-groups.sh --zookeeper 127.0.0.1:2181 --group console-consumer-11967 --describe | 查看特定consumer group 详情                     |
 
 ## 配置详解
 
@@ -1043,6 +1047,111 @@ Topic的一个子概念，一个topic可具有多个partition，但Partition一�
 
 
 
+# 重置kafka的offset
+
+用下面命令可以查询到topic:DynamicRange broker:SparkMaster:9092的offset的最小值：
+
+```
+./kafka-run-class.sh kafka.tools.GetOffsetShell --broker-list 192.168.48.131:9092 --topic topic01 --time -2
+```
+
+输出
+
+```
+topic01:2:0
+topic01:1:0
+topic01:0:275789
+```
+
+查询offset的最大值：
+
+```
+./kafka-run-class.sh kafka.tools.GetOffsetShell --broker-list 192.168.48.131:9092 --topic topic01 --time -1
+```
+
+输出
+
+```
+topic01:2:8
+topic01:1:8
+topic01:0:359976
+```
+
+从上面的输出可以看出topic:topic01有三个partition:0 offset范围为:[275789,359976]
+
+# 设置consumer group的offset 
+
+`旧版本`：
+
+启动zookeeper client
+
+```
+$ /opt/cloudera/parcels/CDH/lib/zookeeper/bin/zkCli.sh
+```
+
+通过下面命令设置consumer group:group1 topic:topic01 partition:0的offset为1288:
+
+```
+set /consumers/group1/offsets/topic01/0 359975
+```
+
+注意如果你的kafka设置了zookeeper root，比如为/kafka，那么命令应该改为：
+
+```
+set /kafka/consumers/group1/offsets/topic01/0 359975
+```
+
+重启相关的应用程序，就可以从设置的offset开始读数据了。 
+
+或者
+
+```
+bin/kafka-consumer-groups.sh --zookeeper z1:2181,z2:2181,z3:2181 --group test-consumer-group --topic test --execute --reset-offsets --to-offset 359975
+```
+
+
+
+`新版本`：
+
+新版的消费位置信息不再zookeeper上了,
+
+查看
+
+```
+./kafka-consumer-groups.sh --new-consumer --bootstrap-server 192.168.48.131:9092 --group group1 --describe
+
+TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+topic02         1          497893          497893          0               -               -               -
+topic02         0          3706316         3706316         0               -               -                 -
+topic02         2          787658          787658          0               -               -               -
+topic01         1          8               8               0               -               -   
+          -
+topic01         2          8               8               0               -               -               -
+topic01         0          359976          359976          0               -               -   -
+
+```
+
+
+
+```
+./kafka-consumer-groups.sh --bootstrap-server 192.168.48.131:9092,192.168.48.132:9092 --group group1 --topic topic01 --execute --reset-offsets --to-offset 359975
+
+这里设置为359975，只会对最后一行有影响。如果这里设置为6，则对倒数第二行，倒数第三行设置为6，最后一行设置为275789（前面查询的此分区的最小值）
+
+
+参数解析： --bootstrap-server 代表你的kafka集群 你的offset保存在topic中
+--group 代表你的消费者分组
+--topic 代表你消费的主题
+--execute 代表支持复位偏移
+--reset-offsets 代表要进行偏移操作
+--to-offset 代表你要偏移到哪个位置 是long类型数值，只能比前面查询出来的小
+还有其他的--to- ** 方式可以自己验证 本人验证过--to-datetime 没有成功
+```
+
+注意：修改offset之前保证要修改的consumer 是不活动状态就是得先停应用
+
+
+
 # 参考文档
 
 http://kafka.apache.org/10/documentation.html
@@ -1058,6 +1167,10 @@ https://www.cnblogs.com/liuwei6/p/6900686.html
 源码解析
 
 http://www.cnblogs.com/huxi2b/p/6124937.html
+
+
+
+https://blog.csdn.net/csolo/article/details/52389646
 
 
 
