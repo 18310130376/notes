@@ -4997,7 +4997,20 @@ spring.main.web-environment=false
 
 
 
+# 六十七、@compontScan指定包
 
+springboot把带有注解@springBootApplication的类作为启动类，会自动扫描启动类`子包`带有@Service，@compont等注解.
+
+但是如果带有@Service的类不是@springBootApplication的子包，则需要在启动类上加上ComponentScan，如@ComponentScan({"com.boot"})
+
+
+
+# 六十八、ResourceLoader读取文件
+
+```
+private static ResourceLoader resourceLoader = new DefaultResourceLoader();
+Resource resource = resourceLoader.getResource("file:" + Paths.get("upload-dir","a.text").toString());
+```
 
 
 
