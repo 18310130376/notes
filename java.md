@@ -1,3 +1,7 @@
+#### java技术栈
+
+https://my.oschina.net/javaroad/
+
 #### 一、JDK安装说明
 
 1.卸载存在的JAVA程序
@@ -775,3 +779,38 @@ nohup some_command &> nohup2.out&
 ```
 nohup some_command > nohup2.out 2>&1&
 ```
+
+
+#### 十三、下载文件
+
+引入commons-io-2.4.jar
+
+```java
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+
+public class DeadLock{
+	public  static void main(String[] args) throws IOException {
+		 URL httpurl=new URL("https://images2018.cnblogs.com/blog/380866/201803/380866-20180327125308429-1074804504.png");
+	        HttpURLConnection httpConn=(HttpURLConnection)httpurl.openConnection();
+	        httpConn.setDoOutput(true);// 使用 URL 连接进行输出
+	        httpConn.setDoInput(true);// 使用 URL 连接进行输入
+	        httpConn.setUseCaches(false);// 忽略缓存
+	        httpConn.setRequestMethod("GET");// 设置URL请求方法
+	        //可设置请求头
+	        httpConn.setRequestProperty("Content-Type", "application/octet-stream");
+	        httpConn.setRequestProperty("Connection", "Keep-Alive");// 维持长连接
+	        httpConn.setRequestProperty("Charset", "UTF-8");
+	        //可设置请求头
+	        InputStream inputStream = httpConn.getInputStream();
+	        FileUtils.writeByteArrayToFile(new File("C:\\Users\\789\\Desktop\\logs\\a.png"), IOUtils.toByteArray(inputStream));
+	}
+}
+```
+

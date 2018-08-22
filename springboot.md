@@ -5010,7 +5010,20 @@ springboot把带有注解@springBootApplication的类作为启动类，会自动
 ```
 private static ResourceLoader resourceLoader = new DefaultResourceLoader();
 Resource resource = resourceLoader.getResource("file:" + Paths.get("upload-dir","a.text").toString());
+
 ```
+
+
+
+
+
+# 六十九、远程调试
+
+https://my.oschina.net/javaroad/blog/1826448
+
+
+
+
 
 
 
