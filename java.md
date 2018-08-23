@@ -78,11 +78,103 @@ nohup java -cp ./${jarName}:./config/:$JAR_CLASSPATH  com.gwghk.ix.data.monitor.
 
 https://www.cnblogs.com/wade-luffy/category/853135.html
 
-|                         |              |
-| ----------------------- | ------------ |
-| jps   jps -l   jps -lmv | 查看java进程 |
-|                         |              |
-|                         |              |
+#### jps
+
+| 配置项 | 作用                                          |
+| ------ | --------------------------------------------- |
+| -q     | 忽略主类的名称，只输出pid                     |
+| -m     | 输出启动类main函数的参数                      |
+| -l     | 输出主类名,如果进程执行的为jar，则输出jar路径 |
+| -v     | 输出具体进程启动时jvm参数                     |
+
+- **jps -lv** ： 输出启动类名与启动时jvm参数，可以方便的看到各个tomcat的自定义参数配置
+- **jps -lv |grep project_name** ： 在上述基础上过滤出自己想要查看的项目的信息
+
+
+
+#### jinfo
+
+显示虚拟机配置信息
+
+- **jinfo pid** : 显示jvm系统属性与vm参数信息
+- **jinfo -flags pid** : 显示jvm vm参数信息,如最大最小堆，默认堆，垃圾收集器参数等
+- **jinfo -sysprops pid** : 显示jvm系统属性
+- **jinfo -flag** : 显示特定vm参数值,例如 **jinfo -flag MaxHeapSize pid** 输出pid的最大堆内存
+
+
+
+#### **jstat** 
+
+收集虚拟机各方面运行数据
+
+jstat [ option pid [interval[s|ms][count]]]
+说明： interval 表示循环时间间隔,默认单位为ms，可以在直接使用s/ms指定单位，如 60ms/1s， count 表示输出几次	例：
+**jstat -gc pid 1s 20**: 每1s查询一次gc情况，查询20次 
+
+
+
+查看类装载卸载情况 jstat -class pid
+
+| 属性     | 释义                   |
+| -------- | ---------------------- |
+| Loaded   | 装载总数量             |
+| Bytes    | 装载总大小             |
+| Unloaded | 卸载类的数量           |
+| Bytes    | 卸载总大小             |
+| Time     | 加载和卸载类总共的耗时 |
+
+查看GC情况 jstat -gc pid
+
+| 属性 | 释义                              |
+| ---- | --------------------------------- |
+| S0C  | 新生代survivor0容量               |
+| S1C  | 新生代survivor1容量               |
+| S0U  | 新生代survivor0已使用大小         |
+| S1U  | 新生代survivor1已使用大小         |
+| EC   | 新生代eden区容量                  |
+| EU   | 新生代eden区已使用大小            |
+| OC   | 老年代容量                        |
+| OU   | 老年代已使用大小                  |
+| MC   | 元数据容量，即方法区容量          |
+| MU   | 元数据已使用空间                  |
+| CCSC | 压缩类空间大小                    |
+| CCSU | 压缩类空间使用大小                |
+| YGC  | 新生代gc次数(young gc)            |
+| YGCT | 新生代gc时间(s)                   |
+| FGC  | 老生代gc次数(full gc)             |
+| GCT  | 总的gc时间，包括young gc和full gc |
+
+查看GC情况，以百分比显示
+
+**jstat -gcutil pid**
+
+查看新生代GC情况
+
+**jstat -gcnew pid**
+
+| 属性 | 释义                       |
+| ---- | -------------------------- |
+| S0C  | 新生代survivor0容量        |
+| S1C  | 新生代survivor1容量        |
+| S0U  | 新生代survivor0已使用大小  |
+| S1U  | 新生代survivor1已使用大小  |
+| TT   | 对象在新生代存活的次数     |
+| MTT  | 对象在新生代存活的最大次数 |
+| DSS  | 期望的幸存区大小           |
+| EC   | eden区大小                 |
+| EU   | eden区已使用大小           |
+| YGC  | young gc次数               |
+| YGCT | young gc 时间 (秒)         |
+
+查看编译情况
+
+jstat -compiler pid
+
+#### **jmap** 
+
+虚拟机堆快照工具
+
+**jmap -histo pid** 列出当前heap中对象状况，附字节码与java对象映射表 
 
 
 
@@ -812,5 +904,805 @@ public class DeadLock{
 	        FileUtils.writeByteArrayToFile(new File("C:\\Users\\789\\Desktop\\logs\\a.png"), IOUtils.toByteArray(inputStream));
 	}
 }
+```
+
+#### 十四、Java8  Stream
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+public class StreamOfJava8 {
+
+	public static void main(String[] args) {
+		learnStream();
+	}
+	private static void learnStream() {
+		//首先,创建一个1-6乱序的List
+		List<Integer> lists = new ArrayList<>();
+		lists.add(4);
+		lists.add(3);
+		lists.add(6);
+		lists.add(1);
+		lists.add(5);
+		lists.add(2);
+        
+        lists.forEach((e)->System.out.println(e));
+        long count = lists.stream().filter((e)->1==e).count();
+        
+		// 看看List里面的数据是什么样子的先
+		System.out.print("List里面的数据:");
+		for (Integer elem : lists)
+			System.out.print(elem + " ");
+		// 最小值
+		System.out.print("List中最小的值为:");
+		Optional<Integer> min = lists.stream().min(Integer::compareTo);
+		if (min.isPresent()) {
+			System.out.println(min.get());
+		}
+		// 最大值
+		System.out.print("List中最大的值为:");
+		lists.stream().max(Integer::compareTo).ifPresent(System.out::println);
+		// 排序
+		System.out.print("将List流进行排序:");
+		Stream<Integer> sorted = lists.stream().sorted();
+
+		sorted.forEach(elem -> System.out.print(elem + " "));
+		System.out.println();
+		System.out.print("过滤List流,只剩下那些大于3的元素:");
+		lists.stream().filter(elem -> elem > 3).forEach(elem -> System.out.print(elem + " "));
+		System.out.println("过滤List流,只剩下那些大于0并且小于4的元素:\n=====begin=====");
+		lists.stream()
+				.filter(elem -> elem > 0)
+				.filter(elem -> elem < 4)
+				.sorted(Integer::compareTo)
+				.forEach(System.out::println);
+		System.out.println("=====end=====");
+		// 经过了前面的这么多流操作,我们再来看看List里面的值有没有发生什么改变
+		System.out.print("原List里面的数据:");
+		for (Integer elem : lists)
+			System.out.print(elem + " ");
+	}
+}
+```
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+public class StreamTest {
+
+	public static void main(String[] args)
+
+	{
+		System.out.println("过滤－找出年纪大于18岁的人");
+		List<User> list = initList();
+		list.stream().filter((User user)-> user.getAge()>18).collect(Collectors.toList()).forEach(System.out::println);
+
+		System.out.println("最大值－找出最大年纪的人");
+		list = initList();
+		Optional<User> max = list.stream().max((u1, u2)-> u1.getAge() - u2.getAge());
+		System.out.println(max.get());
+		System.out.println("映射-规纳－求所有人的年纪总和");
+		list = initList();
+		Optional<Integer> reduce = list.stream().map(User::getAge).reduce(Integer::sum);
+		System.out.println(reduce.get());
+		System.out.println();
+		System.out.println("分组－按年纪分组");
+		list = initList();
+		Map<Integer,List<User>> userMap = list.stream().collect(Collectors.groupingBy(User::getAge));
+
+		Stream<User> userStream = Stream.of(new User("u1",1),new User("u2",21),new User("u2",21));
+		System.out.println(userStream.distinct().count());
+	}
+
+	public static List<User> initList() {
+
+		List<User> list = new ArrayList<>();
+		list.add(new User("oaby",23));
+		list.add(new User("tom",11));
+		list.add(new User("john",16));
+		list.add(new User("jennis",26));
+		list.add(new User("tin",26));
+		list.add(new User("army",26));
+		list.add(new User("mack",19));
+		list.add(new User("jobs",65));
+		list.add(new User("jordan",23));
+		return list;
+	}
+}
+```
+
+#### 十五、BASE64
+
+base64编码解码已经被加入到了jdk8中了。
+
+```java
+import java.nio.charset.StandardCharsets;
+
+import java.util.Base64;
+
+public class Base64Test {
+	public static void main(String[] args) {
+		
+		String text = "hello javastack";
+		String encoded = Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8));
+		System.out.println(encoded);
+		String decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.UTF_8);
+		System.out.println(decoded);
+	}
+}
+```
+
+#### 十六、Date/Time API(JSR 310)
+
+```java
+import java.time.Clock;
+
+public class Base64Test {
+	
+	public static void main(String[] args) {
+
+		Clock clock = Clock.systemUTC();
+		System.out.println(clock.instant());
+		System.out.println(clock.millis());
+        //可以代替 System.currentTimeMillis()方法。
+	}
+}
+```
+
+#### 十七、金融系统中正确的金额计算及存储方式
+
+- 金额运算尽量使用BigDecimal(String val)进行运算。
+- 数据库存储金额，一般有整型和浮点型两种存储方式。如果是有汇率转换的，建议使用浮点数decimal进行存储，可以灵活的控制精度，decimal直接对应java类型BigDecimal。当然，用整数存储分这种形式也可以，转账的时候单位为元而如果忘了转换分为元，那就悲剧了。
+
+```java
+import java.math.BigDecimal;
+
+public class Base64Test {
+
+	public static void main(String[] args) {
+
+		double totalAmount = 0.09;
+		double feeAmount = 0.02;
+		
+		BigDecimal tradeAmount = new BigDecimal(String.valueOf(totalAmount)).subtract(new BigDecimal(String.valueOf(feeAmount)));
+		System.out.println(tradeAmount);//正确
+		
+		BigDecimal tradeAmountNew = new BigDecimal(totalAmount).subtract(new BigDecimal(feeAmount));
+		System.out.println(tradeAmountNew);//错误
+	}
+}
+
+0.07
+0.0699999999999999962529972918900966760702431201934814453125
+```
+
+
+
+#### 十八、JAVA常用工具类
+
+
+
+一. org.apache.commons.io.IOUtils
+
+```
+closeQuietly：关闭一个IO流、socket、或者selector且不抛出异常，通常放在finally块
+toString：转换IO流、 Uri、 byte[]为String
+copy：IO流数据复制，从输入流写到输出流中，最大支持2GB
+toByteArray：从输入流、URI获取byte[]
+write：把字节. 字符等写入输出流
+toInputStream：把字符转换为输入流
+readLines：从输入流中读取多行数据，返回List<String>
+copyLarge：同copy，支持2GB以上数据的复制
+lineIterator：从输入流返回一个迭代器，根据参数要求读取的数据量，全部读取，如果数据不够，则失败
+```
+
+二. org.apache.commons.io.FileUtils
+
+```
+deleteDirectory：删除文件夹
+readFileToString：以字符形式读取文件内容
+deleteQueitly：删除文件或文件夹且不会抛出异常
+copyFile：复制文件
+writeStringToFile：把字符写到目标文件，如果文件不存在，则创建
+forceMkdir：强制创建文件夹，如果该文件夹父级目录不存在，则创建父级
+write：把字符写到指定文件中
+listFiles：列举某个目录下的文件(根据过滤器)
+copyDirectory：复制文件夹
+forceDelete：强制删除文件
+```
+
+三. org.apache.commons.lang.StringUtils
+
+```
+isBlank：字符串是否为空 (trim后判断)
+isEmpty：字符串是否为空 (不trim并判断)
+equals：字符串是否相等
+join：合并数组为单一字符串，可传分隔符
+split：分割字符串EMPTY：返回空字符串
+trimToNull：trim后为空字符串则转换为null
+replace：替换字符串
+```
+
+四. org.apache.http.util.EntityUtils
+
+```
+toString：把Entity转换为字符串
+consume：确保Entity中的内容全部被消费。可以看到源码里又一次消费了Entity的内容，假如用户没有消费，那调用Entity时候将会把它消费掉
+toByteArray：把Entity转换为字节流
+consumeQuietly：和consume一样，但不抛异常
+getContentCharset：获取内容的编码
+```
+
+五. org.apache.commons.lang3.StringUtils
+
+```
+isBlank：字符串是否为空 (trim后判断)
+isEmpty：字符串是否为空 (不trim并判断)
+equals：字符串是否相等join：合并数组为单一字符串，可传分隔符
+split：分割字符串EMPTY：返回空字符串
+replace：替换字符串
+capitalize：首字符大写
+```
+
+六. org.apache.commons.io.FilenameUtils
+
+```
+getExtension：返回文件后缀名
+getBaseName：返回文件名，不包含后缀名
+getName：返回文件全名
+concat：按命令行风格组合文件路径(详见方法注释)
+removeExtension：删除后缀名
+normalize：使路径正常化
+wildcardMatch：匹配通配符
+seperatorToUnix：路径分隔符改成unix系统格式的，即/
+getFullPath：获取文件路径，不包括文件名
+isExtension：检查文件后缀名是不是传入参数(List<String>)中的一个
+```
+
+七. org.springframework.util.StringUtils
+
+```
+hasText：检查字符串中是否包含文本
+hasLength：检测字符串是否长度大于0
+isEmpty：检测字符串是否为空（若传入为对象，则判断对象是否为null）
+commaDelimitedStringToArray：逗号分隔的String转换为数组
+collectionToDelimitedString：把集合转为CSV格式字符串replace 替换字符串
+delimitedListToStringArray：相当于split
+uncapitalize：首字母小写
+collectionToDelimitedCommaString：把集合转为CSV格式字符串
+tokenizeToStringArray：和split基本一样，但能自动去掉空白的单词
+```
+
+八. org.apache.commons.lang.ArrayUtils
+
+```
+contains：是否包含某字符串
+addAll：添加整个数组
+clone：克隆一个数组
+isEmpty：是否空数组
+add：向数组添加元素
+subarray：截取数组
+indexOf：查找某个元素的下标
+isEquals：比较数组是否相等
+toObject：基础类型数据数组转换为对应的Object数组
+```
+
+九. org.apache.commons.lang.StringEscapeUtils
+
+```
+参考十五：org.apache.commons.lang3.StringEscapeUtils
+```
+
+十. org.apache.http.client.utils.URLEncodedUtils
+
+```
+format：格式化参数，返回一个HTTP POST或者HTTP PUT可用application/x-www-form-urlencoded字符串parse：把String或者URI等转换为List<NameValuePair>
+```
+
+十一. org.apache.commons.codec.digest.DigestUtils
+
+```
+md5Hex：MD5加密，返回32位字符串
+sha1Hex：SHA-1加密
+sha256Hex：SHA-256加密
+sha512Hex：SHA-512加密
+md5：MD5加密，返回16位字符串
+```
+
+十二. org.apache.commons.collections.CollectionUtils
+
+```
+isEmpty：是否为空
+select：根据条件筛选集合元素
+transform：根据指定方法处理集合元素，类似List的map()
+filter：过滤元素，雷瑟List的filter()
+find：基本和select一样
+collect：和transform 差不多一样，但是返回新数组
+forAllDo：调用每个元素的指定方法
+isEqualCollection：判断两个集合是否一致
+```
+
+十三. org.apache.commons.lang3.ArrayUtils
+
+```
+contains：是否包含某个字符串
+addAll：添加整个数组
+clone：克隆一个数组
+isEmpty：是否空数组
+add：向数组添加元素
+subarray：截取数组
+indexOf：查找某个元素的下标
+isEquals：比较数组是否相等
+toObject：基础类型数据数组转换为对应的Object数组
+```
+
+十四. org.apache.commons.beanutils.PropertyUtils
+
+```
+getProperty：获取对象属性值
+setProperty：设置对象属性值
+getPropertyDiscriptor：获取属性描述器
+isReadable：检查属性是否可访问
+copyProperties：复制属性值，从一个对象到另一个对象
+getPropertyDiscriptors：获取所有属性描述器
+isWriteable：检查属性是否可写
+getPropertyType：获取对象属性类型
+```
+
+十五. org.apache.commons.lang3.StringEscapeUtils
+
+```
+unescapeHtml4：转义html
+escapeHtml4：反转义html
+escapeXml：转义xml
+unescapeXml：反转义xml
+escapeJava：转义unicode编码
+escapeEcmaScript：转义EcmaScript字符
+unescapeJava：反转义unicode编码
+escapeJson：转义json字符
+escapeXml10：转义Xml10
+```
+
+这个现在已经废弃了，建议使用commons-text包里面的方法。
+
+十六. org.apache.commons.beanutils.BeanUtils
+
+```
+copyPeoperties：复制属性值，从一个对象到另一个对象
+getProperty：获取对象属性值
+setProperty：设置对象属性值
+populate：根据Map给属性复制
+copyPeoperty：复制单个值，从一个对象到另一个对象
+cloneBean：克隆bean实例
+```
+
+现在你只要了解了以上16种最流行的工具类方法，你就不必要再自己写工具类了，不必重复造轮子。大部分工具类方法通过其名字就能明白其用途，如果不清楚的，可以看下别人是怎么用的，或者去网上查询其用法。
+
+
+
+#### 十九、阿里祭出大器，Java代码检查插件
+
+代码检测插件放到了github上：https://github.com/alibaba/p3c
+
+Eclipse安装：Help-->install new softWare--><https://p3c.alibaba.com/plugin/eclipse/update>
+
+安装完成后，项目右键-->阿里编码规约扫描。
+
+或者在上方菜单栏选择切换 插件的语言，旁边也有个扫描的按钮。
+
+
+
+#### 二十、Hibernate-Validator
+
+Hibernate-Validator的相关依赖
+
+如果项目的框架是spring boot的话，在spring-boot-starter-web 中已经包含了Hibernate-validator的依赖，我们点开spring-boot-starter-web的pom.xml则可以看到相关的依赖内容。
+
+```
+<dependencies>
+	<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-validator</artifactId>
+	</dependency>
+	<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+	</dependency>
+</dependencies>
+```
+
+如果是其他的框架风格的话，引入如下的依赖就可以了。
+
+```
+<dependency>
+    <groupId>org.hibernate</groupId>
+    <artifactId>hibernate-validator</artifactId>
+    <version>6.0.10.Final</version>
+</dependency>
+```
+
+## 
+
+> 以下代码环境均在Spring boot 1.5.10的版本下运行。
+
+Hibernate-Validator的主要使用的方式就是注解的形式，并且是“零配置”的，无需配置也可以使用。下面用一个最简单的案例。
+
+- Hibernate-Validator 最基本的使用
+
+  1.添加一个普通的接口信息，参数是@RequestParam类型的，传入的参数是id，且id不能小于10。
+
+```
+@RestController
+@RequestMapping("/example")
+@Validated
+public class ExampleController {
+
+    /**
+     *  用于测试
+     * @param id id数不能小于10 @RequestParam类型的参数需要在Controller上增加@Validated
+     * @return
+     */
+    @RequestMapping(value = "/info",method = RequestMethod.GET)
+    public String test(@Min(value = 10, message = "id最小只能是10") @RequestParam("id")
+                                   Integer id){
+        return "恭喜你拿到参数了";
+    }
+}
+```
+
+##### 全局验证异常的处理
+
+```java
+@Slf4j
+@ControllerAdvice
+@Component
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler
+    @ResponseBody
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public String handle(ConstraintViolationException exception, HttpServletRequest request) {
+        Set<ConstraintViolation<?>> violations = exception.getConstraintViolations();
+        StringBuffer errorInfo = new StringBuffer();
+        for (ConstraintViolation<?> item : violations) {
+            /**打印验证不通过的信息*/
+            errorInfo.append(item.getMessage());
+            errorInfo.append(",");
+        }
+        log.error("{}接口参数验证失败，内容如下：{}",request.getRequestURI(),errorInfo.toString());
+        return "您的请求失败，参数验证失败，失败信息如下："+ errorInfo.toString();
+    }
+}
+```
+
+3.一个简单的测试。
+
+![验证失败的案例.png](http://img.mukewang.com/5b70e78300010c7013840682.png)
+
+- 验证复杂参数的案例
+
+  1.添加一个vo的实体信息。
+
+```java
+/**
+ * 用户的vo类
+ * @author dengyun
+ */
+@Data
+public class ExampleVo {
+
+    @NotBlank(message = "用户名不能为空")
+    private String userName;
+
+    @Range(min = 18,max = 60,message = "只能填报年龄在18~60岁的")
+    private String age;
+}
+```
+
+2.添加一个POST请求的接口。
+
+```java
+    /**
+     * 用于测试
+     * @param vo 按照vo的验证
+     * @return
+     */
+    @RequestMapping(value = "/info1",method = RequestMethod.POST)
+    public String test1(@Valid  @RequestBody ExampleVo vo){
+        return "恭喜你拿到参数了";
+    }
+```
+
+3.在全局异常拦截中添加验证处理的结果
+
+```java
+    @ResponseBody
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public String handle(MethodArgumentNotValidException exception,HttpServletRequest request) {
+        StringBuffer errorInfo=new StringBuffer();
+        List<ObjectError> errors = exception.getBindingResult().getAllErrors();
+        for(int i=0;i<errors.size();i++){
+            errorInfo.append(errors.get(i).getDefaultMessage()+",");
+        }
+        log.error("{},接口参数验证失败：{}",request,errorInfo.toString());
+        return "您的请求失败，参数验证失败，失败信息如下:"+errorInfo.toString();
+    }
+```
+
+4.一个简单的测试
+
+![复杂参数校验失败.png](http://img.mukewang.com/5b70e87f00014f2813000898.png)
+
+> 我个人比较推荐使用全局异常拦截处理的方式去处理Hibernate-Validator的验证失败后的处理流程，这样能能减少Controller层或Services层的代码逻辑处理。虽然它也能在Controller中增加BindingResult的实例来获取数据，但是并不推荐。
+
+更加灵活的运用
+
+首先列举一下Hibernate-Validator所有的内置验证注解。
+
+> [@Null](https://my.oschina.net/u/561366) 被注释的元素必须为 null
+> [@NotNull](https://my.oschina.net/notnull) 被注释的元素必须不为 null
+> @AssertTrue 被注释的元素必须为 true
+> [@AssertFalse](https://my.oschina.net/u/2430840) 被注释的元素必须为 false
+> @Min(value) 被注释的元素必须是一个数字，其值必须大于等于指定的最小值 @Max(value) 被注释的元素必须是一个数字，其值必须小于等于指定的最大值 @DecimalMin(value) 被注释的元素必须是一个数字，其值必须大于等于指定的最小值
+> @DecimalMax(value) 被注释的元素必须是一个数字，其值必须小于等于指定的最大值
+> @Size(max=, min=) 被注释的元素的大小必须在指定的范围内
+> @Digits (integer, fraction) 被注释的元素必须是一个数字，其值必须在可接受的范围内
+> @Past 被注释的元素必须是一个过去的日期
+> @Future 被注释的元素必须是一个将来的日期
+> @Pattern(regex=,flag=) 被注释的元素必须符合指定的正则表达式
+> Hibernate Validator 附加的 constraint
+> @NotBlank(message =) 验证字符串非null，且长度必须大于0
+> @Email 被注释的元素必须是电子邮箱地址
+> @Length(min=,max=) 被注释的字符串的大小必须在指定的范围内
+> @NotEmpty 被注释的字符串的必须非空
+> @Range(min=,max=,message=) 被注释的元素必须在合适的范围内
+
+这些注解能适应我们绝大多数的验证场景，但是为了应对更多的可能性，我们需要增加注解功能配合Hibernate-Validator的其他的特性，来满足验证的需求。
+
+1. 自定义注解
+
+- 添加自定义注解
+
+我们一定会用到这么一个业务场景，vo中的属性必须符合枚举类中的枚举。Hibernate-Validator中还没有关于枚举的验证规则，那么，我们则需要自定义一个枚举的验证注解。
+
+```
+@Target({ElementType.METHOD, ElementType.FIELD, ElementType.ANNOTATION_TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = EnumCheckValidator.class)
+public @interface EnumCheck {
+    /**
+     * 是否必填 默认是必填的
+     * @return
+     */
+    boolean required() default true;
+    /**
+     * 验证失败的消息
+     * @return
+     */
+    String message() default "枚举的验证失败";
+    /**
+     * 分组的内容
+     * @return
+     */
+    Class<?>[] groups() default {};
+
+    /**
+     * 错误验证的级别
+     * @return
+     */
+    Class<? extends Payload>[] payload() default {};
+
+    /**
+     * 枚举的Class
+     * @return
+     */
+    Class<? extends Enum<?>> enumClass();
+
+    /**
+     * 枚举中的验证方法
+     * @return
+     */
+    String enumMethod() default "validation";
+}
+```
+
+- 注解的业务逻辑实现类
+
+```
+public class EnumCheckValidator implements ConstraintValidator<EnumCheck,Object> {
+    private EnumCheck enumCheck;
+
+    @Override
+    public void initialize(EnumCheck enumCheck) {
+        this.enumCheck =enumCheck;
+    }
+
+    @Override
+    public boolean isValid(Object value, ConstraintValidatorContext constraintValidatorContext) {
+        // 注解表明为必选项 则不允许为空，否则可以为空
+        if (value == null) {
+            return this.enumCheck.required()?false:true;
+        }
+        //最终的返回结果
+        Boolean result=Boolean.FALSE;
+        // 获取 参数的数据类型
+        Class<?> valueClass = value.getClass();
+        try {
+            Method method = this.enumCheck.enumClass().getMethod(this.enumCheck.enumMethod(), valueClass);
+            result = (Boolean)method.invoke(null, value);
+            result= result == null ? false : result;
+            //所有异常需要在开发测试阶段发现完毕
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }finally {
+            return result;
+        }
+    }
+}
+```
+
+- 编写枚举类
+
+```
+public enum  Sex{
+    MAN("男",1),WOMAN("女",2);
+
+    private String label;
+    private Integer value;
+
+    public String getLabel() {
+        return label;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    public Integer getValue() {
+        return value;
+    }
+
+    public void setValue(Integer value) {
+        this.value = value;
+    }
+
+    Sex(String label, int value) {
+        this.label = label;
+        this.value = value;
+    }
+
+    /**
+     * 判断值是否满足枚举中的value
+     * @param value
+     * @return
+     */
+    public static boolean validation(Integer value){
+        for(Sex s:Sex.values()){
+            if(Objects.equals(s.getValue(),value)){
+                return true;
+            }
+        }
+        return false;
+    }
+}
+```
+
+- 使用方式
+
+```
+    @EnumCheck(message = "只能选男：1或女:2",enumClass = Sex.class)
+    private Integer sex;
+```
+
+- 一个简单的测试
+
+![自定义注解的验证.png](http://img.mukewang.com/5b70e96f000141a522440836.png)
+
+> 我们甚至可以在自定义注解中做更加灵活的处理，甚至把与数据库的数据校验的也写成自定义注解，来进行数据验证的调用。
+
+2. Hibernate-Validator的分组验证
+
+同一个校验规则，不可能适用于所有的业务场景，对此，对每一个业务场景去编写一个校验规则，又显得特别冗余。这里我们刚好可以用到Hibernate-Validator的分组功能。
+
+- 添加一个名为ValidGroupA的接口（接口内容可以是空的，所以就不列举代码）
+- 添加一个需要分组校验的字段
+
+```
+@Data
+public class ExampleVo {
+
+    @NotNull(message = "主键不允许为空",groups = ValidGroupA.class)
+    private Integer id;
+
+    @NotBlank(message = "用户名不能为空",groups = Default.class)
+    private String userName;
+    
+    @Range(min = 18,max = 60,message = "只能填报年龄在18~60岁的",groups = Default.class)
+    private String age;
+
+    @EnumCheck(message = "只能选男：1或女:2",enumClass = Sex.class,groups = Default.class)
+    private Integer sex;
+}
+```
+
+- 改动接口的内容
+
+```
+    @RequestMapping(value = "/info1",method = RequestMethod.POST)
+    public String test1(@Validated({ValidGroupA.class,Default.class})  @RequestBody ExampleVo vo){
+        return "恭喜你拿到参数了";
+    }
+```
+
+这里我们可以注意一下，校验的注解由 **@Valid** 改成了 **@Validated**。
+
+- 进行测试，保留ValidGroupA.class和去掉ValidGroupA.class的测试。
+  - 保留ValidGroupA.class ![保留分组的测试.png](http://img.mukewang.com/5b70eb44000122e322440844.png)
+  - 去掉ValidGroupA.class ![去掉分组后的测试.png](http://img.mukewang.com/5b70eb620001904222720874.png)
+
+
+
+#####          单独异常处理
+
+```java
+package com.gwghk.gts2.client.models.vo;
+
+import java.io.Serializable;
+
+import org.hibernate.validator.constraints.NotEmpty;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class MobiOrderDTO implements Serializable {
+	
+	@JsonProperty("transaction_type")
+	private Integer type;
+	
+	@JsonProperty("transaction_status")
+	private Integer status;
+
+	private String pno;
+
+	@JsonProperty("mobi_pno")
+	private String mobiPno;
+
+	@JsonProperty("currency_code")
+	private String currency;
+
+	@NotEmpty(message = "amount is not empty")
+	private String amount;
+}
+```
+
+```java
+	@RequestMapping(value = "/transaction", method = RequestMethod.POST)
+	@ResponseBody
+	public ResultBean<Boolean> transactionCallback(@RequestBody @Valid MobiOrderDTO dto, BindingResult bindingResult) {
+		ResultBean<Boolean> resultBean = new ResultBean<Boolean>(false);
+		resultBean.setCode(ResultBean.FAIL);
+		if (bindingResult.hasErrors()) {
+			StringBuffer sb = new StringBuffer();
+			for (ObjectError objectError : bindingResult.getAllErrors()) {
+				sb.append(((FieldError) objectError).getField() + " : ").append(objectError.getDefaultMessage());
+			}
+			resultBean.setMsg(sb.toString());
+			LOGGER.error(sb.toString());
+			return resultBean;
+		}
+		return ManagerFactory.getInstance(true).getBackofficeManager(this.getSessionId()).transactionCallback(dto);
+	}
 ```
 

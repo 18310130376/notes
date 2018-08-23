@@ -2296,7 +2296,44 @@ public class JoinTest {
 }
 ```
 
+# 守护线程
 
+守护线程随着主线程的退出而退出，所以子线程有可能没执行完
+
+```java
+public class DaemonDemo {
+
+    public static void main(String[] args) throws InterruptedException {
+    	
+        Daemon  d1 = new Daemon();
+        Daemon  d2 = new Daemon();
+        /**
+         * 将两个线程设置为守护线程
+         */
+        d1.setDaemon(true);
+        d2.setDaemon(true);
+
+        d1.start();
+        d2.start();
+
+        Thread.sleep(2000);
+        System.out.println("主线程正在执行");
+    }
+}
+
+class Daemon extends Thread {
+
+    @Override
+    public void run() {
+    	try {
+			Thread.sleep(3000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+        System.out.println("子线程执行");
+    }
+}
+```
 
 
 
@@ -2325,6 +2362,56 @@ public class FetalException {
 			}
 		});
 		t.start();
+	}
+}
+```
+
+
+
+# 线程顺序执行
+
+```java
+
+public class ThreadTest {
+
+	public static void main(String[] args) {
+
+		final Thread t1 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				System.out.println("call t1");
+			}
+		});
+
+		final Thread t2 = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					//引用t1线程，等待t1线程执行完
+					t1.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.out.println("call t2");
+			}
+		});
+
+		Thread t3 = new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+					//引用t2线程，等待t2线程执行完
+					t2.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.out.println("call t3");
+			}
+		});
+		t3.start();// 这里三个线程的启动顺序可以任意，大家可以试下！
+		t2.start();
+		t1.start();
 	}
 }
 ```
@@ -2651,7 +2738,7 @@ public class ExecutorServiceTest {
 
 
 
-## Java 线程池运行状态
+# Java 线程池运行状态
 
 总线程数 = 排队线程数 + 活动线程数 + 执行完成的线程数。
 

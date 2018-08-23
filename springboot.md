@@ -5023,7 +5023,41 @@ https://my.oschina.net/javaroad/blog/1826448
 
 
 
+# 七十、自定义启动图案
 
+### 关闭图案
+
+```java
+@SpringBootApplication
+public class Application {
+
+	public static void main(String[] args) {
+		new SpringApplicationBuilder(Application.class).bannerMode(Banner.Mode.OFF)
+				.run(args);
+	}
+}
+```
+
+### 定制图案
+
+很简单，只要在classpath目录下创建banner.txt即可，把图案放入该文件就行，这是Spring Boot默认的图案位置，Spring Boot会自动加载该文件显示图案。
+
+自己测试发现放在resources下生效
+
+生成图案的网站：[http://patorjk.com](http://patorjk.com/)
+
+当然也支持通过application配置文件来定制图案。
+
+```
+# BANNER
+banner.charset=UTF-8 # Banner file encoding.
+banner.location=classpath:banner.txt # Banner file location.
+banner.image.location=classpath:banner.gif # Banner image file location (jpg/png can also be used).
+banner.image.width= # Width of the banner image in chars (default 76)
+banner.image.height= # Height of the banner image in chars (default based on image height)
+banner.image.margin= # Left hand image margin in chars (default 2)
+banner.image.invert= # If images should be inverted for dark terminal themes (default false)
+```
 
 
 
