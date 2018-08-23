@@ -533,7 +533,87 @@ for ( int i=0; i<10; i++ ) {
 
 
 
+# FutureTask
 
+```java
+package futuretask;
+ 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+ 
+public class FutureTaskForMultiCompute {
+    
+    public static void main(String[] args) {
+        
+        FutureTaskForMultiCompute inst=new FutureTaskForMultiCompute();
+        // 创建任务集合
+        List<FutureTask<Integer>> taskList = new ArrayList<FutureTask<Integer>>();
+        // 创建线程池
+        ExecutorService exec = Executors.newFixedThreadPool(5);
+        for (int i = 0; i < 10; i++) {
+            // 传入Callable对象创建FutureTask对象
+            FutureTask<Integer> ft = new FutureTask<Integer>(inst.new ComputeTask(i, ""+i));
+            taskList.add(ft);
+            // 提交给线程池执行任务，也可以通过exec.invokeAll(taskList)一次性提交所有任务;
+            exec.submit(ft);
+        }
+        
+        System.out.println("所有计算任务提交完毕, 主线程接着干其他事情！");
+ 
+        // 开始统计各计算线程计算结果
+        Integer totalResult = 0;
+        for (FutureTask<Integer> ft : taskList) {
+            try {
+                //FutureTask的get方法会自动阻塞,直到获取计算结果为止
+                totalResult = totalResult + ft.get();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+ 
+        // 关闭线程池
+        exec.shutdown();
+        System.out.println("多任务计算后的总结果是:" + totalResult);
+ 
+    }
+ 
+    private class ComputeTask implements Callable<Integer> {
+ 
+        private Integer result = 0;
+        private String taskName = "";
+        
+        public ComputeTask(Integer iniResult, String taskName){
+            result = iniResult;
+            this.taskName = taskName;
+            System.out.println("生成子线程计算任务: "+taskName);
+        }
+        
+        public String getTaskName(){
+            return this.taskName;
+        }
+        
+        @Override
+        public Integer call() throws Exception {
+            // TODO Auto-generated method stub
+ 
+            for (int i = 0; i < 100; i++) {
+                result =+ i;
+            }
+            // 休眠5秒钟，观察主线程行为，预期的结果是主线程会继续执行，到要取得FutureTask的结果是等待直至完成。
+            Thread.sleep(5000);
+            System.out.println("子线程计算任务: "+taskName+" 执行完成!");
+            return result;
+        }
+    }
+}
+```
 
 
 
@@ -589,6 +669,355 @@ public class CompletionServiceTest {
 		}
 	}
 }
+```
+
+
+
+# CompletableFuture
+
+CompletableFuture类实现了CompletionStage和Future接口。Future是Java 5添加的类，用来描述一个异步计算的结果，但是获取一个结果时方法较少,要么通过轮询isDone，确认完成后，调用get()获取值，要么调用get()设置一个超时时间。但是这个get()方法会阻塞住调用线程，这种阻塞的方式显然和我们的异步编程的初衷相违背。
+
+为了解决这个问题，JDK吸收了guava的设计思想，加入了Future的诸多扩展功能形成了CompletableFuture。
+
+
+
+- 将两个异步计算合并为一个——这两个异步计算之间相互独立，同时第二个又依赖于第一个的结果。
+- 等待 Future 集合中的所有任务都完成。
+- 仅等待 Future集合中最快结束的任务完成（有可能因为它们试图通过不同的方式计算同一个值），并返回它的结果。
+- 通过编程方式完成一个Future任务的执行（即以手工设定异步操作结果的方式）。
+- 应对 Future 的完成事件（即当 Future 的完成事件发生时会收到通知，并能使用 Future 计算的结果进行下一步的操作，不只是简单地阻塞等待操作的结果）
+
+
+
+使用supplyAsync使得方法变为异步
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class CompletableFutureTest {
+
+	public static void main(String[] args) throws InterruptedException, ExecutionException {
+
+		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+			
+			try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return "hello world";
+		});
+		System.out.println("111-----------");
+		System.out.println(future.get()); 
+		System.out.println("222-----------");
+	}
+}
+```
+
+异常处理
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class CompletableFutureTest {
+
+	public static void main(String[] args) throws InterruptedException, ExecutionException {
+
+		 CompletableFuture<String> completableFuture = new CompletableFuture<>();
+		    new Thread(() -> {
+		        // 模拟执行耗时任务
+		        System.out.println("task doing...");
+		        try {
+		            Thread.sleep(3000);
+		            int i = 1/0;
+		        } catch (InterruptedException e) {
+		            e.printStackTrace();
+		        }
+		        // 告诉completableFuture任务已经完成
+		        completableFuture.complete("ok");
+		    }).start();
+		    // 获取任务结果，如果没有完成会一直阻塞等待
+		    System.out.println("main thread doSthing...");
+		    String result = completableFuture.get();
+		    System.out.println("计算结果:" + result);
+	}
+}
+```
+
+上述代码int i = 1/0;出现了异常，异常会被限制在执行任务的线程的范围内，最终会杀死该线程，而这会导致等待`get`方法返回结果的线程永久地被阻塞。CompletableFuture的`completeExceptionally`方法将导致CompletableFuture内发生问题的异常抛出。这样，当执行任务发生异常时，调用`get()`方法的线程将会收到一个 `ExecutionException`异常，该异常接收了一个包含失败原因的Exception 参数。
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class CompletableFutureTest {
+
+	public static void main(String[] args) throws InterruptedException, ExecutionException {
+
+		 CompletableFuture<String> completableFuture = new CompletableFuture<>();
+		    new Thread(() -> {
+		        // 模拟执行耗时任务
+		        System.out.println("task doing...");
+		        try {
+		            Thread.sleep(3000);
+		            int i = 1/0;
+		        } catch (Exception e) {
+		        	 completableFuture.completeExceptionally(e);
+		        }
+		        // 告诉completableFuture任务已经完成
+		        completableFuture.complete("ok");
+		    }).start();
+		    // 获取任务结果，如果没有完成会一直阻塞等待
+		    System.out.println("main thread doSthing...");
+		    String result = "";;
+			try {
+				result = completableFuture.get();
+			} catch (ExecutionException e) {
+				e.printStackTrace();
+			}
+		    System.out.println("计算结果:" + result);
+	}
+}
+```
+
+等待任务完成
+
+JDK CompletableFuture 自带多任务组合方法allOf和anyOf
+
+`allOf`是等待所有任务完成，构造后CompletableFuture完成
+
+`anyOf`是只要有一个任务完成，构造后CompletableFuture就完成
+
+```java
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class CompletableFutureTest {
+
+	 public static void main(String[] args) {
+	        Long start = System.currentTimeMillis();
+	        // 结果集
+	        List<String> list = new ArrayList<>();
+	        ExecutorService executorService = Executors.newFixedThreadPool(10);
+	        List<Integer> taskList = Arrays.asList(2, 1, 3, 4, 5, 6, 7, 8, 9, 10);
+	        // 全流式处理转换成CompletableFuture[]+组装成一个无返回值CompletableFuture，join等待执行完毕。返回结果whenComplete获取
+	        CompletableFuture[] cfs = taskList.stream()
+	                .map(integer -> CompletableFuture.supplyAsync(() -> calc(integer), executorService)
+	                                .thenApply(h->Integer.toString(h))
+	                                .whenComplete((s, e) -> {
+	                                    System.out.println("任务"+s+"完成!result="+s+"，异常 e="+e+","+new Date());
+	                                    list.add(s);
+	                                })
+	                ).toArray(CompletableFuture[]::new);
+	        // 封装后无返回值，必须自己whenComplete()获取
+	        CompletableFuture.allOf(cfs).join();
+	        System.out.println("list="+list+",耗时="+(System.currentTimeMillis()-start));
+	    }
+
+	    public static Integer calc(Integer i) {
+	        try {
+	            if (i == 1) {
+	                Thread.sleep(3000);//任务1耗时3秒
+	            } else if (i == 5) {
+	                Thread.sleep(5000);//任务5耗时5秒
+	            } else {
+	                Thread.sleep(1000);//其它任务耗时1秒
+	            }
+	            System.out.println("task线程：" + Thread.currentThread().getName()
+	                    + "任务i=" + i + ",完成！+" + new Date());
+	        } catch (InterruptedException e) {
+	            e.printStackTrace();
+	        }
+	        return i;
+	    }
+}
+```
+
+这里的关键词是`thenApply`：
+
+1. `then`是指在当前阶段正常执行完成后（正常执行是指没有抛出异常）进行的操作。在本例中，当前阶段已经完成并得到值`message`。
+2. `Apply`是指将一个`Function`作用于之前阶段得出的结果
+
+`Function`是阻塞的，这意味着只有当大写操作执行完成之后才会执行`getNow()`方法。
+
+
+
+```java
+ /**
+     * 异步的获取产品价格
+     *
+     * @param product 产品名
+     * @return 最终价格
+     */
+    public Future<Double> getPriceAsync(String product) {
+        //创建CompletableFuture 对象，它会包含计算的结果
+        CompletableFuture<Double> futurePrice = new CompletableFuture<>();
+        //在另一个线程中以异步方式执行计算
+        new Thread(() -> {
+            try {
+                double price = calculatePrice(product);
+                //如果价格计算正常结束，完成Future操作并设置商品价格
+                futurePrice.complete(price);
+            } catch (Exception ex) {
+                //否则就抛出导致失败的异常，完成这 次Future操作
+                futurePrice.completeExceptionally(ex);
+            }
+        }).start();
+        // 无需等待还没结束的计算，直接返回Future对象
+        return futurePrice;
+    }
+    
+public class ShopMain {
+
+  public static void main(String[] args) {
+    Shop shop = new Shop("BestShop");
+    long start = System.nanoTime();
+    //查询商店，试图 取得商品的价格
+    Future<Double> futurePrice = shop.getPriceAsync("my favorite product");
+    long invocationTime = ((System.nanoTime() - start) / 1_000_000);
+    System.out.println("Invocation returned after " + invocationTime 
+                                                    + " msecs");
+    // 执行更多任务，比如查询其他商店
+    doSomethingElse();
+    // 在计算商品价格的同时
+    try {
+        //从Future对象中读 取价格，如果价格 未知，会发生阻塞
+        double price = futurePrice.get();
+        System.out.printf("Price is %.2f%n", price);
+    } catch (ExecutionException | InterruptedException e) {
+        throw new RuntimeException(e);
+    }
+    long retrievalTime = ((System.nanoTime() - start) / 1_000_000);
+    System.out.println("Price returned after " + retrievalTime + " msecs");
+  }
+
+  private static void doSomethingElse() {
+      System.out.println("Doing something else...");
+  }
+}
+```
+
+getNow 其中的getNow有点特殊，如果结果已经计算完则返回结果或抛异常，否则返回给定的valueIfAbsent的值。
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class CompletableFutureTest {
+
+	public static void main(String[] args) throws InterruptedException, ExecutionException {
+
+		 CompletableFuture<String> completableFuture = new CompletableFuture<>();
+		    new Thread(() -> {
+		        // 模拟执行耗时任务
+		        System.out.println("task doing...");
+		        try {
+		        } catch (Exception e) {
+		        	 completableFuture.completeExceptionally(e);
+		        }
+		        // 告诉completableFuture任务已经完成
+		        completableFuture.complete("ok");
+		    }).start();
+		    // 获取任务结果，如果没有完成会一直阻塞等待
+		    System.out.println("main thread doSthing...");
+		    String result = "";;
+		    Thread.sleep(1000);
+			result = completableFuture.getNow("bbbbbbbbbbbbbb");
+		    System.out.println("计算结果:" + result);
+	}
+}
+```
+
+
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+public class CompletableFutureTest {
+
+	public static void main(String[] args) {
+		CompletableFuture<Object> objectCompletableFuture = CompletableFuture.anyOf(CompletableFuture.runAsync(() -> {
+			try {
+				System.out.println(Thread.currentThread().getName() + ": 1====开始");
+				TimeUnit.SECONDS.sleep(5);
+				System.out.println(Thread.currentThread().getName() + ": 1====结束");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}), CompletableFuture.supplyAsync(() -> {
+			try {
+				System.out.println(Thread.currentThread().getName() + ": 2====开始");
+				TimeUnit.SECONDS.sleep(8);
+				System.out.println(Thread.currentThread().getName() + ": 2====结束");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return "ssssssssssssss";
+		}));
+		try {
+			System.out.println("获取返回值：" + objectCompletableFuture.get());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}
+```
+
+```coffeescript
+ForkJoinPool.commonPool-worker-1: 1====开始
+ForkJoinPool.commonPool-worker-2: 2====开始
+ForkJoinPool.commonPool-worker-1: 1====结束
+获取返回值：null
+```
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+public class CompletableFutureTest {
+
+	public static void main(String[] args) {
+		CompletableFuture<Void> objectCompletableFuture = CompletableFuture.allOf(CompletableFuture.runAsync(() -> {
+			try {
+				System.out.println(Thread.currentThread().getName() + ": 1====开始");
+				TimeUnit.SECONDS.sleep(5);
+				System.out.println(Thread.currentThread().getName() + ": 1====结束");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}), CompletableFuture.supplyAsync(() -> {
+			try {
+				System.out.println(Thread.currentThread().getName() + ": 2====开始");
+				TimeUnit.SECONDS.sleep(8);
+				System.out.println(Thread.currentThread().getName() + ": 2====结束");
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return "ssssssssssssss";
+		}));
+		try {
+			System.out.println("获取返回值：" + objectCompletableFuture.get());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}
+```
+
+```
+ForkJoinPool.commonPool-worker-1: 1====开始
+ForkJoinPool.commonPool-worker-2: 2====开始
+ForkJoinPool.commonPool-worker-1: 1====结束
+ForkJoinPool.commonPool-worker-2: 2====结束
+获取返回值：null
 ```
 
 
