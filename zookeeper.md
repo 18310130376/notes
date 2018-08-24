@@ -388,6 +388,12 @@ Maven依赖(使用curator的版本：2.12.0，对应Zookeeper的版本为：3.4.
 
 # Curator的基本Api
 
+
+
+https://www.cnblogs.com/binarylei/category/1159287.html
+
+
+
 ## 创建会话
 
 ### 1.使用静态工程方法创建客户端

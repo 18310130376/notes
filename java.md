@@ -1705,3 +1705,32 @@ public class MobiOrderDTO implements Serializable {
 		return ManagerFactory.getInstance(true).getBackofficeManager(this.getSessionId()).transactionCallback(dto);
 	}
 ```
+
+
+
+#### 二十三、Disruptor
+
+https://www.cnblogs.com/binarylei/p/9221560.html
+
+
+
+#### 二十四、设计模式
+
+https://www.cnblogs.com/binarylei/category/1159281.html
+
+
+
+#### 二十五、Guava
+
+https://www.cnblogs.com/wihainan/p/7091775.html
+
+https://blog.csdn.net/dgeek/article/details/76221746
+
+```xml
+<dependency>
+    <groupId>com.google.guava</groupId>
+    <artifactId>guava</artifactId>
+    <version>18.0</version>
+</dependency>
+```
+
