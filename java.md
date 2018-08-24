@@ -1705,4 +1705,3 @@ public class MobiOrderDTO implements Serializable {
 		return ManagerFactory.getInstance(true).getBackofficeManager(this.getSessionId()).transactionCallback(dto);
 	}
 ```
-
