@@ -2,6 +2,8 @@
 
 https://my.oschina.net/javaroad/
 
+http://outofmemory.cn/java/guava/
+
 #### 一、JDK安装说明
 
 1.卸载存在的JAVA程序
