@@ -1,6 +1,8 @@
 # 面试锦集
 
-# https://www.bilibili.com/read/cv558137?from=articleDetail
+https://www.bilibili.com/read/cv558137?from=articleDetail
+
+http://www.importnew.com/29562.html
 
 # 1 、 Java支持多继承么
 
