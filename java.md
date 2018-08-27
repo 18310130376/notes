@@ -1726,6 +1726,10 @@ https://www.cnblogs.com/wihainan/p/7091775.html
 
 https://blog.csdn.net/dgeek/article/details/76221746
 
+http://ifeve.com/google-guava-strings/
+
+http://ifeve.com/google-guava-io/
+
 ```xml
 <dependency>
     <groupId>com.google.guava</groupId>
@@ -1733,4 +1737,3 @@ https://blog.csdn.net/dgeek/article/details/76221746
     <version>18.0</version>
 </dependency>
 ```
-
