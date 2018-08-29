@@ -452,7 +452,16 @@ public class User {
 
 
 
-## Environment
+## @Environment
+
+```java
+@Autowired
+private Environment env ;
+// 获取参数
+String getProperty(String  key);
+```
+
+
 
 ## @ConfigurationProperties 
 
@@ -524,6 +533,39 @@ public class Application {
 	}
 }
 ```
+
+## @PropertySource+@ConfigurationProperties注解读取方式
+
+```java
+@Component
+@ConfigurationProperties(prefix = "db")
+@PropertySource(value = {"config/db-config.properties"})
+public class DBConfig {
+
+	private String username;
+	private String password;
+
+	public String getUsername() {
+		return username;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+}
+```
+
+
+
+
 
 
 
@@ -1012,6 +1054,38 @@ test.age=20.prod
 #spring.dubbo.protocol.port=@protocol.port@
 #基础包扫描
 #spring.dubbo.base-package=@scan.basepackage@
+```
+
+
+
+## 指定profile
+
+#### main方法启动方式：
+
+```
+// 在Eclipse Arguments里面添加--spring.profiles.active=prod
+```
+
+#### 插件启动方式：
+
+```
+spring-boot:run -Drun.profiles=prod
+```
+
+#### jar运行方式：
+
+```
+java -jar xx.jar --spring.profiles.active=prod
+```
+
+除了在配置文件和命令行中指定Profile，还可以在启动类中写死指定，通过SpringApplication.setAdditionalProfiles方法。
+
+SpringApplication.class
+
+```java
+public void setAdditionalProfiles(String... profiles) {   
+   this.additionalProfiles = new LinkedHashSet<String>(Arrays.asList(profiles));
+}  
 ```
 
 
@@ -5137,6 +5211,42 @@ banner.image.height= # Height of the banner image in chars (default based on ima
 banner.image.margin= # Left hand image margin in chars (default 2)
 banner.image.invert= # If images should be inverted for dark terminal themes (default false)
 ```
+
+
+
+# 七十一、运行Spring Boot的3种方式
+
+```java
+main方法
+spring-boot:run。
+java -jar xx.jar命令
+```
+
+
+
+# 七十二、查看自动配置报告
+
+怎么查看自己加的自动配置类有没有被加载，或者查看所有自动配置激活的和未激活的可以通过以下几种试查看。
+
+1. spring-boot:run运行的在对话框Enviroment中加入debug=true变量 
+2. java -jar xx.jar --debug
+3. main方法运行，在VM Argumanets加入-Ddebug
+4. 直接在application文件中加入debug=true
+5. 如果集成了spring-boot-starter-actuator监控，通过autoconfig端点也可以查看。
+
+启动后会在控制台看到以下自动配置报告信息：
+
+```
+=========================AUTO-CONFIGURATION REPORT=========================Positive matches:-----------------   AopAutoConfiguration matched:      - @ConditionalOnClass found required classes 'org.springframework.context.annotation.EnableAspectJAutoProxy', 'org.aspectj.lang.annotation.Aspect', 'org.aspectj.lang.reflect.Advice'; @ConditionalOnMissingClass did not find unwanted class (OnClassCondition)      - @ConditionalOnProperty (spring.aop.auto=true) matched (OnPropertyCondition)   ...   EnvAutoConfig matched:      - @ConditionalOnClass found required class 'org.springframework.core.env.PropertyResolver'; @ConditionalOnMissingClass did not find unwanted class (OnClassCondition)   ErrorMvcAutoConfiguration matched:      - @ConditionalOnClass found required classes 'javax.servlet.Servlet', 'org.springframework.web.servlet.DispatcherServlet'; @ConditionalOnMissingClass did not find unwanted class (OnClassCondition)      - @ConditionalOnWebApplication (required) found StandardServletEnvironment (OnWebApplicationCondition)   ErrorMvcAutoConfiguration#basicErrorController matched:      - @ConditionalOnMissingBean (types: org.springframework.boot.autoconfigure.web.ErrorController; SearchStrategy: current) did not find any beans (OnBeanCondition)   ...Negative matches:-----------------   ActiveMQAutoConfiguration:      Did not match:         - @ConditionalOnClass did not find required classes 'javax.jms.ConnectionFactory', 'org.apache.activemq.ActiveMQConnectionFactory' (OnClassCondition)   AopAutoConfiguration.JdkDynamicAutoProxyConfiguration:      Did not match:         - @ConditionalOnProperty (spring.aop.proxy-target-class=false) found different value in property 'proxy-target-class' (OnPropertyCondition)   ArtemisAutoConfiguration:      Did not match:         - @ConditionalOnClass did not find required classes 'javax.jms.ConnectionFactory', 'org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory' (OnClassCondition)   BatchAutoConfiguration:      Did not match:         - @ConditionalOnClass did not find required class 'org.springframework.batch.core.launch.JobLauncher' (OnClassCondition)   ...
+```
+
+Positive matches：已经启用的自动配置
+
+Negative matches：未启用的自动配置
+
+从报告中看到自己添加的EnvAutoConfig已经自动配置了。
+
+
 
 
 
