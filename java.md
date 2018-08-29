@@ -1739,3 +1739,7 @@ http://ifeve.com/google-guava-io/
     <version>18.0</version>
 </dependency>
 ```
+
+#### 二十六、Orika 实现bean 映射
+
+https://blog.csdn.net/neweastsun/article/details/80559868?from=timeline&isappinstalled=0
