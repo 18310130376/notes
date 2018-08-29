@@ -1702,6 +1702,124 @@ public class JasyptTest {
 
 使用时@value注入或者其他方式获取`spring.datasource.password`，拿到的直接就是明文。
 
+## 三、spring项目
+
+```java
+package com.gwghk.gts2.common.util;
+
+import java.util.List;
+import java.util.Properties;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.jasypt.util.text.BasicTextEncryptor;
+
+public class InitLoader {
+
+	private static final Logger logger = Logger.getLogger(InitLoader.class);
+	
+	private String path;
+	private List<String> encryptedProperties;
+	
+	private static String DEFAULT_INIT_PATH = "/init.properties";
+	private static String KEY = "gw-gold-24k";
+	private static BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
+	
+	static{
+		textEncryptor.setPassword(KEY);
+	}
+	public Properties asProperties() {
+		Properties properties = loadProperties();
+		if(encryptedProperties != null){
+			for(String ep : encryptedProperties){
+				String value = properties.getProperty(ep);
+				if(StringUtils.isNotEmpty(value)){
+					try{
+						value = textEncryptor.decrypt(value);
+						properties.setProperty(ep, value);
+					}catch(Exception e){
+						logger.error("decrypt error " + ep + " value: " + value);
+					}
+				}
+
+			}			
+		}
+		return properties;
+	}
+
+	protected Properties loadProperties(){
+		String path = this.path;
+		if(StringUtils.isEmpty(path)){
+			path= DEFAULT_INIT_PATH;
+		}
+		Properties properties = ConfigLoader.getInstance().getProperties(path);
+		return properties;
+	}
+	
+	public void setPath(String path) {
+		this.path = path;
+	}
+
+	public void setEncryptedProperties(List<String> encryptedProperties) {
+		this.encryptedProperties = encryptedProperties;
+	}
+
+	public static void main(String[] args){
+
+		System.out.println(textEncryptor.decrypt("JYzLZgjsds0DsyRB+Ad3YbgivNAN9ISw"));
+		System.out.println(textEncryptor.encrypt("Liang1234!@#$"));
+	}
+}
+
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+	 http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd	
+     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd">
+     
+    <context:component-scan base-package="com.gwghk.gts2" />
+
+	<bean id="placeholderConfig" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="ignoreUnresolvablePlaceholders" value="true"/>
+		<property name="propertiesArray">
+            <list>
+                <bean factory-bean="propertiesHolder" factory-method="asProperties" />
+            </list>
+        </property>
+	</bean>
+	
+	<bean id="propertiesHolder" class="com.gwghk.gts2.common.util.InitLoader" >
+		<!--property name="path" value="/init.properties" /-->
+		<property name="encryptedProperties">
+            <list>
+                <value>jdbc.password</value>
+                <value>jdbc.readonly.password</value>
+            </list>
+        </property>
+	</bean>
+
+	<import resource="classpath:applicationContext-io-dao.xml" />
+	<import resource="classpath:applicationContext-io-comm.xml" />
+	<import resource="classpath:applicationContext-service-core.xml" />
+	<!-- <import resource="classpath:applicationContext-service-report.xml" /> -->
+	<import resource="classpath:applicationContext-api.xml" />
+	<import resource="classpath:applicationContext-app-deposit-url.xml" />
+	<import resource="classpath:applicationContext-util.xml" />
+</beans>
+```
+
+
+
+
+
 # 十一  、DES加密
 
 ```java
