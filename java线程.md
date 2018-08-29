@@ -3308,3 +3308,29 @@ public class Singleton {
 }
 ```
 
+
+
+## 单例  静态内部类
+
+```java
+public class Singleton {  
+
+    private static class SingletonHolder {  
+		private static final Singleton INSTANCE = new Singleton();  
+    }  
+
+    private Singleton (){}  
+
+    public static final Singleton getInstance() {  
+		return SingletonHolder.INSTANCE;  
+    }  
+    
+    public static void main(String[] args) {
+		
+    	Singleton instance = Singleton.getInstance();
+    	Singleton instance2 = Singleton.getInstance();
+    	System.out.println(instance);
+    	System.out.println(instance2);
+	}
+} 
+```

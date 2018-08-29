@@ -2300,6 +2300,8 @@ public class ScheduledTasks {
   private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 
     @Scheduled(fixedRate = 5000)
+    // cron接受cron表达式，根据cron表达式确定定时规则
+   // @Scheduled(cron="0/5 * * * * ? ")   //每5秒执行一次 
     public void reportCurrentTime() {
         System.out.println("The time is now "+ dateFormat.format(new Date()));
     }
@@ -2309,9 +2311,88 @@ public class ScheduledTasks {
 通过在方法上加@Scheduled注解，表明该方法是一个调度任务。
 
 - @Scheduled(fixedRate = 5000) ：上一次开始执行时间点之后5秒再执行
+- fixedRateString: 与fixedRate的含义一样，只是将参数类型变为String
 - @Scheduled(fixedDelay = 5000) ：上一次执行完毕时间点之后5秒再执行
+- fixedDelayString：与fixedDelay含义一样，只是参数类型变为String；
 - @Scheduled(initialDelay=1000, fixedRate=5000) ：第一次延迟1秒后执行，之后按fixedRate的规则每5秒执行一次
 - @Scheduled(cron=” /5 “) ：通过cron表达式定义规则，什么是cro表达式，自行搜索引擎。
+- initialDelay：表示延迟多久再第一次执行任务，参数类型为long，单位ms；
+- initialDelayString：与initialDelay的含义一样，只是将参数类型变为String；
+
+
+cron表达式有在线的生成器。
+
+```
+每隔5秒执行一次：*/5 * * * * ?
+每隔1分钟执行一次：0 */1 * * * ?
+每天23点执行一次：0 0 23 * * ?
+每天凌晨1点执行一次：0 0 1 * * ?
+每月1号凌晨1点执行一次：0 0 1 1 * ?
+每月最后一天23点执行一次：0 0 23 L * ?
+每周星期天凌晨1点实行一次：0 0 1 ? * L
+在26分、29分、33分执行一次：0 26,29,33 * * * ?
+每天的0点、13点、18点、21点都执行一次：0 0 0,13,18,21 * * ?
+```
+
+**存在的问题**
+
+但是后来发现个问题，通过同时测试几个任务发现，所有的任务都是在同一个线程池中的同一个线程来完成的。在实际开发过程中，我们当然不希望所有的任务都运行在一个线程中。
+
+```java
+@Scheduled(cron="0/1 * * * * ? ")   //每1秒执行一次 
+    public void testCron1() {
+       DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");  
+        logger.info(sdf.format(new Date())+"*********每1秒执行一次");
+    }
+   
+   @Scheduled(cron="0/2 * * * * ? ")   //每2秒执行一次 
+    public void testCron2() {
+       DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");  
+        logger.info(sdf.format(new Date())+"*********每2秒执行一次");
+    }
+   
+   @Scheduled(cron="0/3 * * * * ? ")   //每3秒执行一次 
+    public void testCron3() {
+       DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");  
+        logger.info(sdf.format(new Date())+"*********每3秒执行一次");
+    }
+   
+   @Scheduled(cron="0/4 * * * * ? ")   //每4秒执行一次 
+    public void testCron4() {
+       DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");  
+        logger.info(sdf.format(new Date())+"*********每4秒执行一次");
+    }
+```
+
+```
+INFO 10428 --- [pool-1-thread-1] c.i.boot.config.EnableScheduling         : 2018-08-29 15:50:35*********每1秒执行一次
+INFO 10428 --- [pool-1-thread-1] c.i.boot.config.EnableScheduling         : 2018-08-29 15:50:36*********每2秒执行一次
+INFO 10428 --- [pool-1-thread-1] c.i.boot.config.EnableScheduling         : 2018-08-29 15:50:36*********每3秒执行一次
+INFO 10428 --- [pool-1-thread-1] c.i.boot.config.EnableScheduling         : 2018-08-29 15:50:36*********每4秒执行一次
+INFO 10428 --- [pool-1-thread-1] c.i.boot.config.EnableScheduling         : 2018-08-29 15:50:36*********每1秒执行一次
+INFO 10428 --- [pool-1-thread-1] c.i.boot.config.EnableScheduling         : 2018-08-29 15:50:37*********每1秒执行一次
+```
+
+解决办法
+
+```
+@Configuration
+public class ScheduleConfig implements SchedulingConfigurer {
+    @Override
+    public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
+        
+        taskRegistrar.setScheduler(Executors.newScheduledThreadPool(5));
+    }
+}
+```
+
+```
+INFO 7576 --- [pool-1-thread-4] c.i.boot.config.EnableScheduling         : 2018-08-29 15:57:19*********每1秒执行一次
+INFO 7576 --- [pool-1-thread-3] c.i.boot.config.EnableScheduling         : 2018-08-29 15:57:20*********每4秒执行一次
+INFO 7576 --- [pool-1-thread-5] c.i.boot.config.EnableScheduling         : 2018-08-29 15:57:20*********每2秒执行一次
+INFO 7576 --- [pool-1-thread-3] c.i.boot.config.EnableScheduling         : 2018-08-29 15:57:20*********每1秒执行一次
+```
+
 
 
 

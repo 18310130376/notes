@@ -967,6 +967,12 @@ public class StreamOfJava8 {
 		for (Integer elem : lists)
 			System.out.print(elem + " ");
 	}
+    
+    //两个list合并去掉重复
+     List<String> collect = Stream.of(listA, listB)
+       .flatMap(Collection::stream)
+        .distinct()
+        .collect(Collectors.toList());
 }
 ```
 
@@ -1743,3 +1749,12 @@ http://ifeve.com/google-guava-io/
 #### 二十六、Orika 实现bean 映射
 
 https://blog.csdn.net/neweastsun/article/details/80559868?from=timeline&isappinstalled=0
+
+
+
+#### 二十七、JodaTime
+
+
+
+#### 二十八、FastJson
+

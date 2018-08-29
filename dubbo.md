@@ -1335,7 +1335,105 @@ https://dangdangdotcom.github.io/dubbox/rest.html
 
 https://my.oschina.net/yanpenglei/blog/1863383
 
+
+
+# dubbo服务调试管理实用命令
+
+连接服务
+
+telnet localhost 20882 （spring.dubbo.protocol.port=20882）
+
+查看服务
+
+ls       ls -l
+
+显示服务的方法
+
+ls  com.integration.boot.api.IUserProviderService
+
+```java
+dubbo>ls -l com.integration.boot.api.IUserProviderService
+java.util.Map getData(java.util.Map,java.lang.String)
+java.util.List getAllUser(java.lang.String,java.lang.String)
+java.util.List getAllUser(java.lang.String)
+```
+
+调用服务方法{"id":"100"}为对象，如果是普通类型直接写值就可以了
+
+```shell
+invoke com.integration.boot.api.IUserProviderService.getData({"id":"123456"},"123456")
+```
+
+自动查看调用包含此方法的服务
+
+```java
+invoke getData({"id":"123456"},"123456")
+```
+
+status
+
+显示汇总状态，该状态将汇总所有资源的状态，当全部OK时则显示OK，只要有一个ERROR则显示ERROR，只要有一个WARN则显示WARN。
+
+status -l
+
+显示状态列表。
+
+
+
+count
+
+count com.integration.boot.api.IUserProviderService
+
+统计1次服务任意方法的调用情况。
+
+countXxxService 10
+
+统计10次服务任意方法的调用情况。
+
+count com.integration.boot.api.IUserProviderService getData
+
+统计1次服务方法的调用情况。
+
+count com.integration.boot.api.IUserProviderService getData 10
+
+统计10次服务方法的调用情况。
+
+
+
+使用trace 时telnet控制台阻塞，只有跟踪的服务被调用，则会打印出服务的入参和返回结果
+
+```shell
+dubbo>trace com.integration.boot.api.IUserProviderService
+/172.27.2.41:20105 -> com.integration.boot.api.IUserProviderService.getAllUser(["123",null]) -> [{"password":null,"name":"wukang12"}]
+elapsed: 0 ms.
+```
+
+trace com.integration.boot.api.IUserProviderService
+
+跟踪1次服务任意方法的调用情况。
+
+trace com.integration.boot.api.IUserProviderService 10
+
+跟踪10次服务任意方法的调用情况。
+
+trace com.integration.boot.api.IUserProviderService getData
+
+跟踪1次服务方法的调用情况
+
+trace com.integration.boot.api.IUserProviderService  getData 10
+
+跟踪10次服务方法的调用情况。
+
+
+
+
+
+
+
+
+
 # 遇见问题
 
 
 
+## 
