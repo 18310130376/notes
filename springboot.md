@@ -5447,6 +5447,12 @@ Negative matches：未启用的自动配置
 
 
 
+# 七十三、Eclipse SpringBoot插件
+
+spring-tool-suite
+
+
+
 
 
 https://doc.yonyoucloud.com/doc/Spring-Boot-Reference-Guide/VII.%20Spring%20Boot%20CLI/56.%20Developing%20application%20with%20the%20Groovy%20beans%20DSL.html
