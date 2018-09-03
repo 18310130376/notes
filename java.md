@@ -1758,3 +1758,34 @@ https://blog.csdn.net/neweastsun/article/details/80559868?from=timeline&isappins
 
 #### 二十八、FastJson
 
+
+
+#### 二十九、对象转Map
+
+```java
+public static Map<String, String> PoConvertMap(Object obj){
+		Map<String, String> map = new HashMap<String, String>();
+		try {
+			Class clazz = obj.getClass();
+			//获取object的属性描述
+			PropertyDescriptor[] pds = Introspector.getBeanInfo(clazz, Object.class).getPropertyDescriptors();
+			for(PropertyDescriptor pd : pds){
+				//获取属性名
+				String name = pd.getName();
+				//获取get方法
+				Method readMethod = pd.getReadMethod();
+				Object value = readMethod.invoke(obj);
+				if(null != value){
+					map.put(name, value.toString());
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+
+
+PoConvertMap(propertiesVo);
+```
+
