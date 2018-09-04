@@ -1290,7 +1290,16 @@ setProperty：设置对象属性值
 populate：根据Map给属性复制
 copyPeoperty：复制单个值，从一个对象到另一个对象
 cloneBean：克隆bean实例
+
 ```
+
+
+
+十七、org.springframework.util.ReflectionUtils
+
+
+
+
 
 现在你只要了解了以上16种最流行的工具类方法，你就不必要再自己写工具类了，不必重复造轮子。大部分工具类方法通过其名字就能明白其用途，如果不清楚的，可以看下别人是怎么用的，或者去网上查询其用法。
 
@@ -1787,5 +1796,61 @@ public static Map<String, String> PoConvertMap(Object obj){
 
 
 PoConvertMap(propertiesVo);
+```
+
+
+
+#### 三十、SPI
+
+```java
+package com.spi;
+
+public interface Animal {
+	  String eat(String a);
+}
+```
+
+```java
+package com.spi;
+
+public class Dog implements Animal {
+
+    @Override
+    public String eat(String a) {
+		return "Dog eating..."+a;
+    }
+}
+```
+
+```java
+package com.spi;
+
+public class Pig implements Animal {
+
+    @Override
+    public String eat(String a) {
+		return "Pig eating..."+a;
+    }
+}
+```
+
+```java
+package com.spi;
+
+import java.util.Iterator;
+import java.util.ServiceLoader;
+
+public class SPITest {
+	
+	 public static void main(String[] args) {
+	        ServiceLoader<Animal> load = ServiceLoader.load(Animal.class);
+	        Iterator<Animal> iterator = load.iterator();
+	        while (iterator.hasNext()) {
+	            Animal animal = iterator.next();
+	            System.out.println("calss:" + animal.getClass().getName() +
+	                    "|method:eat" + animal.eat("world"));
+	        }
+	    }
+}
 ```
 
