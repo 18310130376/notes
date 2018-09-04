@@ -1,0 +1,45 @@
+切换过程有消息被重复消费，是因为zookeeper是以kill的方式stop的？
+
+切换过程中（或者停掉一台zookeeper），备用的canal server自动启动？
+
+集群中存活数量少于一半，zookeeper仍然能够对外提供服务？
+zookeeper节点全部stop，或者停掉多于半数报错ZooKeeperServer not running，但是数据同步服务仍然正常，为什么？
+注册中心全部宕掉后，服务提供者和服务消费者仍能通过本地缓存通讯
+
+<dubbo:registry address="zookeeper://10.20.153.10:2181?backup=10.20.153.11:2181,10.20.153.12:2181" />
+OR
+<dubbo:registry protocol="zookeeper" address="10.20.153.10:2181,10.20.153.11:2181,10.20.153.12:2181" />
+
+leader选举
+1. 判断消息里的epoch是不是比当前的大，如果大则消息里id对应的server我就承认它是leader
+2. 如果epoch相等则判断zxid，如果消息里的zxid比我的大我就承认它是leader
+3. 如果前面两个都相等那就比较一下server id吧，如果比我的大我就承认它是leader。
+关于前面两个东西暂时我们不去关心它，对于新启动的集群这两者都是相等的。
+那这样看来server id的大小也是leader选举的一环啊（有的人生下来注定就不平凡，这都是命啊）。
+
+客户端连接zookeeper集群时，客户端从创建ZooKeeper对象的地址列表（被随机打乱了），取出一个服务器地址进行tcp连接操作
+
+/tmp目录是临时目录，数据不要放在里面
+
+myid 的范围是 1 ~ 255
+
+zookeeper默认是超时时间范围是2~20个ticketTime
+
+zookeeper的快照和日志的关系snapshot和log
+Transaction文件的文件名中zxid是文件中所有命令中zxid最小的zxid
+Snapshot中的lastProcessedZxid是最后一个操作的zxid，一般来讲是最大的zxid
+Restore时会读取snapshot然后根据snapshot中lastProcessedZxid+1后读取命令log重做命令附加到DataTree上
+每次的snapshot都是伴随着新log文件的生成的。
+换句话说，zookeeper的运行机制是这样的：
+当开始第一次运行的时候，首先会产生一个snapshot，这个时候是没有log的。
+当第一次有操作的时候开始log文件产生的时候，这时候不会产生snapshot。
+当第一个log文件体积达到预设值时候，这时候系统需要snapshot，然后创建新的日志文件，以此不断交替。
+因此，备份原则应该是这样：
+备份最新一份的snapshot和最近的一份log即可
+如果snapshot后，最新的Log丢失，那么该段时间内数据变更全部丢失。（例如机器死机,zk来不及执行关闭动作snapshot）
+如果snapshot后，最新的log有保存，那么数据不会丢失。
+原因：snapshot保存了系统最近一次的完整镜像，同时在每次关闭服务的时候也会生成snapshot。
+          因此snapshot之前的snapshot和log是无效的，而snapshot之后的信息则仅保存在log中
+		  
+		  
+		  

@@ -1,0 +1,82 @@
+﻿./kafka-topics.sh --describe --zookeeper 192.168.35.110:10950 --topic TABLE_IX_TRADE_ALL_BASE
+//查看分区偏移量
+./kafka-run-class.sh kafka.tools.ConsumerOffsetChecker --zookeeper 192.168.35.110:10950 --group bo_01 --topic TABLE_IX_TRADE_ALL_BASE
+
+aws查看历史日志目录
+/var/log/s3log/2.34/log 
+
+//查询公网ip
+curl ifconfig.me/all.xml
+
+
+
+yum install dos2unix
+//查看内存使用情况
+ps aux|head -1;ps aux|grep -v PID|sort -rn -k +4|head
+
+nohup ./kafka-server-start.sh ../config/server.properties >/dev/null 2>&1 &
+
+修改kafka server.properties，num.partitions增加默认分区数量，并对已经存在的topic执行（修改只能增加partition数目，并不能减少）
+./kafka-topics.sh --zookeeper 172.30.10.107:2182 -alter --partitions 60 --topic TABLE_IX_TRADE_ALL_BASE
+
+修改kafka replication（注意修改replication.json文件）
+./kafka-reassign-partitions.sh --zookeeper 192.168.35.110:10951 --reassignment-json-file replication.json -execute
+
+在kafka-0.9中用new consumer的kakfa streaming有一个大坑，因为consumer表明自己是否存活的heartbeat只能在poll中被触发，导致：
+1. 如果配置的max.partition.fetch.bytes较大（这个值在0.9里面就不能配置过小，否则如果遇到某一条message大小超过该值，你就stcuk住了），导致单次poll的event较多，处理时间过长，超过了session.timeout.ms，会导致consumer失连，被rebalance掉。
+所以在kafka-0.10中改了几个关键的地方：
+1. heartbeat不再在poll中触发，而是由单独的线程来完成
+2. 增加max.poll.records配置项
+
+
+这里需要注意的是新的group是重新消费所有数据，但也并非是topic中所有数据，它只会消费它在zookeeper注册过之后产生的数据。
+
+nohup.out可查看kafka启动报错信息
+
+交易服务器存的是秒，要*1000转成毫秒，才能用new Date()转成Date
+
+consumer没有报错，但是就是消费不到消息，修改group_id试试(正常情况下group_id不能乱改，因为新的group会从新的消费位点开始消费，
+	如此会造成之前的数据消费不到！！)
+
+
+kafka server的broker.id配置，改成新的值后，要删除对应log.dir（/tmp/kafka-logs）里面的文件，不然kafka启动会报错。然而，
+log.dir里面的文件存着kafka的消息记录，不能乱删，所以最好不要修改已经在运行的kafka的broker.id。
+
+kafka server报以下错误，在/etc/hosts文件添加ip-10.98.2.33映射到对应的ip（10.98.2.33）即可解决。
+Caused by: java.net.UnknownHostException: ip-10.98.2.33: ip-10.98.2.33: unknown error  
+
+kafka consumer 高可用，可以部署多台tomcat，每台tomcat的consumer都去同一个消费组
+
+tomcat尽量用shutdown的方式停，不要kill -9
+
+
+修改kafka server的时候，先停canal，等消息被消费完再动
+
+内存不够用会导致kafka server异常
+kafka server 最好不要部署在同一台服务器
+
+kafka broker数量太少，启动报错后，可以修改default.replication.factor，再重启
+
+zookeeper上brokers/ids节点记录了当前集群中可用的server id
+
+修改kafka端口步骤：
+1、修改端口，stop该kafka server
+2、修改consumer对应kafka端口，重启
+3、修改canal monitor对应kafka端口，重启
+4、启动该kafka server
+
+kafka server异常重启时，必须要先启动leader的server，待稳定后再启动其它server？
+最好把一个启动稳定了再启动剩余的？
+
+当你使用完Consumer时，你应该总是关闭该Consumer。这样做不仅为了清理使用的Sockets，也确保Consumer告诉Coordinator要退出该Group。
+
+request.required.acks=-1时，同步（Kafka默认为同步，即producer.type=sync）的发送模式，replication.factor>=2且min.insync.replicas>=2的情况下，不会丢失数据。
+
+
+如果要更换kafka的log.dir，先关闭canal client（数据入口），确认kafka数据已经被consumer消费完，再把log.dir改到指定目录
+
+建议Kafka集群不要和其他应用使用同一组ZK，因为Kafka对于ZK的延迟和超时是相当敏感的，ZK的不通将会导致Kafka的不可预测性
+
+
+
+

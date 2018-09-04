@@ -1,0 +1,84 @@
+创建canal用户，并赋权
+CREATE USER canal IDENTIFIED BY 'Canal123!@#';    
+GRANT SELECT, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'canal'@'%';  
+FLUSH PRIVILEGES;
+a.获取binlog文件列表 
+mysql> show binary logs;
+b.查看当前正在写入的binlog文件
+mysql> show master status\G;
+c.查看binlog是否开启
+mysql> show variables like 'log_%';
+show variables like 'binlog_format%'
+SET GLOBAL binlog_format = 'ROW';
+
+//查看mysql运行时间
+show global status like 'uptime';
+
+CanalClient里面的main方法不能随便改，monitor跑的就是这个main方法
+
+日志好像不是很靠谱，有时候monitor程序正常，居然没日志输出
+
+根据test_canal_heartbeat可以知道canal是否正常，一般如果canal有三个instance，那同一时间应该有三条test_canal_heartbeat，多了或者少了j就要去检查每个instance的log是否有异常。
+
+meta文件是当有canal client去连接时才会生成？？
+meta文件只有使用file-instance.xml时才会生成，负责记录解析位点和消费位点。其它模式解析位点和消费位点存在zookeeper或者内存中
+
+
+
+monitor用的是jar包里面的配置文件，config没用
+
+monitor没生成日志文件，跟执行权限有关？
+
+group instance的实现就是一个instance里面生成多个eventParser？
+每个instance启动的时候，都会去加载一遍xxx-instance.xml配置？
+
+xxx-instance.xml配置可以自己扩展，自定义！！！
+
+canal和zookeeper有什么关系，有的话在哪配？
+canal集群的时候才需要zookeeper
+
+
+一旦解析位点和消费位点的记录被删除（file模式是删除meta.dat、memory模式是重启canal，group模式是删除zk节点），
+解析位点会被重新指向canal重启后（重新监听mysql后？）的最新binlog position，
+消费位点会被重新指向canal重启后最新解析到的位点，不管canal client什么时候去读取
+
+monitor程序重启，最好先kill再build
+
+canal每次将解析过journalname存储到zk上面，第二次parse数据的时候会从zk去拿一次journalname，如果找不到则从master去找first index file。
+如果数据库管理员手动清理过日志或者磁盘过满自动清理日志都会出现这样问题，解决办法就是删除对应name的节点
+java.io.IOException: Received error packet: errno = 1236, sqlstate = HY000 errmsg = Could not find first log file name in binary log index file
+binlog一般是建议使用mysql命令行进行删除，就会同步修改index文件
+
+mvn环境变量没生效：
+source /etc/profile
+
+修改监听的mysql信息后，要删除在zookeeper上的canal节点（需要先停掉canal再删）。或者如果用新的parser来解析，是不是就不用删节点了？
+
+
+canal server-1报错太多了之后，会被认为已经不可用，然后启动备用的canal server-2。但是canal server-1还能继续往mysql插心跳，为什么会这样呢？
+
+zookeeper上otter/canal/cluster节点记录了当前集群中可用的server
+
+binlog row level模式下，bin-log中可以不记录执行的sql语句的上下文相关的信息，仅仅只需要记录那一条记录被修改了，修改成什么样了。
+
+canal server要启动某个canal instance时都先向zookeeper进行一次尝试启动判断 (实现：创建EPHEMERAL节点，谁创建成功就允许谁启动) 
+创建zookeeper节点成功后，对应的canal server就启动对应的canal instance，没有创建成功的canal instance就会处于standby状态 
+一旦zookeeper发现canal server A创建的节点消失后，立即通知其他的canal server再次进行步骤1的操作，重新选出一个canal server启动instance. 
+canal client每次进行connect时，会首先向zookeeper询问当前是谁启动了canal instance，然后和其建立链接，一旦链接不可用，会重新尝试connect. 
+Canal Client的方式和canal server方式类似，也是利用zokeeper的抢占EPHEMERAL节点的方式进行控制.
+
+
+zookeeper上面存的position，既是解析位点，同时也是消费位点？为什么monitor启动后，上面的位点才会改变，难道只有monitor去canal server读取数据后，
+canal server才会去mysql解析新的位点？
+
+canal是怎么记录每个数据源的消费位点的，如果两个数据源的时间戳不一致，或者位点不一致会怎样？其中一个没法解析？
+
+mysql磁盘满了的情况，canal写不进心跳，会导致canal被mysql断开连接。重启canal过后数据同步服务可能仍然不能正常，即使每个模块都没有报错，这时可以重启下kafka。如果重启canal之前，部分binlog已经被清除，比如4个数据源，只有1个数据源的binlog位点还能找到，这时启动canal并不会报错。但只有那个binlog位点能找到的数据源会被canal正常监听，其余数据源监听处于假死状态，不报错但是监听不到。这时需要先停掉canal，然后在zookeeper上重新指定一个每个数据源都有binlog的时间戳，再启动canal。如果无法确定这个时间戳，也是先停掉canal，把zookeeper上canal节点数据删除后再重启canal，只解析最新位点，会有数据丢失!慎用!!
+
+canal连接不T出后，如果zookeeper上面存的位点还是T出时的，直接重启canal就可以从该时间点继续监听，数据不会丢失？
+如果canal instance启动后没有报错，只打印了start成功，没有打印查找的位点，没有监听数据，可修改canal.instance.mysql.slaveId试试
+
+t_trade数据没同步，可以通过更新mysql的deal和position表数据再次触发数据同步
+
+
+
