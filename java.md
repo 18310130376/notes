@@ -1893,7 +1893,32 @@ try {
 }
 ```
 
-#### 三十、SPI
+
+
+#### 三十、Map转对象
+
+org.apache.commons.beanutils.BeanUtils
+
+```java
+  public static <T> T map2Bean(Map<String, String> map, Class<T> class1) {  
+        T bean = null;  
+        try {  
+            bean = class1.newInstance();  
+            BeanUtils.populate(bean, map);  
+        } catch (InstantiationException e) {  
+            e.printStackTrace();  
+        } catch (IllegalAccessException e) {  
+            e.printStackTrace();  
+        } catch (InvocationTargetException e) {  
+            e.printStackTrace();  
+        }  
+        return bean;  
+    }  
+```
+
+
+
+#### 三十一、SPI
 
 ```java
 package com.spi;
@@ -1947,3 +1972,614 @@ public class SPITest {
 }
 ```
 
+
+
+#### 三十二、Json转换
+
+##### 一、jackson
+
+```xml
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.5.3</version>
+</dependency>
+```
+
+
+
+```java
+import com.fasterxml.jackson.annotation.JsonProperty;  
+public class Student { 
+   
+    @JsonProperty("name") 
+    private String trueName; 
+    public String getTrueName() { 
+        return trueName; 
+    } 
+    public void setTrueName(String trueName) { 
+        this.trueName = trueName; 
+    } 
+} 
+```
+
+```java
+import com.fasterxml.jackson.core.JsonProcessingException; 
+import com.fasterxml.jackson.databind.ObjectMapper; 
+   
+public class Main { 
+    public static void main(String[] args) throws JsonProcessingException { 
+        Student student = new Student(); 
+        student.setTrueName("张三"); 
+        System.out.println(new ObjectMapper().writeValueAsString(student)); 
+    } 
+}
+```
+
+输出
+
+```json
+{"name":"张三"} 
+```
+
+@JsonProperty不仅仅是在序列化的时候有用，反序列化的时候也有用，比如有些接口返回的是json字符串，命名又不是标准的驼峰形式，在映射成对象的时候，将类的属性上加上@JsonProperty注解，
+里面写上返回的json串对应的名字
+
+**1.1 忽略属性**
+
+此注解是类注解，作用是json序列化时将java bean中的一些属性忽略掉，序列化和反序列化都受影响。
+
+@JsonIgnoreProperties
+
+```java
+  //生成json时将name和age属性过滤
+  @JsonIgnoreProperties({"name"},{"age"})
+  public class  user {
+  private  String name;
+  private int age;
+}
+```
+
+@JsonIgnore
+
+此注解用于属性或者方法上（最好是属性上），作用和上面的@JsonIgnoreProperties一样。
+
+```java
+public class user { 
+private String n；
+@JsonIgnore 
+private int age; 
+} 	
+```
+
+**1.2 格式化日期**
+
+@JsonFormat
+
+此注解用于属性或者方法上（最好是属性上），可以方便的把Date类型直接转化为我们想要的模式，比如
+
+```java
+@JsonFormat(pattern = “yyyy-MM-dd HH-mm-ss”)
+private Date date;
+```
+
+**1.3 @JsonSerialize**
+
+例如：java时间戳是毫秒，现在转为秒。序列化时createTime是10位的秒
+
+```java
+package com.whf.utils.serializer;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import java.util.Date;
+import java.io.IOException;
+/**
+ *该类可以将data转换成long类型
+ */
+public class Data2LongSerizlizer extends JsonSerializer<Date> {
+
+    @Override
+    public void serialize(Date date, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
+        //将毫秒值转换成秒变成long型数据返回
+        jsonGenerator.writeNumber(date.getTime()/1000);
+    }
+```
+
+```java
+//创建时间
+@JsonSerialize(using = Data2LongSerizlizer.class )
+private Date createTime;
+//更新时间
+@JsonSerialize(using = Data2LongSerizlizer.class )
+private Date updateTime;
+```
+
+此注解用于属性或者getter方法上，用于在序列化时嵌入我们自定义的代码，比如序列化一个double时在其后面限制两位小数点。
+
+**1.4 @JsonDeserialize**
+
+此注解用于属性或者setter方法上，用于在反序列化时可以嵌入我们自定义的代码，类似于上面的@JsonSerialize
+
+**1.5@Transient**
+
+如果一个属性并非数据库表的字段映射，就务必将其标示为@Transient，否则ORM框架默认其注解为@Basic；
+
+```
+//表示该字段在数据库表中没有
+@Transient 
+public int getAge() { 
+　return 1+1; 
+}
+```
+
+
+
+##### 二、fasejson （Alibaba）
+
+```xml
+<dependency>
+  <groupId>com.alibaba</groupId>
+  <artifactId>fastjson</artifactId>
+  <version>1.1.23</version>
+</dependency>
+```
+
+```java
+//json字符串-简单对象型
+private static final String  JSON_OBJ_STR = "{\"studentName\":\"lily\",\"studentAge\":12}";
+//json字符串-数组类型
+private static final String  JSON_ARRAY_STR = "[{\"studentName\":\"lily\",\"studentAge\":12},{\"studentName\":\"lucy\",\"studentAge\":15}]";
+//复杂格式json字符串
+private static final String  COMPLEX_JSON_STR = "{\"teacherName\":\"crystall\",\"teacherAge\":27,\"course\":{\"courseName\":\"english\",\"code\":1270},\"students\":[{\"studentName\":\"lily\",\"studentAge\":12},{\"studentName\":\"lucy\",\"studentAge\":15}]}";
+```
+
+**一、JSON格式字符串与JSON对象之间的转换**
+
+```java
+/**
+     * json字符串-简单对象型与JSONObject之间的转换
+     */
+    public static void testJSONStrToJSONObject(){
+
+        JSONObject jsonObject = JSON.parseObject(JSON_OBJ_STR);
+        //JSONObject jsonObject1 = JSONObject.parseObject(JSON_OBJ_STR); //因为JSONObject继承了JSON，所以这样也是可以的
+        System.out.println(jsonObject.getString("studentName")+":"+jsonObject.getInteger("studentAge"));
+
+}
+```
+
+**二、json字符串-数组类型与JSONArray之间的转换**
+
+```java
+/**
+     * json字符串-数组类型与JSONArray之间的转换
+     */
+    public static void testJSONStrToJSONArray(){
+
+        JSONArray jsonArray = JSON.parseArray(JSON_ARRAY_STR);
+        //JSONArray jsonArray1 = JSONArray.parseArray(JSON_ARRAY_STR);//因为JSONArray继承了JSON，所以这样也是可以的
+
+        //遍历方式1
+        int size = jsonArray.size();
+        for (int i = 0; i < size; i++){
+            JSONObject jsonObject = jsonArray.getJSONObject(i);
+            System.out.println(jsonObject.getString("studentName")+":"+jsonObject.getInteger("studentAge"));
+        }
+
+        //遍历方式2
+        for (Object obj : jsonArray) {
+            JSONObject jsonObject = (JSONObject) obj;
+            System.out.println(jsonObject.getString("studentName")+":"+jsonObject.getInteger("studentAge"));
+        }
+    }
+```
+
+**三、复杂json格式字符串与JSONObject之间的转换**
+
+```java
+/**
+     * 复杂json格式字符串与JSONObject之间的转换
+     */
+    public static void testComplexJSONStrToJSONObject(){
+
+        JSONObject jsonObject = JSON.parseObject(COMPLEX_JSON_STR);
+        //JSONObject jsonObject1 = JSONObject.parseObject(COMPLEX_JSON_STR);//因为JSONObject继承了JSON，所以这样也是可以的
+        
+        String teacherName = jsonObject.getString("teacherName");
+        Integer teacherAge = jsonObject.getInteger("teacherAge");
+        JSONObject course = jsonObject.getJSONObject("course");
+        JSONArray students = jsonObject.getJSONArray("students");
+    }
+```
+
+**四、JSON格式字符串与javaBean之间的转换**
+
+```java
+public class Student {
+
+    private String studentName;
+    private Integer studentAge;
+    .... getter setter
+}
+```
+
+```java
+public class Course {
+
+    private String courseName;
+    private Integer code;
+    .... getter setter
+}
+```
+
+```java
+public class Teacher {
+
+    private String teacherName;
+    private Integer teacherAge;
+    private Course course;
+    private List<Student> students;
+    .... getter setter
+}
+```
+
+**4.1字符串-简单对象型与javaBean之间的转换**
+
+```java
+/**
+ * json字符串-简单对象与JavaBean_obj之间的转换
+ */
+public static void testJSONStrToJavaBeanObj(){
+
+    Student student = JSON.parseObject(JSON_OBJ_STR, new TypeReference<Student>() {});
+//Student student1 = JSONObject.parseObject(JSON_OBJ_STR, new TypeReference<Student>() {});//因为JSONObject继承了JSON，所以这样也是可以的
+    System.out.println(student.getStudentName()+":"+student.getStudentAge());
+}
+```
+
+或者
+
+```java
+User user1 = JSON.parseObject(userJson, User.class);
+```
+
+或者
+
+```java
+Map<String, Object> map1 = JSON.parseObject(mapJson, new TypeReference<Map<String, Object>>(){});
+System.out.println(map1.get("key1"));
+System.out.println(map1.get("key2"));
+```
+
+
+
+**4.2json字符串-数组类型与javaBean之间的转换**
+
+```java
+/**
+ * json字符串-数组类型与JavaBean_List之间的转换
+ */
+public static void testJSONStrToJavaBeanList(){
+        
+  ArrayList<Student> students = JSON.parseObject(JSON_ARRAY_STR, new TypeReference<ArrayList<Student>>() {});
+//ArrayList<Student> students1 = JSONArray.parseObject(JSON_ARRAY_STR, new TypeReference<ArrayList<Student>>() {});//因为JSONArray继承了JSON，所以这样也是可以的
+   for (Student student : students) {
+       System.out.println(student.getStudentName()+":"+student.getStudentAge());
+    }
+}
+```
+
+或者
+
+```java
+ List<Map> list1 = JSON.parseArray(listJson, Map.class);
+ for(Map<String, Object> map : list1){
+    System.out.println(map.get("key1"));
+    System.out.println(map.get("key2"));         
+}
+```
+
+**4.3复杂json格式字符串与与javaBean之间的转换**
+
+```java
+/**
+ * 复杂json格式字符串与JavaBean_obj之间的转换
+ */
+public static void testComplexJSONStrToJavaBean(){
+
+  Teacher teacher = JSON.parseObject(COMPLEX_JSON_STR, new TypeReference<Teacher>() {});
+//Teacher teacher1 = JSON.parseObject(COMPLEX_JSON_STR, new TypeReference<Teacher>() {});//因为JSONObject继承了JSON，所以这样也是可以的
+   String teacherName = teacher.getTeacherName();
+   Integer teacherAge = teacher.getTeacherAge();
+   Course course = teacher.getCourse();
+   List<Student> students = teacher.getStudents();
+}
+```
+
+1，对于JSON对象与JSON格式字符串的转换可以直接用 toJSONString()这个方法。JSONObject.toJSONString()
+
+2，javaBean与JSON格式字符串之间的转换要用到：
+
+​     String beanJson = JSON.toJSONString(student);
+
+​     String mapJson =  JSON.toJSONString(map);
+
+​     String listJson = JSON.toJSONString(list);
+
+3，javaBean与jsonObject间的转换使用：JSON.toJSON(student)，然后使用强制类型转换，JSONObject或者JSONArray。
+
+4，JsonObject转javaBean。  Student student=JSONObject.toJavaObject(jsonObject , Student .class);
+
+**4.4 格式化字符串**
+
+String listJson = JSON.toJSONString(list, true);
+
+或者
+
+String listJson = JSON.toJSONString(list, SerializerFeature.PrettyFormat);
+
+```json
+[
+    {
+        "key1": "One",
+        "key2": "Two"
+    },
+    {
+        "key3": "Three",
+        "key4": "Four"
+    }
+]
+```
+
+**4.5日期格式化**
+
+```java
+String dateJson = JSON.toJSONString(new Date());
+System.out.println(dateJson);
+```
+
+输出结果
+
+```javascript
+1401370199040
+```
+
+```
+String dateJson = JSON.toJSONString(new Date(), SerializerFeature.WriteDateUseDateFormat);
+System.out.println(dateJson);
+```
+
+输出结果
+
+```
+2014-05-29 21:36:24
+```
+
+```java
+String dateJson = JSON.toJSONStringWithDateFormat(new Date(), "yyyy-MM-dd HH:mm:ss.SSS");
+System.out.println(dateJson);
+```
+
+```java
+2014-05-29 21:47:00.154
+```
+
+或者
+
+```java
+SerializeConfig mapping = new SerializeConfig(); 
+mapping.put(Date.class, new SimpleDateFormatSerializer("yyyy-MM-dd HH:mm:ss")); 
+Date date = new Date();
+String text = JSON.toJSONString(date, mapping);
+```
+
+**4.6使用单引号**
+
+```
+String listJson = JSON.toJSONString(list, SerializerFeature.UseSingleQuotes);
+```
+
+```
+[{'key1':'One','key2':'Two'},{'key3':'Three','key4':'Four'}]
+```
+
+**4.7输出Null字段**
+
+```
+Map<String, Object> map = new HashMap<String,Object>();
+String b = null;
+Integer i = 1;
+map.put("a", b);
+map.put("b", i);
+String listJson = JSON.toJSONString(map, SerializerFeature.WriteMapNullValue);
+```
+
+输出
+
+```
+{"a":null,"b":1}
+```
+
+**4.8 序列化时写入类信息**
+
+```
+User user = new User();
+user.setAge(18);
+user.setUserName("李四");
+String listJson = JSON.toJSONString(user, SerializerFeature.WriteClassName);
+```
+
+```
+{"@type":"User","age":18,"userName":"李四"}
+```
+
+由于序列化带了类型信息，使得反序列化时能够自动进行类型识别。
+
+```
+User user1 = (User) JSON.parse(listJson);
+System.out.println(user1.getAge());
+```
+
+如果User序列化是没有加入类型信息（SerializerFeature.WriteClassName），按照这样的做法就会报错（java.lang.ClassCastException）。
+
+**4.9 Map转成JSONObject**
+
+```
+Map<String, Object> map = new HashMap<String, Object>();
+map.put("key1", "One");
+map.put("key2", "Two");
+JSONObject j = new JSONObject(map);
+j.put("key3", "Three");
+System.out.println(j.get("key1"));
+System.out.println(j.get("key2"));
+System.out.println(j.get("key3"));
+```
+
+**4.10将List对象转成JSONArray**
+
+```
+List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
+Map<String, Object> map = new HashMap<String, Object>();
+map.put("key1", "One");
+map.put("key2", "Two");
+Map<String, Object> map2 = new HashMap<String, Object>();
+map2.put("key1", "Three");
+map2.put("key2", "Four");
+list.add(map);
+list.add(map2);
+JSONArray j = JSONArray.parseArray(JSON.toJSONString(list));
+ for(int i=0; i<j.size(); i++){
+    System.out.println(j.get(i));
+ }
+```
+
+```
+{"key1":"One","key2":"Two"}
+{"key1":"Three","key2":"Four"}
+```
+
+**4.11 转Json字符串时的特性**
+
+```
+String objJson = JSON.toJSONString(Object object, SerializerFeature... features) 
+```
+
+![img](http://images.cnitblog.com/i/637684/201405/291336016976905.png)
+
+![img](http://images.cnitblog.com/i/637684/201405/291336163067908.png)
+
+ **4.12过滤不需要的字段或者只要某些字段**
+
+ 第一种：在对象响应字段前加注解，这样生成的json也不包含该字段
+
+```
+@JSONField(serialize=false)  
+private String name;  
+```
+
+第二种：在对象对应字段前面加transient，表示该字段不用序列化，即在生成json的时候就不会包含该字段了
+
+```
+private transient String name;  
+```
+
+第三种：使用fastjson的拦截器
+
+```java
+PropertyFilter profilter = new PropertyFilter(){  
+    @Override  
+    public boolean apply(Object object, String name, Object value) {  
+       if(name.equalsIgnoreCase("last")){  
+        //false表示last字段将被排除在外  
+        return false;  
+       }  
+      return true;  
+    }  
+  };  
+ json = JSON.toJSONString(user, profilter);  
+ System.out.println(json);   
+```
+
+第四种，直接填写属性
+
+```java
+SimplePropertyPreFilter filter = new SimplePropertyPreFilter(TTown.class, "id","townname");  
+response.getWriter().write(JSONObject.toJSONString(townList,filter));   
+```
+
+**4.13 @ JSONField注解**
+
+@JSONField
+作用：在字段和方法上
+1.Field:@JSONField作用在Field时，其**name**不仅定义了**输入key**的名称，同时也定义了**输出的名称**。
+2.作用在setter和getter方法上
+
+当作用在setter方法上时，就相当于根据 name 到 json中寻找对应的值，并调用该setter对象赋值。
+
+当作用在getter上时，在bean转换为json时，其key值为name定义的值。
+
+```java
+/**
+ * bean 转json 时会把bean中的name转换为project_name
+ */
+ @JSONField(name="project_name")
+ public String getName() {
+      return name;
+ }
+ /**
+  * son 转bean 时会把json中的project_name值赋值给name
+  */
+ @JSONField(name="project_name")
+ public void setName(String name) {
+     name= name;
+}
+```
+
+**3**.format :用在Date类型的字段来格式化时间格式
+
+```java
+public class A {  
+   // 配置date序列化和反序列使用yyyyMMdd日期格式  
+   @JSONField(format="yyyy-MM-dd")  
+   public Date date;  
+ }
+```
+
+**4**.布尔类型:serialize和deserialize
+
+　　  在序列化的时候就不包含这个字段了。deserialize与之相反。但是有一点需要注意，当字段为final的时候注解放在字段上是不起作用的，这时候应该放在get或set方法上。
+
+```
+@JSONField(serialize=false) 
+private String name
+```
+
+**5.**serialzeFeatures 属性:fastjson默认的序列化规则是当字段的值为null的时候，是不会序列化这个字段
+
+```
+{"name":"LiSi","age":18,"address":null}
+```
+
+```
+对象序列化下边的类，结果是：{"name":"LiSi","age":18}
+```
+
+```
+Student s =  new Student ();
+s.setName("LiSi");
+s.setAge(18);
+s.setAdderss(null);
+```
+
+**6**.SerializerFeature枚举：
+
+```
+@JSONField(serialzeFeatures=SerializerFeature.WriteMapNullValue)
+private String address;
+```
+
+当value的值为null的时候，依然会把它的值序列化出来： {"name":"LiSi","age":18,"address":null}
+
+当字段类型为int类型时，会序列化成 0，需要把类型改成Integer
