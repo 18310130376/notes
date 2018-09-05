@@ -1290,14 +1290,139 @@ setProperty：设置对象属性值
 populate：根据Map给属性复制
 copyPeoperty：复制单个值，从一个对象到另一个对象
 cloneBean：克隆bean实例
+```
 
+十七、org.springframework.util.ReflectionUtils
+
+十八、RandomUtils自从commons lang3.3，RandomStringUtils
+
+```
+/产生5位长度的随机字符串，中文环境下是乱码
+RandomStringUtils.random(5);
+//使用指定的字符生成5位长度的随机字符串
+RandomStringUtils.random(5, new char[]{'a','b','c','d','e','f', '1', '2', '3'});
+//生成指定长度的字母和数字的随机组合字符串
+RandomStringUtils.randomAlphanumeric(5);
+//生成随机数字字符串
+RandomStringUtils.randomNumeric(5);
+//生成随机[a-z]字符串，包含大小写
+RandomStringUtils.randomAlphabetic(5);
+//生成从ASCII 32到126组成的随机字符串
+RandomStringUtils.randomAscii(4)
+```
+
+十九、SystemUtils
+
+```
+getJavaHome()
+getJavaIoTmpDir
+getUserDir()
+getUserHome(),
+```
+
+二十、NumberUtils
+
+二十一、ClassUtils  可以不用反射就可以操作java类
+
+二十二、org.apache.commons.lang3.builder.ToStringBuilder
+
+```java
+class Person {
+	String name;
+	int age;
+	boolean smoker;
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public int getAge() {
+		return age;
+	}
+	public void setAge(int age) {
+		this.age = age;
+	}
+	public boolean isSmoker() {
+		return smoker;
+	}
+	public void setSmoker(boolean smoker) {
+		this.smoker = smoker;
+	}
+}
+```
+
+```java
+public static void main(String[] args) {
+
+		Person p = new Person();
+		p.setAge(10);
+		p.setName("wukang");
+		p.setSmoker(false);
+		String a = new ToStringBuilder(p).append("name", p.getName()).append("age", p.getName()).toString();
+		System.out.println(a);
+	}
 ```
 
 
 
-十七、org.springframework.util.ReflectionUtils
+二十三、DateFormatUtils和DateUtils
 
+```java
+1.DateFormatUtils:
 
+static String format(long millis, String pattern)
+static String format(Date date, String pattern)
+
+2.DateUtils:
+
+static Date addDays(Date date, int amount)
+addYears(Date date, int amount)
+```
+
+#### 十八、附 多返回值
+
+org.apache.commons.lang3.tuple.ImmutablePair （两个返回值）
+
+```java
+public static void main(String[] args) {
+		
+ImmutablePair<String, Integer> immutablePair = new ImmutablePair<String, Integer>("test", 9527);  
+	String left = immutablePair.left;
+	Integer right = immutablePair.right;
+	System.out.println(left);
+	System.out.println(right);
+}
+```
+
+org.apache.commons.lang3.tuple.ImmutableTriple（三个返回值）不可变
+
+```java
+public static void main(String[] args) {  //不可变  无set设置值
+		
+ImmutableTriple<String, Integer,String> immutableTriple = new ImmutableTriple<String, Integer,String>("test", 9527,"hello");  
+	String left = immutableTriple.left;
+	Integer middle = immutableTriple.middle;
+	String right = immutableTriple.right;
+	System.out.println(left);
+	System.out.println(middle);
+	System.out.println(right);
+}
+```
+
+```java
+public static void main(String[] args) { // 可变 因为有set设置值
+		
+		MutableTriple<String, Integer,String> mutableTriple = new MutableTriple<String, Integer,String>("test", 9527,"hello");  
+         mutableTriple.setLeft("456");
+		String left = mutableTriple.left;
+		Integer middle = mutableTriple.middle;
+		String right = mutableTriple.right;
+		System.out.println(left);
+		System.out.println(middle); 
+		System.out.println(right);
+	}
+```
 
 
 
@@ -1491,7 +1616,7 @@ public class ExampleVo {
 
 我们一定会用到这么一个业务场景，vo中的属性必须符合枚举类中的枚举。Hibernate-Validator中还没有关于枚举的验证规则，那么，我们则需要自定义一个枚举的验证注解。
 
-```
+```java
 @Target({ElementType.METHOD, ElementType.FIELD, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = EnumCheckValidator.class)
@@ -1534,7 +1659,7 @@ public @interface EnumCheck {
 
 - 注解的业务逻辑实现类
 
-```
+```java
 public class EnumCheckValidator implements ConstraintValidator<EnumCheck,Object> {
     private EnumCheck enumCheck;
 
@@ -1573,7 +1698,7 @@ public class EnumCheckValidator implements ConstraintValidator<EnumCheck,Object>
 
 - 编写枚举类
 
-```
+```java
 public enum  Sex{
     MAN("男",1),WOMAN("女",2);
 
@@ -1619,7 +1744,7 @@ public enum  Sex{
 
 - 使用方式
 
-```
+```json
     @EnumCheck(message = "只能选男：1或女:2",enumClass = Sex.class)
     private Integer sex;
 ```
@@ -2387,7 +2512,7 @@ String listJson = JSON.toJSONString(list, SerializerFeature.UseSingleQuotes);
 
 **4.7输出Null字段**
 
-```
+```json
 Map<String, Object> map = new HashMap<String,Object>();
 String b = null;
 Integer i = 1;
@@ -2404,7 +2529,7 @@ String listJson = JSON.toJSONString(map, SerializerFeature.WriteMapNullValue);
 
 **4.8 序列化时写入类信息**
 
-```
+```json
 User user = new User();
 user.setAge(18);
 user.setUserName("李四");
@@ -2417,7 +2542,7 @@ String listJson = JSON.toJSONString(user, SerializerFeature.WriteClassName);
 
 由于序列化带了类型信息，使得反序列化时能够自动进行类型识别。
 
-```
+```json
 User user1 = (User) JSON.parse(listJson);
 System.out.println(user1.getAge());
 ```
@@ -2426,7 +2551,7 @@ System.out.println(user1.getAge());
 
 **4.9 Map转成JSONObject**
 
-```
+```json
 Map<String, Object> map = new HashMap<String, Object>();
 map.put("key1", "One");
 map.put("key2", "Two");
@@ -2439,7 +2564,7 @@ System.out.println(j.get("key3"));
 
 **4.10将List对象转成JSONArray**
 
-```
+```java
 List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
 Map<String, Object> map = new HashMap<String, Object>();
 map.put("key1", "One");
@@ -2455,7 +2580,7 @@ JSONArray j = JSONArray.parseArray(JSON.toJSONString(list));
  }
 ```
 
-```
+```json
 {"key1":"One","key2":"Two"}
 {"key1":"Three","key2":"Four"}
 ```
@@ -2558,15 +2683,15 @@ private String name
 
 **5.**serialzeFeatures 属性:fastjson默认的序列化规则是当字段的值为null的时候，是不会序列化这个字段
 
-```
+```json
 {"name":"LiSi","age":18,"address":null}
 ```
 
-```
+```json
 对象序列化下边的类，结果是：{"name":"LiSi","age":18}
 ```
 
-```
+```java
 Student s =  new Student ();
 s.setName("LiSi");
 s.setAge(18);
@@ -2575,7 +2700,7 @@ s.setAdderss(null);
 
 **6**.SerializerFeature枚举：
 
-```
+```java
 @JSONField(serialzeFeatures=SerializerFeature.WriteMapNullValue)
 private String address;
 ```
@@ -2583,3 +2708,30 @@ private String address;
 当value的值为null的时候，依然会把它的值序列化出来： {"name":"LiSi","age":18,"address":null}
 
 当字段类型为int类型时，会序列化成 0，需要把类型改成Integer
+
+
+
+#### 二十三 、**不可变对象**
+
+类是final的，并且中所有类属性都是final的，不提供设置值的setter方法
+
+```java
+
+public final class FinalTest {
+    private final String NAME = "name";
+    private final String AGE  = "age";
+ 
+  public FinalTest(final String name, final String age) {
+        this.NAME = name;
+        this.AGE = age;
+    }
+    public String getNAME() {
+        return NAME;
+    }
+ 
+    public String getAGE() {
+        return AGE;
+    }
+}
+```
+
