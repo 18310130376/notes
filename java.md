@@ -2709,8 +2709,6 @@ private String address;
 
 当字段类型为int类型时，会序列化成 0，需要把类型改成Integer
 
-
-
 #### 二十三 、**不可变对象**
 
 类是final的，并且中所有类属性都是final的，不提供设置值的setter方法
