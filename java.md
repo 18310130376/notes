@@ -1794,11 +1794,104 @@ public static Map<String, String> PoConvertMap(Object obj){
 		return map;
 	}
 
-
 PoConvertMap(propertiesVo);
 ```
 
+或者
 
+```java
+package com.spi;
+
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.util.HashMap;
+import java.util.Map;
+
+public class Bean2Map {
+	
+	private static <T> Map<String, Object> transBeanToMap(T bean) {
+		HashMap<String, Object> map = new HashMap<String, Object>();
+		String fieldName = null;
+		Object fieldVal = null;
+		try{
+			BeanInfo beanInfo = Introspector.getBeanInfo(bean.getClass());
+			PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
+			for (PropertyDescriptor descriptor : propertyDescriptors) {
+				fieldName = descriptor.getName();
+				if ("class".equals(fieldName) || fieldName.isEmpty()) {
+					continue;
+				}
+				fieldVal = descriptor.getReadMethod().invoke(bean);
+				if (fieldVal == null) {
+					fieldVal = "";
+				}
+				map.put(fieldName, fieldVal);
+			}
+			return map;
+		}catch(Exception e){
+		}
+		return null;
+	}
+	public static void main(String[] args) {
+		
+		Map<String, Object> transBeanToMap = transBeanToMap(new UserInfo());
+		System.out.println(transBeanToMap);	
+	}
+}
+```
+
+另外 apache的工具类也可以
+
+org.apache.commons.beanutils.BeanMap（BeanMap不能实现值拷贝，不是此用途）
+
+```java
+	public static <T> T copy(T target, Object orig, boolean includedNull, String... ignoreProperties) {
+		try {
+			if(includedNull && ignoreProperties == null){
+                 //apache的import org.apache.commons.beanutils.PropertyUtils;
+				PropertyUtils.copyProperties(target, orig);
+			}else{
+				List<String> ignoreFields = new ArrayList<String>();
+				if(ignoreProperties != null){
+					for(String p : ignoreProperties){
+						ignoreFields.add(p);
+					}	
+				}
+				if(!includedNull){
+                    //import org.apache.commons.beanutils.BeanMap;
+					Map<String, Object> parameterMap = new BeanMap(orig);
+					for (Entry<String, Object> entry : parameterMap.entrySet()) {
+						if (entry.getValue() == null) {
+							String fieldName = entry.getKey();
+							if(!ignoreFields.contains(fieldName)){
+								ignoreFields.add(fieldName);	
+							}
+						}
+					}					
+				}
+				/*System.out.println("ignore" + nullFields);*/
+				org.springframework.beans.BeanUtils.copyProperties(orig, target, ignoreFields.toArray(new String[ignoreFields.size()]));				
+			}
+			return target;
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+		}
+		return null;
+	}
+```
+
+或者org.apache.commons.beanutils.BeanUtils
+
+```java
+Person person1=new Person();  
+person1.setName("name1");  
+person1.setSex("sex1");  
+Map<String, String> map=null;  
+try {  
+    map = BeanUtils.describe(person1);  
+}
+```
 
 #### 三十、SPI
 
