@@ -2941,3 +2941,363 @@ https://www.cnblogs.com/xifengxiaoma/p/9377654.html
 #### 二十九、SQL脚本文件执行器
 
 https://www.cnblogs.com/xifengxiaoma/p/9401079.html
+
+
+
+#### 三十、构造方法中this调用其他构造方法
+
+```java
+public class UserTest {
+
+	UserTest() {
+
+	}
+	UserTest(int a) {
+		this(a,"0");
+	}
+	UserTest(int a, String b) {
+		
+	}
+}
+```
+
+#### 三十一、Spring事件机制
+
+https://www.cnblogs.com/zhangxiaoguang/p/spring-notification.html
+
+
+
+#### 三十二、泛型
+
+https://segmentfault.com/a/1190000014824002
+
+我们常见的如T、E、K、V  **?** 等形式的参数常用于表示泛型形参
+
+```java
+
+public class Result<T> {
+
+	private boolean success;
+	private T result;
+	private Exception error;
+
+	public boolean isSuccess() {
+		return success;
+	}
+
+	public void setSuccess(boolean success) {
+		this.success = success;
+	}
+
+	public T getResult() {
+		return result;
+	}
+
+	public void setResult(T result) {
+		this.result = result;
+	}
+
+	public Exception getError() {
+		return error;
+	}
+
+	public void setError(Exception error) {
+		this.error = error;
+	}
+
+	public static void main(String[] args) {
+		Result<UserTest> result = new Result<UserTest>();
+		result.setResult(new UserTest());
+		System.out.println(result.getResult());
+	}
+}
+```
+
+作用在构造方法上
+
+```java
+
+public class User<T> {
+
+	private T data;
+
+	public User(T data) {
+		this.data = data;
+	}
+
+	public T getData() {
+		return data;
+	}
+
+	public static void main(String[] args) {
+
+		User<String> name = new User<String>("corn");
+		User<Integer> age = new User<Integer>(712);
+		System.out.println("name class:" + name.getClass());
+		System.out.println("age class:" + age.getClass());
+		System.out.println(name.getClass() == age.getClass()); // true
+	}
+}
+```
+
+假设User<Number>在逻辑上可以视为User<Integer>的父类，那么//1和//2处将不会有错误提示了，那么问题就出来了，通过getData()方法取出数据时到底是什么类型呢？Integer? Float? 还是Number？且由于在编程过程中的顺序不可控性，导致在必要的时候必须要进行类型判断，且进行强制类型转换。显然，这与泛型的理念矛盾，因此，**在逻辑上User<Number>不能视为User<Integer>的父类。**
+
+错误代码：
+
+```java
+
+public class User<T> {
+
+	private T data;
+
+	public User(T data) {
+		this.data = data;
+	}
+
+	public T getData() {
+		return data;
+	}
+
+	public static void main(String[] args) {
+
+		User<Number> name = new User<Number>(99);
+		User<Integer> age = new User<Integer>(712);
+		getData(name);
+		getData(age);//The method getData(User<Number>) in the type User<T> is not applicable for the arguments (User<Integer>)
+	}
+
+	public static void getData(User<Number> data) {
+		System.out.println("data :" + data.getData());
+	}
+}
+```
+
+正确代码：**类型通配符一般是使用 ? 代替具体的类型实参**
+
+```java
+
+public class User<T> {
+
+	private T data;
+
+	public User(T data) {
+		this.data = data;
+	}
+
+	public T getData() {
+		return data;
+	}
+
+	public static void main(String[] args) {
+
+		User<String> corn = new User<String>("corn");
+		User<Number> name = new User<Number>(99);
+		User<Integer> age = new User<Integer>(712);
+		getData(corn);
+		getData(name);
+		getData(age);
+	}
+
+	public static void getData(User<?> data) {
+		System.out.println("data :" + data.getData());
+	}
+}
+```
+
+
+
+**类型通配符上限和类型通配符下限**
+
+对类型实参又有进一步的限制：只能是Number类及其子类。此时，需要用到类型通配符上限。
+
+上限：
+
+```java
+
+public class User<T> {
+
+	private T data;
+
+	public User(T data) {
+		this.data = data;
+	}
+
+	public T getData() {
+		return data;
+	}
+
+	public static void main(String[] args) {
+
+		User<String> corn = new User<String>("corn");
+		User<Number> name = new User<Number>(99);
+		User<Integer> age = new User<Integer>(712);
+		getData(corn);//1处调用将出现错误提示The method getData(User<? extends Number>) in the type User<T> is not applicable for the arguments (User<String>)
+		getData(name);
+		getData(age);
+	}
+
+	public static void getData(User<? extends Number> data) {
+		System.out.println("data :" + data.getData());
+	}
+}
+```
+
+下限：
+
+```java
+
+public class User<T> {
+
+	private T data;
+
+	public User(T data) {
+		this.data = data;
+	}
+
+	public T getData() {
+		return data;
+	}
+
+	public static void main(String[] args) {
+
+		User<String> corn = new User<String>("corn");
+		User<Number> name = new User<Number>(99);
+		User<Integer> age = new User<Integer>(712);
+		getData(corn);//①
+		getData(name);
+		getData(age);//②
+	}
+    
+    //① ②出现The method getData(User<? super Number>) in the type User<T> is not applicable for the arguments (User<String>)
+
+	public static void getData(User<? super Number> data) {
+		System.out.println("data :" + data.getData());
+	}
+}
+```
+
+**自定义泛型接口**     接口中泛型字母只能使用在方法中，不能使用在全局常量中
+
+```java
+/**
+ * 自定义泛型接口
+ *
+ * 接口中泛型字母只能使用在方法中，不能使用在全局常量中
+ *
+ * @author Administrator
+ * @param <T>
+ */
+public interface Comparator<T1,T2> {
+  
+  //public static final T1 MAX_VALUE = 100; //接口中泛型字母不能使用在全局常量中
+  //T1 MAX_VALUE;
+  public static final int MAX_VALUE = 100;
+  
+  void compare(T2 t);
+  T2 compare();
+  public abstract T1 compare2(T2 t);
+}
+```
+
+**非泛型类中定义泛型方法**
+
+```java
+import java.io.Closeable;
+import java.io.FileNotFoundException;
+import java.util.List;
+
+public class Method{
+	// 泛型方法，在返回类型前面使用泛型字母
+	  public static <T> T test1(T t){
+		  return t;
+	  }
+	  
+	  // T 只能是list 或者list 的子类
+	  public static <T extends List> void test2(T t){
+	    t.add("aa");
+	  }
+	  
+	  // T... 可变参数   --->   T[]
+	  public static <T extends Closeable> void test3(T...a) {
+	    for (T temp : a) {
+	     try {
+	       if (null != temp) {
+	         temp.close();
+	       }
+	     } catch (Exception e) {
+	       e.printStackTrace();
+	     }
+	    }
+	  }
+	  
+	  public static void main(String[] args) throws FileNotFoundException {
+	    String test1 = test1("java 是门好语言");
+	    System.out.println(test1);
+	  }
+}
+```
+
+**泛型的继承**
+
+```java
+
+public abstract class Father<T1, T2> {
+  T1 age;
+ 
+  public abstract void test(T2 name);
+}
+ 
+// 保留父类泛型 ----》泛型子类
+// 1）全部保留
+class C1<T1, T2> extends Father<T1, T2> {
+ 
+  @Override
+  public void test(T2 name) {
+ 
+  }
+}
+ 
+// 2) 部分保留
+class C2<T1> extends Father<T1, Integer> {
+ 
+  @Override
+  public void test(Integer name) {
+ 
+  }
+}
+ 
+// 不保留父类泛型 -----》子类按需实现
+// 1)具体类型
+class C3 extends Father<String, Integer> {
+ 
+  @Override
+  public void test(Integer name) {
+ 
+  }
+}
+ 
+// 2)没有具体类型
+// 泛型擦除：实现或继承父类的子类，没有指定类型，类似于Object
+class C4 extends Father {
+ 
+  @Override
+  public void test(Object name) {
+ 
+  }
+}
+```
+
+
+
+
+
+
+
+
+
+#### 三十三、反射机制
+
+
+
+#### 三十四、Mybatis学习
+
