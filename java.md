@@ -2975,7 +2975,7 @@ https://segmentfault.com/a/1190000014824002
 
 ```java
 
-public class Result<T> {
+public class Result<T> implements Serializable {
 
 	private boolean success;
 	private T result;
