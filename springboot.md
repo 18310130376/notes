@@ -2,6 +2,8 @@
 
 https://start.spring.io/
 
+https://www.cnblogs.com/xifengxiaoma/category/1262707.html
+
 # 完整配置
 
 https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
@@ -2509,6 +2511,109 @@ INFO 7576 --- [pool-1-thread-4] c.i.boot.config.EnableScheduling         : 2018-
 INFO 7576 --- [pool-1-thread-3] c.i.boot.config.EnableScheduling         : 2018-08-29 15:57:20*********每4秒执行一次
 INFO 7576 --- [pool-1-thread-5] c.i.boot.config.EnableScheduling         : 2018-08-29 15:57:20*********每2秒执行一次
 INFO 7576 --- [pool-1-thread-3] c.i.boot.config.EnableScheduling         : 2018-08-29 15:57:20*********每1秒执行一次
+```
+
+
+
+# 十七 附、前台控制定时任务
+
+```java
+package com.louis.merak.schedule;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.support.CronTrigger;
+import org.springframework.stereotype.Component;
+ 
+@Component
+public class MerakTaskScheduler {
+     
+    @Autowired
+    private ThreadPoolTaskScheduler threadPoolTaskScheduler;
+     
+    @Bean
+    public ThreadPoolTaskScheduler threadPoolTaskScheduler(){
+        return new ThreadPoolTaskScheduler();
+    }
+     
+    /**
+     * Cron Example patterns:
+     * <li>"0 0 * * * *" = the top of every hour of every day.</li>
+     * <li>"0 0 8-10 * * *" = 8, 9 and 10 o'clock of every day.</li>
+     * <li>"0 0/30 8-10 * * *" = 8:00, 8:30, 9:00, 9:30 and 10 o'clock every day.</li>
+     * <li>"0 0 9-17 * * MON-FRI" = on the hour nine-to-five weekdays</li>
+     * <li>"0 0 0 25 12 ?" = every Christmas Day at midnight</li>
+     */
+    public void schedule(Runnable task, String cron){
+        if(cron == null || "".equals(cron)) {
+            cron = "0 * * * * *";
+        }
+        threadPoolTaskScheduler.schedule(task, new CronTrigger(cron));
+    }
+     
+    /**
+     * shutdown and init
+     * @param task
+     * @param cron
+     */
+    public void reset(){
+        threadPoolTaskScheduler.shutdown();
+        threadPoolTaskScheduler.initialize();
+    }
+    
+    /**
+     * shutdown before a new schedule operation
+     * @param task
+     * @param cron
+     */
+    public void resetSchedule(Runnable task, String cron){
+        shutdown();
+        threadPoolTaskScheduler.initialize();
+        schedule(task, cron);
+    }
+    
+    /**
+     * shutdown
+     */
+    public void shutdown(){
+        threadPoolTaskScheduler.shutdown();
+    }
+}
+```
+
+```java
+package com.louis.merak.common.schedule;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class MerakTaskSchedulerController {
+    
+    @Autowired
+    MerakTaskScheduler taskScheduler;
+    
+    @RequestMapping("/schedule")
+    public String schedule(@RequestParam String cron) {
+　　　　 if(cron == null) {
+　　　　　　 cron = "0/5 * * * * *";
+        }
+        Runnable runnable = new Runnable() {
+            public void run() {
+                String time = new SimpleDateFormat("yy-MM-dd HH:mm:ss").format(new Date());
+                System.out.println("Test GETaskScheduler Success at "  + time);
+            }
+        };
+
+        taskScheduler.schedule(runnable, cron);
+        return "Test TaskScheduler Interface.";
+    }
+}
 ```
 
 
@@ -5450,6 +5555,32 @@ Negative matches：未启用的自动配置
 # 七十三、Eclipse SpringBoot插件
 
 spring-tool-suite
+
+
+
+# 七十四、集成SpringSecurity
+
+https://www.cnblogs.com/xifengxiaoma/p/9508495.html
+
+
+
+# 七十五、如何刷新Token
+
+
+
+# 七十六、Spring Security OAuth2
+
+https://www.cnblogs.com/xifengxiaoma/category/1282558.html
+
+
+
+
+
+
+
+
+
+
 
 
 

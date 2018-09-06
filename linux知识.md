@@ -488,7 +488,43 @@ password:
 
 确认sysinstall>>>configure>>>networking>>>sshd是否的勾是否有打上.
 
+#### 用户和组管理
 
+##### 1.添加用户
+
+```
+useradd tom -d /home/hello    # 添加一个tom用户，并指定tom用户的家目录为hello
+```
+
+##### 2.删除用户
+
+```
+userdel -r tom    # 删除tom用户及其home目录
+```
+
+##### 3.创建组
+
+```
+useradd tom -g public    # 创建一个tom用户并为其指定组public
+```
+
+##### 4.删除组
+
+```
+groupdel public    # 删除组，如果该组有用户成员，则必须先删除其用户才能删除组
+```
+
+##### 5.查看用户组
+
+```
+id tom    # 查看tom用户的UID和GID
+```
+
+##### 6.切换到root用户
+
+```
+su - root    # 切换到root用户
+```
 
 #### 权限操作
 
@@ -496,7 +532,10 @@ password:
 chmod u+x   表示该档案的拥有者权限
 ```
 
-
+```
+chmod 777 exam.txt    # 对exam.txt赋予所有用户所有权限
+chmod u=rwx,g=rx,o=rx exam.txt    # 对exam.txt的所属用户赋予rwx（读，写，执行）权限，所属组赋予rx权限，其它用户赋予rx权限
+```
 
 #### nohup 
 
