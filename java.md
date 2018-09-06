@@ -2929,3 +2929,15 @@ jdk/bin目录下面双击jvisualvm.exe既可使用
 Visual GC 是常常使用的一个功能，可以明显的看到年轻代、老年代的内存变化，以及gc频率、gc的时间等。
 
 VisualVM非常多的其它功能，可以分析dump的内存快照，dump出来的线程快照并且进行分析等，还有其它很多的插件大家可以去探索（线程dump和堆dump）
+
+
+
+#### 二十八、TrueLicense实现产品License验证功能
+
+https://www.cnblogs.com/xifengxiaoma/p/9377654.html
+
+
+
+#### 二十九、SQL脚本文件执行器
+
+https://www.cnblogs.com/xifengxiaoma/p/9401079.html
