@@ -120,6 +120,8 @@ java -jar demo.jar --Dspring.config.location=conf/application.properties
 
 
 java -jar -Dloader.path=.,3rd-lib test-0.0.1-SNAPSHOT-classes.jar
+
+nohup java -Xms1024m -Xmx1024m -Xss1024K -XX:PermSize=64m -XX:MaxPermSize=128m -jar spring-boot-hello-1.0.0.jar >/dev/null 2>&1 &
 ```
 
 ### 完全可执行Jar
@@ -5769,9 +5771,93 @@ public class LogController {
 - 再次访问<http://127.0.0.1:8080/log> 得到
 
 
+# 七十八、thymeleaf
 
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+```
 
+```properties
+spring.session.store-type=none
+spring.thymeleaf.cache=false  
+spring.datasource.url=jdbc:mysql://localhost:3306/test_c
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+```
 
+src/main/resource下建立**templates**目录写入文件**hello.html**
+
+```
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Insert title here</title>
+<style type="text/css">
+a{
+text-decoration:none;
+}
+.list{
+margin-top:30px;
+}
+</style>
+</head>
+<body>
+	<div>
+		<form th:action="@{/add}" method="post">
+			<label> <input type="text" name="content" id="content" />
+			</label> <input type="submit" value="add"/>
+		</form>
+	</div>
+	
+	<h3>评论列表:</h3>
+	<span th:each="post:${posts}">
+		<div class="list">
+		<p th:id="${post.id}" th:text="${post.content}"></p>
+		<a th:href="@{/delete/__${post.id}__}">删除</a>
+		<hr/>
+		</div>
+	</span>
+</body>
+</html>
+```
+
+```java
+@SpringBootApplication
+@Controller
+public class CommentApplication {
+	@Autowired
+	private CommentService CommentService;
+	
+	@RequestMapping("/")
+    public String greeting(Model model) {
+		model.addAttribute("posts",CommentService.getListCommentsDesc());
+        return "hello";
+    }
+	
+	@RequestMapping(value = "/add", method = RequestMethod.POST,produces="text/html;charset=UTF-8")
+	public String add(@RequestParam(value="content", required=false) String content){
+		CommentService.add(content);
+		return "redirect:/";
+	}
+	
+	@RequestMapping("/delete/{id}")
+	public String delete(@PathVariable("id") String id){
+		CommentService.deleteById(Integer.parseInt(id));
+		return "redirect:/";
+	}
+	
+	public static void main(String[] args) {
+		SpringApplication.run(CommentApplication.class, args);
+	}
+}
+```
+
+注意：使用@restController时返回json，使用@Controller时去在templates下找返回的值的文件.html
 
 
 
