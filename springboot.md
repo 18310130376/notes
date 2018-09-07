@@ -110,6 +110,8 @@ public class FeignConsumerApplication {
 ```java
 java -jar springboot-release.jar --server.port=9090
 java -jar springboot-release.jar  --spring.prifiles.active=dev &
+java -jar fis-server-1.0.0.jar --spring.config.location=application-dev.properties（jar同级目录）
+
 nohup java -jar yourapp.jar &
 java -jar yourapp.jar &
 mvn spring-boot:run
