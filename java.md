@@ -1006,6 +1006,15 @@ public class StreamTest {
 		list = initList();
 		Map<Integer,List<User>> userMap = list.stream().collect(Collectors.groupingBy(User::getAge));
 
+        
+        List<Map<String, Object>> queryForList = .....
+        Map<Long,List<Map<String,Object>>> userMap = queryForList.stream().collect(Collectors.groupingBy(x -> Long.parseLong(x.get("company_id").toString())));
+        
+   Map<Boolean, List<Integer>> collectGroup = Stream.of(1, 2, 3, 4)
+   .collect(Collectors.groupingBy(it -> it > 3));
+
+        
+        
 		Stream<User> userStream = Stream.of(new User("u1",1),new User("u2",21),new User("u2",21));
 		System.out.println(userStream.distinct().count());
 	}
@@ -1026,6 +1035,43 @@ public class StreamTest {
 	}
 }
 ```
+
+#### 取出某一属性
+
+```java
+List<User> list = new ArrayList<User>();
+        User user1 = new User("第一位","用户1");
+        list.add(user1);
+        User user2 = new User("第二位","用户2");
+        list.add(user2);
+        User user3 = new User("第三位","用户3");
+        list.add(user3);
+        List<String> tableNames=list.stream().map(User::getMessage).collect(Collectors.toList());
+        System.out.println("输出第一个："+tableNames);
+        List<String> orders=list.stream().map(User::getOrder).collect(Collectors.toList());
+        System.out.println(orders)
+```
+
+```java
+	public void redoDepositProposal() {
+		
+		List<Map<String, Object>> queryForList = new ArrayList<>();
+		
+		if(queryForList != null && queryForList.size() > 0) {
+			
+			Map<Long,List<Map<String,Object>>> compayProposalMap = queryForList.stream().collect(Collectors.groupingBy(x -> Long.parseLong(x.get("company_id").toString())));
+			
+			 for (Entry<Long, List<Map<String, Object>>> entry : compayProposalMap.entrySet()) {
+				 Long companyId = entry.getKey();
+				 
+				 Set<String> proposalList = entry.getValue().stream().map(x -> x.get("pno").toString()).collect(Collectors.toSet());
+				 
+			}
+		}
+	}
+```
+
+
 
 #### 十五、BASE64
 
