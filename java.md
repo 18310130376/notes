@@ -3287,9 +3287,163 @@ class C4 extends Father {
 }
 ```
 
+```java
+/**
+ * extends:泛型的上限 <= 一般用于限制操作 不能使用在添加数据上，一般都是用于数据的读取
+ * supper:泛型的上限 >= 即父类或自身。一般用于下限操作
+ * @author Administrator
+ * @param <T>
+ */
+public class Test<T extends Fruit> {
+ 
+  private static void test01() {
+    Test<Fruit> t1 = new Test<Fruit>();
+    Test<Apple> t2 = new Test<Apple>();
+    Test<Pear> t3 = new Test<Pear>();
+  }
+ 
+  private static void test02(List<? extends Fruit> list) {
+ 
+  }
+ 
+  private static void test03(List<? super Apple> list) {
+ 
+  }
+ 
+  public static void main(String[] args) {
+ 
+    // 调用test02(),测试 extends  <=
+    test02(new ArrayList<Fruit>());
+    test02(new ArrayList<Apple>());
+    test02(new ArrayList<ReadApple>());
+    // test02(new ArrayList<Object>()); Object 不是 Fruit 的子类 ，编译不通过
+    
+    // 调用test03() ,测试super >=
+    test03(new ArrayList<Apple>());
+    test03(new ArrayList<Fruit>());
+    //test03(new ArrayList<ReadApple>());  ReadApple < apple,所以不能放入
+  }
+}
+class Fruit {
+}
 
+class Apple extends Fruit {
+ 
+}
+class Pear extends Fruit {
+ 
+}
+class ReadApple extends Apple {
+ 
+}
+```
 
+**通配符**
 
+通配符（Wildcards）
+
+- T、K、V、E 等泛型字母为有类型，类型参数赋予具体的值
+- ？未知类型 类型参数赋予不确定值，任意类型
+- 只能用在声明类型、方法参数上，不能用在定义泛型类上
+
+```java
+/**
+ * 泛型的通配符 类型不确定，用于声明变量或者形参上面
+ *
+ * 不能使用在类上 或者  new 创建对象上
+ * @author Administrator
+ *
+ */
+public class Demo04 {
+ 
+  // 用在形参上
+  public static void test(List<?> list) {
+ 
+   List<?> list2; // 用在声明变量上
+   list2 = new ArrayList<String>();
+   list2 = new ArrayList<Integer>();
+   list2 = new ArrayList<Object>();
+ 
+  }
+ 
+  public static void main(String[] args) {
+   test(new ArrayList<String>());
+   test(new ArrayList<Integer>());
+  }
+}
+```
+
+**K 和V**传多个参数
+
+```java
+public interface Mymap<K, V> {
+    public K getKey();
+    public V getValue();
+}
+
+public class MymapImpl<K, V> implements Mymap<K, V> {
+
+    private K key;
+    private V value;
+
+    public MymapImpl(K key, V value) {
+    this.key = key;
+    this.value = value;
+    }
+
+    public K getKey()   { return key; }
+    public V getValue() { return value; }
+}
+```
+
+下来就可以传入任意类型，创建实例了，不用转化类型
+
+```java
+Mymap<String, Integer> mp1= new MymapImpl<String, Integer>("Even", 8);
+Mymap<String, String>  mp2= new MymapImpl<String, String>("hello", "world");
+Mymap<Integer, Integer> mp3= new MymapImpl<Integer, Integer>(888, 888);
+```
+
+**泛型E符号**
+
+和T基本一样
+
+```java
+package com.gwghk.persistence.txn;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class GenericMethodTest {
+	 // 泛型方法 printArray                         
+	   public static < E > List<E> printArray( E[] inputArray )
+	   {
+	      // 输出数组元素            
+	         for ( E element : inputArray ){        
+	            System.out.printf( "%s ", element );
+	         }
+	         System.out.println();
+			return new ArrayList<E>();
+	    }
+	 
+	    public static void main( String args[] )
+	    {
+	        // 创建不同类型数组： Integer, Double 和 Character
+	        Integer[] intArray = { 1, 2, 3, 4, 5 };
+	        Double[] doubleArray = { 1.1, 2.2, 3.3, 4.4 };
+	        Character[] charArray = { 'H', 'E', 'L', 'L', 'O' };
+	 
+	        System.out.println( "整型数组元素为:" );
+	        printArray( intArray  ); // 传递一个整型数组
+	 
+	        System.out.println( "\n双精度型数组元素为:" );
+	        printArray( doubleArray ); // 传递一个双精度型数组
+	 
+	        System.out.println( "\n字符型数组元素为:" );
+	        printArray( charArray ); // 传递一个字符型数组
+	    } 
+}
+```
 
 
 
