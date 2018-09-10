@@ -3501,3 +3501,139 @@ public class GenericMethodTest {
 
 #### 三十四、Mybatis学习
 
+
+
+#### 三十五、加载资源文件
+
+maven项目，文件位于src/main/resources下
+
+读取方式一：
+
+```java
+InputStream inputStream = EpayDepositService.class.getClassLoader().getResourceAsStream("epayDepositTemplate.html");
+//等价于：InputStream inputStream = getClass().getClassLoader().getResourceAsStream("epayDepositTemplate.html");
+//错误写法：InputStream in = getClass().getResourceAsStream("conf.properties");，必须要加.getClassLoader()
+```
+
+陷阱：
+
+在Integer.class.getClassLoader().getResource("*********");这一句抛出空指针异常，定位为getClassLoader()返回null，查了一下jdk的文档，原来这里还有一个陷阱：
+　　这里jdk告诉我们：如果一个类是`通过bootstrap 载入的，那我们通过这个类去获得classloader的话，有些jdk的实现是会返回一个null的`，比如说我用 new Object().getClass().getClassLoader()的话，会返回一个null，这样的话上面的代码就会出现NullPointer异常．所以保险起见我们最好还是使用我们`自己写的类`来获取classloader（"this.getClass().getClassLoader()“），这样一来就不会有问题。
+
+
+
+读取方式二：
+
+```java
+//org.springframework.core.io.ClassPathResource.ClassPathResource(String path)
+Resource resource = new ClassPathResource("epayDepositTemplate.html");
+EncodedResource encRes = new EncodedResource(resource, "UTF-8");
+String templateString = IOUtils.toString(encRes.getInputStream());
+```
+
+方式三 工具类
+
+```java
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+/**
+ * 单例模式
+ */
+final class ResourceLoader {
+
+    private static ResourceLoader loader = new ResourceLoader();
+    private static Map<String, Properties> loaderMap = new HashMap<>();
+
+    private ResourceLoader() {
+    }
+
+    static ResourceLoader getInstance() {
+        return loader;
+    }
+
+    Properties getPropFromProperties(String fileName) throws Exception {
+
+        Properties prop = loaderMap.get(fileName);
+        if (prop != null) {
+            return prop;
+        }
+        prop = new Properties();
+
+        /*
+            当程序启动时，如果添加了系统变量 configurePath 的配置，那么就会在这个路径下寻找属性文件，
+            否则就会在当前的classpath 路径下寻找属性文件
+          */
+        String configPath = System.getProperty("configurePath");
+
+        if (configPath == null) {
+            prop.load(this.getClass().getClassLoader().getResourceAsStream(fileName));
+        } else {
+            String filePath = configPath + File.separator + fileName;
+            prop.load(new FileInputStream(new File(filePath)));
+        }
+
+        loaderMap.put(fileName, prop);
+        return prop;
+    }
+
+}
+```
+
+```java
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+/**
+ * 读取properties文件
+ */
+public class PropertiesUtil {
+
+    private static ResourceLoader loader = ResourceLoader.getInstance();
+    private static ConcurrentMap<String, String> configMap = new ConcurrentHashMap<String, String>();
+    private static final String DEFAULT_CONFIG_FILE = "config.properties";
+
+
+    /**
+     * 从属性文件propName 中读取属性key
+     */
+    public static String getStringByKey(String key, String propName) {
+        Properties prop;
+        try {
+            prop = loader.getPropFromProperties(propName);
+        } catch (Exception e) {
+            throw new RuntimeException("属性文件加载失败", e);
+        }
+        key = key.trim();
+        if (!configMap.containsKey(key)) {
+            if (prop.getProperty(key) != null) {
+                configMap.put(key, prop.getProperty(key));
+            }
+        }
+        return configMap.get(key);
+    }
+
+    /**
+     * 从默认属性文件 中读取属性key
+     */
+    public static String getStringByKey(String key) {
+        return getStringByKey(key, DEFAULT_CONFIG_FILE);
+    }
+
+    /**
+     * 从属性文件propName 中读取所有属性
+     */
+    public static Properties getProperties() {
+        try {
+            return loader.getPropFromProperties(DEFAULT_CONFIG_FILE);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}
+```
+
