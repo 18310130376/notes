@@ -733,6 +733,33 @@ app.java.version=@java.version@
 
 **注** 如果你在配置中使用标准的Spring占位符（比如`${foo}`）且没有将`useDefaultDelimiters`属性设置为`false`，那构建时这些属性将被暴露出去。
 
+
+
+## properties-maven-plugin
+
+```xml
+<plugin>
+	<groupId>org.codehaus.mojo</groupId>
+		<artifactId>properties-maven-plugin</artifactId>
+		<version>1.0-alpha-1</version>
+		<executions>
+			<execution>
+					<phase>initialize</phase>
+					<goals>
+						<goal>read-project-properties</goal>
+					</goals>
+					<configuration>
+						<files>
+						  <file>${basedir}/version_${releaseEnv}.properties</file>
+						</files>
+						</configuration>
+			 </execution>
+		</executions>
+</plugin>
+```
+
+
+
 ## 利用maven的resources、filter和profile实现不同环境使用不同配置文件
 
 see：https://blog.csdn.net/hjiacheng/article/details/57413933

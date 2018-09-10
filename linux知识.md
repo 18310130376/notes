@@ -1638,7 +1638,17 @@ sh里没有多行注释，只能每一行加一个#号。只能像这样：
 EOF
 ```
 
+#### 通过Shell脚本读取properties
 
+通过Shell脚本读取properties文件中的参数时遇到\r换行符的问题
+
+https://www.cnblogs.com/ljhoracle/p/6277064.html
+
+
+
+#### shell脚本执行过程
+
+https://blog.csdn.net/lf_2016/article/details/65627403
 
 #### 编程实战一
 
