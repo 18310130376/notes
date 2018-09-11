@@ -20,7 +20,7 @@ Java中类不支持多继承，只支持单继承（即一个类只有一个父�
 
 类可以实现很多个接口，但是只能继承一个抽象类 
 
-类可以不实现抽象类和接口声明的所有方法，当然，在这种情况下，类也必须得声明成是抽象的
+`类可以不实现抽象类和接口声明的所有方法，当然，在这种情况下，类也必须得声明成是抽象的`
 
 抽象类可以在不提供接口方法实现的情况下实现接口
 
@@ -33,9 +33,17 @@ Java接口中声明的变量默认都是final的。抽象类可以包含非final
 抽象类只能单继承，接口可以多继承
 抽象类可以有普通方法，接口中的所有方法都是抽象方法
 接口的属性都是public static final修饰的，而抽象的不是
+
+public interface Interfacetest {
+	public static String a = "123";
+	public static void main(String[] args) {
+		a = "456";//The final field Interfacetest.a cannot be assigned
+		System.out.println(a);
+	}
+}
 ```
 
-有抽象方法的类必须被声明为抽象类，而抽象类未必要有抽象方法
+有抽象方法的`类`必须被声明为抽象类，而抽象类未必要有抽象方法
 
 | **参数**           | **抽象类**                                                   | **接口**                                                     |
 | ------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -80,9 +88,15 @@ public class Singleton {
 
 # 5 、StringBuilder、StringBuffer的区别
 
-StringBuffer    线程安全
+StringBuffer    `线程安全`
 
 StringBuilder   效率高  ，因为不用维护线程安全问题
+
+
+
+1. StringBuilder相比StringBuffer效率更高，但多线程不安全；
+2. 在单线程中字符串的频繁拼接使用StringBuilder效率更高，对于多线程使用StringBuffer则更安全；
+3. 字符串简单操作时没必要使用上述两者，还是用String类型提高速度
 
 # 6、Java集合框架的基础接口有哪些
 
@@ -98,6 +112,70 @@ Map是一个将key映射到value的对象.一个Map不能包含重复的key：�
 Iterator可用来遍历Set和List集合，但是ListIterator只能用来遍历List。 
 Iterator对集合只能是前向遍历，ListIterator既可以前向也可以后向。 
 ListIterator实现了Iterator接口，并包含其他的功能，比如：增加元素，替换元素，获取前一个和后一个元素的索引，等等。
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+
+public class TestA {
+	public static void main(String[] args) {
+
+		List<String> a = new ArrayList<>();
+		a.add("1");
+		a.add("2");
+		a.add("3");
+		
+		ListIterator<String> listIterator = a.listIterator(); 
+		while(listIterator.hasNext()) {
+			System.out.println(listIterator.next());//当执行next方法后，迭代器的指向位置后移
+			listIterator.add("222");
+		}
+		System.out.println( a);
+	}
+}
+[1, 222, 2, 222, 3, 222]
+```
+
+1、使用范围不同，iterator可以应用于所有的集合，Set、List和Map以及这些集合的子类型。而ListIterator只能用于List及其子类型。
+
+2、ListIterator有add方法，可以向List中添加对象，而Iterator不能。
+
+3、ListIterator和Iterator都有hasNext()和next()方法，可以实现顺序向后遍历，但是ListIterator有hasPrevious()和previous()方法，可以实现逆向遍历，但是iterator不可以。
+
+4、ListIterator可以定位当前索引的位置，nextIndex()和previousIndex()可以实现。Iterator没有此功能。
+
+5、都可以实现删除操作，但是ListIterator可以实现对象的修改，set()方法可以实现。Iterator仅能遍历，不能实现修改。
+
+# 7、LinkedList和ArrayList区别
+
+ LinkedList也像ArrayList一样实现了基本的接口，但是它执行某些从操作时比ArrayList更高效，但在随机访问方面要逊色一些。LinkedList中有一些方法虽然名字不同，但可以完成相同的操作，实现相同的功能，其中：
+
+1、getFirst()和element()完全一样，它们都返回列表的头（第一个元素），并且不移除它，若List为空，则抛出NoSunchElementException。
+
+​    peek()方法也是不移除且返回列表的第一个元素，不同之处是List为空时返回null。
+
+2、remove()和removeFirst()也是一样的，移除并返回列表的第一个元素，若列表为空，抛出NoSunchElementException。
+
+​    poll()也是移除并返回列表的第一个元素，若列表为空，返回null。
+
+3、addFirst()、add()、addLast()相同，它们都将某个元素插入到列表的尾部。
+
+4、removeLast()移除并返回列表的最后一个元素。
+
+
+
+LinkedList和ArrayList的差别主要来自于Array和LinkedList数据结构的不同。如果你很熟悉Array和LinkedList，你很容易得出下面的结论：
+
+1) 因为Array是基于索引(index)的数据结构，它使用索引在数组中搜索和读取数据是很快的。Array获取数据的时间复杂度是O(1),但是要删除数据却是开销很大的，因为这需要重排数组中的所有数据。
+
+2) 相对于ArrayList，LinkedList插入是更快的。**因为LinkedList不像ArrayList一样，不需要改变数组的大小**，也不需要在数组装满的时候要将所有的数据重新装入一个新的数组，这是ArrayList最坏的一种情况，时间复杂度是O(n)，而LinkedList中插入或删除的时间复杂度仅为O(1)。ArrayList在插入数据时还需要更新索引（除了插入数组的尾部）。
+
+3) 类似于插入数据，删除数据时，LinkedList也优于ArrayList。
+
+4) LinkedList需要更多的内存，因为ArrayList的每个索引的位置是实际的数据，而LinkedList中的每个节点中存储的是实际的数据和前后节点的位置。
+
+
 
 # 8、hashCode()和equals()方法有何重要性
 
@@ -135,12 +213,12 @@ TreeMap : 有序的
 
 # 10、Array和ArrayList有何区别？什么时候更适合用Array
 
-Array可以容纳基本类型和对象，而ArrayList只能容纳对象。 
+Array可以容纳`基本类型和对象`，而ArrayList只能容纳对象。List<`Integr`> a = new ArrayList<>(); 
 Array是指定大小的，而ArrayList大小是固定的。 
 Array没有提供ArrayList那么多功能，比如addAll、removeAll和iterator等。尽管ArrayList明显是更好的选择，但也有些时候Array比较好用。 
-（1）如果列表的大小已经指定，大部分情况下是存储和遍历它们。 
+（1）如果列表的`大小已经指定`，大部分情况下是存储和遍历它们。 
 （2）对于遍历基本数据类型，尽管Collections使用自动装箱来减轻编码任务，在指定大小的基本类型的列表上工作也会变得很慢。 
-（3）如果你要使用多维数组，使用[][]比List
+（3）如果你要使用多维数组
 
 
 
@@ -155,8 +233,6 @@ Java虚拟机包括：
 堆栈
 
 处理器
-
-
 
 # 12、 类与对象的关系
 
@@ -205,7 +281,9 @@ Hashcode
 toString
 wait
 notify
-clone
+
+notifyAll
+
 getClass
 
 # 17、java中是值传递引用传递
@@ -231,7 +309,7 @@ Final可以修饰类，修饰方法，修饰变量。
 
 # 21、抽象类可以使用final修饰吗
 
-不可以。定义抽象类就是让其他继承的，而final修饰类表示该类不能被继承，与抽象类的理念违背了
+`不可以。定义抽象类就是让其他继承的，而final修饰类表示该类不能被继承，与抽象类的理念违背了`
 
 # 22、普通类与抽象类有什么区别
 
@@ -240,7 +318,7 @@ Final可以修饰类，修饰方法，修饰变量。
 
 # 23、接口有什么特点
 
-接口中声明全是public static final修饰的常量
+`接口中声明全是public static final修饰的常量`
 接口中所有方法都是抽象方法
 接口是没有构造方法的
 接口也不能直接实例化
@@ -254,8 +332,6 @@ Final可以修饰类，修饰方法，修饰变量。
 # 25、在异常捕捉时，如果发生异常，那么try.catch.finally块外的return语句会执行吗
 
 会执行，如果有finally，在finally之后被执行，如果没有finally，在catch之后被执行
-
-
 
 # 26、Thow与thorws区别
 
@@ -282,7 +358,7 @@ Linked是双向链表，他在中间插入或者头部插入时效率较高，�
 Array与ArrayList都是用来存储数据的集合。ArrayList底层是使用数组实现的，但是arrayList对数组进行了封装和功能扩展，拥有许多原生数组没有的一些功能。我们可以理解成ArrayList是Array的一个升级版。
 
 1. Array可以容纳基本类型和对象，而ArrayList只能容纳对象。
-2. Array是指定大小的，而ArrayList大小是固定的
+2. Array是指定大小的，而ArrayList大小是固定的(默认10)
 
 # 30、JDBC操作的步骤
 
@@ -319,7 +395,7 @@ Array与ArrayList都是用来存储数据的集合。ArrayList底层是使用数
 
 short s1= 1; s1 += 1; 该段代码是否有错，有的话怎么改？
 
-+=操作符会自动对右边的表达式结果强转匹配左边的数据类型，所以没错。
+`+=操作符会自动对右边的表达式结果强转匹配左边的数据类型，所以没错。`
 
 # 36、final有哪些用法
 
@@ -364,20 +440,20 @@ Integer 对象会占用更多的内存。Integer 是一个对象，需要存储�
 
 # 41、Runnable和Callable的区别
 
-Runnable接口中的run()方法的返回值是void，它做的事情只是纯粹地去执行run()方法中的代码而已；Callable接口中的call()方法是有返回值的，是一个泛型，和Future、FutureTask配合可以用来获取异步执行的结果。 
+Runnable接口中的run()方法的返回值是void，它做的事情只是纯粹地去执行run()方法中的代码而已；Callable接口中的call()方法是有返回值的，是一个泛型，`和Future、FutureTask`配合可以用来获取异步执行的结果。 
 这其实是很有用的一个特性，因为多线程相比单线程更难、更复杂的一个重要原因就是因为多线程充满着未知性，某条线程是否执行了？某条线程执行了多久？某条线程执行的时候我们期望的数据是否已经赋值完毕？无法得知，我们能做的只是等待这条多线程的任务执行完毕而已。而Callable+Future/FutureTask却可以方便获取多线程运行的结果，可以在等待时间太长没获取到需要的数据的情况下取消该线程的任务。
 
 # 42、wait()与sleep()的区别
 
 - wait 方法和之前的 sleep 一样就是放弃 CPU 执行权，但是他和 sleep 不一样的地方是需 要等待另外一个持有相同锁的线程对其进行唤醒操作，并且 wait 方法必须有一个同步锁， 
 - ​
-- sleep()来自Thread类，和wait()来自Object类。调用sleep()方法的过程中，线程`不会释放对象锁`。而 调用 `wait 方法线程会释放对象锁`
+- sleep()来自Thread类，wait()来自Object类。调用sleep()方法的过程中，线程`不会释放对象锁`。而 调用 `wait 方法线程会释放对象锁`
 - sleep()睡眠后`出让`系统资源（CPU），wait让其他线程可以占用CPU
 - sleep(milliseconds)需要指定一个睡眠时间，时间一到会`自动唤醒`.而wait()需要配合`notify()或者notifyAll()`使用
 
 # 43、FutureTask是什么
 
-这个其实前面有提到过，FutureTask表示一个异步运算的任务。FutureTask里面可以传入一个Callable的具体实现类，可以对这个异步运算的任务的结果进行等待获取、判断是否已经完成、取消任务等操作。当然，由于FutureTask也是Runnable接口的实现类，所以FutureTask也可以放入线程池中。
+这个其实前面有提到过，FutureTask表示一个异步运算的任务。FutureTask里面可以传入一个Callable的具体实现类，可以对这个异步运算的任务的结果进行等待获取、判断是否已经完成、取消任务等操作。当然，由于`FutureTask也是Runnable接口的实现类`，所以FutureTask也可以放入线程池中。
 
 # 44、生产者消费者模型的作用是什么
 
@@ -463,13 +539,15 @@ ArrayBlockingQueue：如果你使用的是有界队列比方说ArrayBlockingQueu
 
 # 46、CyclicBarrier和CountDownLatch区别
 
-
-
 这两个类非常类似，都在java.util.concurrent下，都可以用来表示代码运行到某个点上，二者的区别在于：
 
-- CyclicBarrier的某个线程运行到某个点上之后，该线程即停止运行，直到所有的线程都到达了这个点，所有线程才重新运行；CountDownLatch则不是，某线程运行到某个点上之后，只是给某个数值-1而已，该线程继续运行。
+- CyclicBarrier的某个线程运行到某个点上之后，该线程即`停止运行`，直到所有的线程都到达了这个点，所有线程才重新运行；CountDownLatch则不是，某线程运行到某个点上之后，只是给某个数值-1而已，`该线程继续运行。`子线程countDown后继续向下运行，主线程在await处等待计数器为0时向下运行
 - CyclicBarrier只能唤起一个任务，CountDownLatch可以唤起多个任务
 - CyclicBarrier可重用，CountDownLatch不可重用，计数值为0该CountDownLatch就不可再用了。
+
+CountDownLatch主线程等待计数器归零，子线程countDown计数器减去1后继续向下
+
+CyclicBarrier所有子线程在await处等待，直到所有的子线程都到了await时所有子线程继续向下执行
 
 # 47、你有哪些多线程开发良好的实践
 
@@ -551,7 +629,7 @@ LocalDateTime yesterday = today.minusDays(1);
 
 二:使用$与#
 
-   #{}: 解析为一个 JDBC 预编译语句（prepared statement）的参数标记符，一个 #{ } 被解析为一个参数占位符 。
+{}: 解析为一个 JDBC 预编译语句（prepared statement）的参数标记符，一个 #{ } 被解析为一个参数占位符 。
 
    ${}: 仅仅为一个纯碎的 string 替换，在动态 SQL 解析阶段将会进行变量替换。
 
@@ -597,6 +675,8 @@ LocalDateTime yesterday = today.minusDays(1);
 
 Collection是集合类的上级接口，继承与他的接口主要有Set 和List.
 Collections是针对集合类的一个帮助类，他提供一系列静态方法实现对各种集合的搜索、排序、线程安全化等操作。
+
+List<Object> emptyList = Collections.EMPTY_LIST;
 
 # 60 、接口是否可继承接口? 抽象类是否可实现(implements)接口? 抽象类是否可继承实体类(concrete class)
 

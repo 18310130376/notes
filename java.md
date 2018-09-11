@@ -1036,7 +1036,7 @@ public class StreamTest {
 }
 ```
 
-#### 取出某一属性
+取出某一属性
 
 ```java
 List<User> list = new ArrayList<User>();
@@ -1068,6 +1068,19 @@ List<User> list = new ArrayList<User>();
 				 
 			}
 		}
+	}
+```
+
+#### 日期操作
+
+前一天的日期
+
+```java
+public static void main(String[] args) {
+		
+		LocalDateTime today = LocalDateTime.now();
+		String yesterday = today.minusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));//java8：前一天的日期
+		System.out.println(yesterday);
 	}
 ```
 
