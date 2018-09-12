@@ -748,7 +748,7 @@ client端会对某个znode建立一个**watcher事件**，当该znode发生变�
 ## 9.Zookeeper集群管理（文件系统、通知机制）
 
 所谓集群管理无在乎两点：**是否有机器退出和加入、选举master**。 
-对于第一点，所有机器约定在父目录下**创建临时目录节点**，然后监听父目录节点的子节点变化消息。一旦有机器挂掉，该机器与 zookeeper的连接断开，其所创建的临时目录节点被删除，**所有其他机器都收到通知：某个兄弟目录被删除**，于是，所有人都知道：它上船了。
+对于第一点，所有机器约定在父目录下**创建临时目录节点**，然后监听`父目录节点的子节点`变化消息。一旦有机器挂掉，该机器与 zookeeper的连接断开，其所创建的临时目录节点被删除，**所有其他机器都收到通知：某个兄弟目录被删除**，于是，所有人都知道：它上船了。
 新机器加入也是类似，**所有机器收到通知：新兄弟目录加入**，highcount又有了，对于第二点，我们稍微改变一下，**所有机器创建临时顺序编号目录节点，每次选取编号最小的机器作为master就好**。
 
 ## 10.Zookeeper分布式锁（文件系统、通知机制）
@@ -897,11 +897,11 @@ hash
 
 ## （3）为什么redis需要把所有数据放到内存中
 
-Redis为了达到最快的读写速度将数据都读到内存中，并通过异步的方式将数据写入磁盘。所以redis具有快速和数据持久化的特征。如果不将数据放在内存中，磁盘I/O速度为严重影响redis的性能。在内存越来越便宜的今天，redis将会越来越受欢迎。 如果设置了最大使用的内存，则数据已有记录数达到内存限值后不能继续插入新值。 
+Redis为了达到最快的读写速度将数据都读到内存中，并通过`异步的方式将数据写入磁盘`。所以redis具有快速和数据持久化的特征。如果不将数据放在内存中，磁盘I/O速度为严重影响redis的性能。在内存越来越便宜的今天，redis将会越来越受欢迎。 如果设置了最大使用的内存，则数据已有记录数达到内存限值后不能继续插入新值。 
 
 ## （4）读写分离模型
 
-redis支持主从的模式。原则：Master会将数据同步到slave，而slave不会将数据同步到master。Slave启动时会连接master来同步数据。
+redis支持主从的模式。原则：`Master会将数据同步到slave，而slave不会将数据同步到master。Slave启动时会连接master来同步数据`。
 
 这是一个典型的分布式读写分离模型。我们可以利用master来插入数据，slave提供检索服务。这样可以有效减少单个机器的并发访问数量
 
@@ -913,11 +913,11 @@ redis支持主从的模式。原则：Master会将数据同步到slave，而slav
 
 redis 内存数据集大小上升到一定大小的时候，就会施行数据淘汰策略（回收策略）。redis 提供 6种数据淘汰策略 
 
-- volatile-lru：从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰
-- volatile-ttl：从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰
-- volatile-random：从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰
-- allkeys-lru：从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰
-- allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰
+- volatile-lru：从已设置过期时间的数据集（server.db[i].expires）中挑选`最近最少使用`的数据淘汰
+- volatile-ttl：从已设置过期时间的数据集（server.db[i].expires）中挑选`将要过期`的数据淘汰
+- volatile-random：从已设置过期时间的数据集（server.db[i].expires）中`任意`选择数据淘汰
+- allkeys-lru：从数据集（server.db[i].dict）中挑选`最近最少使用`的数据淘汰
+- allkeys-random：从数据集（server.db[i].dict）中`任意`选择数据淘汰
 - no-enviction（驱逐）：禁止驱逐数据
 
 ## （6）使用redis有哪些好处
@@ -1013,6 +1013,10 @@ Mysql的事物隔离级别 其实跟 Spring的事物隔离级别一样，都是
 # 32 Dubbo中zookeeper做注册中心，如果注册中心集群都挂掉，发布者和订阅者之间还能通信么
 
 可以的，启动dubbo时，消费者会从zk拉取注册的生产者的地址接口等数据，缓存在本地。每次调用时，按照本地存储的地址进行调用
+
+默认缓存位置：`C:\Users\789\.dubbo\dubbo-registry-127.0.0.1.cache`
+
+ 更改：dubbo.registry.file=/tomcat/soa/dubbo-registry.properties
 
 
 
@@ -1340,7 +1344,7 @@ Kafka的信息复制确保了任何已发布的消息不会丢失，并且可以
 
 乐观锁：一段执行逻辑加上乐观锁,不同线程同时执行时,可以同时进入执行,在最后更新数据的时候要检查这些数据是否被其他线程修改了(版本和执行初是否相同),没有修改则进行更新,否则放弃本次操作。
 
-
+https://blog.csdn.net/L_BestCoder/article/details/79298417
 
 # 44 Java内存泄露的问题调查定位：jmap，jstack的使用等等
 
@@ -1375,8 +1379,6 @@ count(*) 是表示整个结果集有多少条记录
 
  如果使用主键（主键肯定不为空的），则count(id)和 count(*) 效果一样
 
-
-
 # 47.delete 和trunc区别
 
 trunc是截断表，将表所有数据删除，释放表空间。
@@ -1392,6 +1394,14 @@ ConcurrentHashMap与HashMap相比，有以下不同点
 - ConcurrentHashMap线程安全，而HashMap非线程安全
 - HashMap允许Key和Value为null，而ConcurrentHashMap不允许
 - HashMap不允许通过Iterator遍历的同时通过HashMap修改，而ConcurrentHashMap允许该行为，并且该更新对后续的遍历可见
+
+```java
+ConcurrentHashMap<String, Object> map = new ConcurrentHashMap<>();
+map.put(null,null);//Exception in thread "main" java.lang.NullPointerException
+System.out.println(map);
+```
+
+
 
 # 49 、为什么wait()和notify()属于Object类
 

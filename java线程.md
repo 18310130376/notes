@@ -2294,6 +2294,14 @@ public class JoinTest {
 
 多线程和并发编程中使用 lock 接口的最大优势是它为读和写提供两个单独的锁，可以让你构建高性能数据结构，比如 `ConcurrentHashMap` 和条件阻塞。
 
+
+
+# Reentrantlock
+
+
+
+
+
 # 守护线程
 
 守护线程随着主线程的退出而退出，所以子线程有可能没执行完

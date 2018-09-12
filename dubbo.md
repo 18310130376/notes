@@ -1426,9 +1426,19 @@ trace com.integration.boot.api.IUserProviderService  getData 10
 
 
 
+# 修改注册列表缓存
 
+默认缓存位置：`C:\Users\789\.dubbo\dubbo-registry-127.0.0.1.cache`
 
+更改：dubbo.registry.file=/tomcat/soa/dubbo-registry.properties
 
+# 指定配置文件名称
+
+```
+dubbo.spring.config=classpath*:applicationContext-dubbo.xml
+ 
+dubbo.registry.file=/web/dubbo-registry/goldoffice_GTS2/Goldoffice_api_1.0.0-IX_TD-SIT.properties
+```
 
 
 
