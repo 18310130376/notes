@@ -8,7 +8,7 @@ Docker 要求 Ubuntu 系统的内核版本高于 3.10   .
 
 通过 uname -r 命令查看你当前的内核版本
 
-```
+```shell
 runoob@runoob:~$ uname -r 或
 runoob@runoob:~$ uname -sr或
 runoob@runoob:~$ uname -a
@@ -2102,7 +2102,7 @@ sudo docker daemon
 
 利用sudo ps -A 可以获取守护进程的进程号
 
-**三、让远程api可以访问docker守护进程**
+### 让远程api可以访问docker守护进程
 
 `sudo docker daemon -H tcp://0.0.0.0:2375`
 
