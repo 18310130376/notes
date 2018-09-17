@@ -627,6 +627,22 @@ apt-get install iproute2
 #### ip
 ```
 
+
+
+#### 公网ip查询
+
+方式一：百度 `公网ip查询`
+
+```
+https://www.baidu.com/s?ie=utf-8&f=3&rsv_bp=1&rsv_idx=1&tn=baidu&wd=%E5%85%AC%E7%BD%91ip%E6%9F%A5%E8%AF%A2&oq=%25E5%2585%25AC%25E7%25BD%2591ip%25E6%259F%25A5%25E8%25AF%25A2&rsv_pq=a0db30150001ef82&rsv_t=d46d0RVQx98zSNKCl%2BnxmD14twj6T8FI4l3sdyWXcRH7pWz6UFjqHi2cQYE&rqlang=cn&rsv_enter=0&prefixsug=%25E5%2585%25AC%25E7%25BD%2591ip%25E6%259F%25A5%25E8%25AF%25A2&rsp=0
+```
+
+方式二：命令行输入
+
+```
+curl ifconfig.me
+```
+
 #### 系统维护
 
 更新资源
