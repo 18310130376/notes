@@ -1340,7 +1340,7 @@ escapeXml10：转义Xml10
 
 这个现在已经废弃了，建议使用commons-text包里面的方法。
 
-十六. org.apache.commons.beanutils.BeanUtils
+十六. org.apache.commons.beanutils.BeanUtils  `PropertyUtils.copyProperties`类似
 
 ```
 copyPeoperties：复制属性值，从一个对象到另一个对象
