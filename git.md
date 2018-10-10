@@ -1,6 +1,6 @@
 # 安装
 
-用git --version命令检查是否已经安装
+用git --version命令检查是否已经安装 
 
 ```
 git --version
