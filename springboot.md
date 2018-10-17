@@ -219,6 +219,9 @@ public class StaticProperties {
 	private void setApplicationName(String applicationName){
 		this.SPRING_APPLICATION_NAME = applicationName;
 	}
+    
+    @Value("${sys.cache.retryJedisTime:3}")
+	private int retryTime;
 }
 ```
 
@@ -3737,25 +3740,25 @@ spring-boot-demo1-0.0.1-SNAPSHOT.jar\BOOT-INF\lib
 
 bootstrap-3.3.7-1.jar 
 └─ META-INF 
-    └─ resources 
-        └─ webjars 
-            └─ bootstrap 
-                └─ 3.3.7-1 
-                    ├─ css 
-                    |   ├─ bootstrap.min.css 
-                    |   ├─ bootstrap.min.css.gz # Gzip文件 
-                    ...
+​    └─ resources 
+​        └─ webjars 
+​            └─ bootstrap 
+​                └─ 3.3.7-1 
+​                    ├─ css 
+​                    |   ├─ bootstrap.min.css 
+​                    |   ├─ bootstrap.min.css.gz # Gzip文件 
+​                    ...
 
 
 
 jquery-3.1.1.jar 
 └─ META-INF 
-    └─ resources 
-        └─ webjars 
-            └─ jquery 
-                └─ 3.1.1 
-                    ├─ jquery.min.js 
-                    ...
+​    └─ resources 
+​        └─ webjars 
+​            └─ jquery 
+​                └─ 3.1.1 
+​                    ├─ jquery.min.js 
+​                    ...
 
 
 
