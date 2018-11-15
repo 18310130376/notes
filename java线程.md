@@ -2536,8 +2536,6 @@ Executors静态方法：创建线程池
 | ExecutorService | shutdownNow            | 关闭线程池，关闭所有任务             |
 |                 |                        |                                      |
 
-
-
 ​       1、corePoolSize(线程池基本大小，核心线程数量) >= 0;【当前最大并行运行线程数】
 
 　　2、maximumPoolSize(线程池最大大小) >= 1;【当前最大创建线程数】
@@ -2548,7 +2546,12 @@ Executors静态方法：创建线程池
 
 　　5、handler(线程饱和策略)不能为空。【当线程池和队列已满的处理策略】
 
-
+```
+step1.调用ThreadPoolExecutor的execute提交线程，首先检查CorePool，如果CorePool内的线程小于CorePoolSize，新创建线程执行任务。
+step2.如果当前CorePool内的线程大于等于CorePoolSize，那么将线程加入到BlockingQueue。
+step3.如果不能加入BlockingQueue，在小于MaxPoolSize的情况下创建线程执行任务。
+step4.如果线程数大于等于MaxPoolSize，那么执行拒绝策略。
+```
 
  Executors类提供静态工厂方法默认参数
 
@@ -3324,3 +3327,81 @@ public class Singleton {
 	}
 } 
 ```
+
+
+
+## Junit不支持多线程测试
+
+如下代码main方法中执行成功，但是在Junit下线程没反应：
+
+```java
+	public static void main(String[] args) throws IOException {
+			
+			ExecutorService executorService = new ThreadPoolExecutor(5, 10, 10L, TimeUnit.SECONDS,
+					new LinkedBlockingQueue<Runnable>(6));
+			
+			List<String> readLines = new ArrayList();
+	        for(int i=0;i<16;i++){
+	            try {
+	            	executorService.execute(new SendRequest(i, readLines, new RestTemplate()));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+	        }
+	        executorService.shutdown();//并不是终止线程的运行，而是禁止在这个Executor中添加新的任务
+	}
+```
+
+解决办法让主线程阻塞：
+
+```java
+
+/**  
+ * @Description: TODO(用一句话描述该文件做什么)
+ * @author wukang
+ * @date 2018年11月7日
+ */
+package basedatat;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.io.FileUtils;
+import org.junit.Test;
+import org.springframework.web.client.RestTemplate;
+
+import com.midea.smart.basedata.dao.impl.SendRequest;
+import com.midea.smart.framework.test.SmartContextTests;
+
+/**
+ *家庭房间指标查询
+ */
+public class IndicatorTest extends SmartContextTests{
+
+	@Test
+	public void test() throws IOException, InterruptedException {
+			
+			ExecutorService executorService = new ThreadPoolExecutor(5, 10, 10L, TimeUnit.SECONDS,
+					new LinkedBlockingQueue<Runnable>(6));
+			
+			List<String> readLines = FileUtils.readLines(new File("D:\\MyData\\wukang2\\Desktop\\性能测试\\性能优化.txt"), "UTF-8");
+			CountDownLatch latch=new CountDownLatch(16);
+	        for(int i=0;i<16;i++){
+	            try {
+	            	executorService.execute(new SendRequest(i, readLines, new RestTemplate(),latch));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+	        }
+	        latch.await();
+	        executorService.shutdown();//并不是终止线程的运行，而是禁止在这个Executor中添加新的任务
+	}
+}
+```
+

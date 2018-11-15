@@ -3041,7 +3041,7 @@ http://www.leftso.com/blog/326.html
 
 # 二十八 、过滤器和拦截器
 
-### 过滤器filter
+### 过滤器filter方式一（filter）
 
 ```java
 package com.integration.boot.config;
@@ -3145,11 +3145,152 @@ public class SessionFilterConfig {
 	        FilterRegistrationBean registration = new FilterRegistrationBean();
 	        registration.setFilter(new SessionFilter());
 	        registration.addUrlPatterns("/*");
+            /**在filter真正拦截过滤时用到这些参数，如excludedUri和拦截的URL比较实现一些逻辑*/
 	        registration.addInitParameter("excludedUri", excludedUriStr.toString());
 	        registration.setName("sessionFilter");
 	        registration.setOrder(1);
 	        return registration;
 	    }
+}
+```
+
+### 过滤器filter方式二(GenericFilterBean)
+
+```java
+	@Bean
+	public FilterRegistrationBean authFilter(SysConfig config, SmartCacheOperator cacheOperator) {
+		FilterRegistrationBean registration = new FilterRegistrationBean();
+		AuthFilter filter = new AuthFilter(config.getUidHeader(), Arrays.asList(config.getAuthWhiteList()), 
+									config.isCorrectInputStream(), cacheOperator);
+		registration.setFilter(filter);
+		registration.addUrlPatterns("/v1/*");
+		registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
+		return registration;
+	}
+```
+
+```java
+package com.midea.smart.iot.api.filter;
+
+import com.alibaba.fastjson.JSONObject;
+import com.midea.smart.common.constants.errorcode.ErrorCode_common;
+import com.midea.smart.common.util.JsonUtil;
+import com.midea.smart.framework.cache.SmartCacheOperator;
+import com.midea.smart.framework.rpc.exception.RpcException;
+import com.midea.smart.iot.common.Exception.IotRpcException;
+import com.midea.smart.iot.common.vo.Response;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.filter.GenericFilterBean;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.Charset;
+import java.util.*;
+
+public class AuthFilter extends GenericFilterBean {
+	private static final Logger LOGGER = LoggerFactory.getLogger(AuthFilter.class);
+	private static final String UID_HEADER = "uid";
+	private static final Object OBJECT = Boolean.TRUE;
+	private String uidHeader;
+	private Map<String, Object> whiteList = new HashMap<>();
+	private Set<String> skipCorrect = new HashSet();
+	private SmartCacheOperator redisService;
+	private boolean correctInputStream = true;
+	
+	public AuthFilter(String uidHeader, Collection<String> whiteList, boolean correctInputStream, SmartCacheOperator redisService) {
+		if(StringUtils.isEmpty(uidHeader)) uidHeader = UID_HEADER;
+		this.uidHeader = uidHeader;
+		if(CollectionUtils.isNotEmpty(whiteList)) {
+			whiteList.forEach(ele -> this.whiteList.put(ele, OBJECT));
+		}
+		this.correctInputStream = correctInputStream;
+		this.redisService = redisService;
+		skipCorrect.add("/v1/homegroup/profile/pic/upload");
+	}
+	
+	@Override
+	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+			throws IOException, ServletException {
+		if (!shouldAuth((HttpServletRequest)request)) {
+			LOGGER.info("跳过uid解释拦截");
+			chain.doFilter(request, response);
+			return;
+		}
+		try {
+			resolveUid((HttpServletRequest)request);
+			chain.doFilter(request, response);
+		} catch (RpcException e) {
+			writeResponse((HttpServletRequest)request, (HttpServletResponse)response, 
+					new Response<>(e.getCode(), e.getMessage()));
+		} catch (Exception e) {
+			LOGGER.error("从请求中解释异常", e);
+			ErrorCode_common err = ErrorCode_common.SYS_ERROR;
+			writeResponse((HttpServletRequest)request, (HttpServletResponse)response, 
+					new Response<>(err.getCode(), err.getMsg()));
+		} finally {
+			SecurityContext.clear();
+		}
+	}
+
+	private boolean shouldAuth(HttpServletRequest request) {
+		return !whiteList.containsKey(RequestUtil.getPath(request));
+	}
+	
+	private String resolveUid(HttpServletRequest request) throws IOException {
+		String uid = request.getHeader(uidHeader);
+		LOGGER.info("从请求中解释uid={}", uid);
+		if(StringUtils.isEmpty(uid)) throw new IotRpcException(ErrorCode_common.INVALID_PARAM_EMPTY, uidHeader);
+		SecurityContext.set("uid", uid);
+		if(correctInputStream && !skipCorrect.contains(RequestUtil.getPath(request))) {
+			if(request instanceof WrapperRequest) {
+				WrapperRequest wRequest = (WrapperRequest)request;
+				String oldReqBody = IOUtils.toString(wRequest.getInputStream(), Charset.forName("utf-8"));
+				JSONObject jsonObject = JSONObject.parseObject(oldReqBody);
+				jsonObject.put("uid", uid);
+				String newReqBody = jsonObject.toJSONString();
+				if(LOGGER.isDebugEnabled()) {
+					LOGGER.debug("完成postbody的uid修复：old={}, new={}", oldReqBody, newReqBody);
+				}
+				wRequest.setRequestBody(newReqBody.getBytes("utf-8"));	
+			}
+		}
+		return uid;
+	}
+	
+	private void writeResponse(HttpServletRequest request, HttpServletResponse response, Response<?> jsonResp) {
+		response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
+		String result = "";
+        OutputStream writer = null;
+        try {
+        	result = JsonUtil.toJson(jsonResp);
+            writer = response.getOutputStream();
+            writer.write(result.getBytes("utf-8"));
+            response.flushBuffer();
+        }
+        catch (IOException e) {
+        	LOGGER.error("invalid request", e);
+        }
+        finally {
+            if (null != writer) {
+                try {
+					writer.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+            }
+        }
+	}
 }
 ```
 
@@ -5863,6 +6004,8 @@ public class CommentApplication {
 ```
 
 注意：使用@restController时返回json，使用@Controller时去在templates下找返回的值的文件.html
+
+# 七十九、controllerAdvice
 
 
 

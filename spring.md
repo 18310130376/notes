@@ -4,12 +4,12 @@ Spring 5 新增许多特性
 
 
 
-# init-method 
+# xml-init-method 
 
 用于在bean初始化时指定执行方法
 
 ```xml
-<bean id="RedisTopicListener"
+<bean id="redisTopicListener"
 		class="com.gwghk.gts2.api.service.RedisTopicListener"
 		init-method="init" scope="singleton" destroy-method="destroy">
      <property name="topic" value="test" />
@@ -48,5 +48,57 @@ public class RedisTopicListener {
 	
 	}
 }
+```
+
+测试：
+
+```java
+public class ApplicationTest {
+    public static void main(String[] args) {
+        ApplicationContext applicationContext = new ClassPathXmlApplicationContext("beans.xml");
+        // 根据bean id获取bean对象
+        RedisTopicListener redisTopicListener = (User) applicationContext.getBean("redisTopicListener");
+        System.out.println(redisTopicListener);
+    }
+}
+```
+
+# **@Bean-init-method **
+
+```java
+/**
+ * 定义一个注解配置文件 必须要加上@Configuration注解
+ *
+ * @author zhangqh
+ * @date 2018年4月30日
+ */
+@Configuration
+public class MainConfig {
+   
+    @Bean(initMethod="initUser",destroyMethod="destroyUser")
+    public User getUser(){
+        return new User("zhangsan",26);
+    }
+    
+    public void initUser(){
+        System.out.println("初始化用户bean之前执行");
+    }
+    public void destroyUser(){
+        System.out.println("bean销毁之后执行");
+    }
+}
+```
+
+测试
+
+```java
+//使用AnnotationConfigApplicationContext获取spring容器ApplicationContext2
+ApplicationContext applicationContext2 = new AnnotationConfigApplicationContext(MainConfig.class);
+User bean2 = applicationContext2.getBean(User.class);
+System.out.println(bean2);
+```
+
+```
+
 ```
 

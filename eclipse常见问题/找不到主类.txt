@@ -1,0 +1,3 @@
+在properties->Java?Build Path->Libraries下有jar包没有红×的情况下
+
+我觉得其他方法都是多余的，直接把workspace里面的.metadata和RemoteSystemsTempFiles文件夹删了，重新导入这个workspace,重新导入项目就好了。eclipse有点抽风！

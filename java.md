@@ -910,6 +910,8 @@ public class DeadLock{
 
 #### 十四、Java8  Stream
 
+http://www.cnblogs.com/JoeyWong/p/9600109.html
+
 ```java
 import java.util.ArrayList;
 import java.util.List;
@@ -3649,5 +3651,138 @@ public class PropertiesUtil {
     }
 }
 ```
+
+#### 三十六、数组ToString
+
+```java
+Arrays.toString(new String[] {"1","2"})
+```
+
+源码：
+
+```java
+	public static String arrayToString(Object[] a) {
+		 if (a == null)
+	           return "null";
+
+	        int iMax = a.length - 1;
+	        if (iMax == -1)
+	            return "[]";
+
+	        StringBuilder b = new StringBuilder();
+	        b.append('[');
+	        for (int i = 0; ; i++) {
+	            b.append(String.valueOf(a[i]));
+	            if (i == iMax)
+	                return b.append(']').toString();
+	            b.append(", ");
+	        }
+	}
+```
+
+
+
+#### 三十七、ToStringBuilder
+
+apache的commons-lang3的工具包里有一个ToStringBuilder类，这样在打日志的时候可以方便的打印出类实例中的各属性的值。
+
+具体用法如下：
+
+```java
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+ 
+public class Message {
+ 
+	private String from;
+ 
+	private String to;
+ 
+	private String body;
+ 
+	public String getFrom() {
+		return from;
+	}
+ 
+	public void setFrom(String from) {
+		this.from = from;
+	}
+ 
+	public String getTo() {
+		return to;
+	}
+ 
+	public void setTo(String to) {
+		this.to = to;
+	}
+ 
+	public String getBody() {
+		return body;
+	}
+ 
+	public void setBody(String body) {
+		this.body = body;
+	}
+ 
+	@Override
+	public String toString() {
+		return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);//ToStringStyle.DEFAULT_STYLE
+	}
+	
+	public static void main(String[] args) {
+		Message msg = new Message();
+		msg.setFrom("vince");
+		msg.setTo("mike");
+		msg.setBody("hello");
+		System.out.println(msg.toString());
+	}
+}
+```
+
+而且支持多种打印格式
+
+多行输出的：
+
+com.vince.im.dto.Message@af72d8[
+  from=vince
+  to=mike
+  body=hello
+]
+
+默认一行的：
+
+com.vince.im.dto.Message@af72d8[from=vince,to=mike,body=hello]
+
+
+
+NO_FIELD_NAMES_STYLE：
+
+com.vince.im.dto.Message@af72d8[vince,mike,hello]
+
+
+
+SHORT_PREFIX_STYLE：
+
+Message[from=vince,to=mike,body=hello]
+
+
+
+SIMPLE_STYLE：
+
+vince,mike,hello
+
+需要注意的是：
+
+Builds a `toString` value using the default `ToStringStyle` through reflection.
+
+It uses `AccessibleObject.setAccessible` to gain access to private fields. This means that it will throw a security exception if run under a security manager, if the permissions are not set up correctly. It is also not as efficient as testing explicitly.
+
+Transient members will be not be included, as they are likely derived. Static fields will not be included. Superclass fields will be appended.
+
+也就是说transient和static修饰的属性不能打印出来，但是父类的是可以打印出来的，使用的时候一定要注意了。
+
+
+
+
 
 https://www.cnblogs.com/acm-bingzi/category/544856.html
