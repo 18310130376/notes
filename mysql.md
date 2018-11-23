@@ -75,3 +75,19 @@ insert into new_table(id,name,content,addtime) select id,name,content,addtime fr
 ④ 旧表的名字修改为别的名，重命名新表的名字为旧表的名字
 
 留一个备用表，可以等新表完全没问题再删除
+
+
+
+# 开启mysql定时任务
+
+```
+查看event是否开启 : SHOW VARIABLES LIKE '%event_sche%';
+将事件计划开启 : SET GLOBAL event_scheduler = 1;
+将事件计划关闭 : SET GLOBAL event_scheduler = 0;
+关闭事件任务 : ALTER EVENT eventName ON COMPLETION PRESERVE DISABLE;
+开启事件任务 : ALTER EVENT eventName ON COMPLETION PRESERVE ENABLE;
+查看事件任务 : SHOW EVENTS ;
+查看存储过程：select `name` from mysql.proc where db = 'smart' and `type` = 'PROCEDURE' 
+
+```
+
